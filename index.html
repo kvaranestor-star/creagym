@@ -907,9 +907,17 @@ async function loadStats(){
     ]);
 
     const active = clients.filter(c=>c.status==='active').length;
-    const totalIncome = sales.reduce((s,x)=>s+x.amount,0);
-    const cashIncome = sales.filter(x=>x.payment_method==='cash').reduce((s,x)=>s+x.amount,0);
-    const cardIncome = sales.filter(x=>x.payment_method==='card').reduce((s,x)=>s+x.amount,0);
+    // Виключаємо винесення та повернення з доходу
+    const incomeSales = sales.filter(x=>x.type!=='outcome'&&x.type!=='return');
+    const outcomeSales = sales.filter(x=>x.type==='outcome');
+    const returnSales = sales.filter(x=>x.type==='return');
+    const totalIncome = incomeSales.reduce((s,x)=>s+x.amount,0);
+    const totalOutcome = outcomeSales.reduce((s,x)=>s+x.amount,0);
+    const totalReturns = returnSales.reduce((s,x)=>s+x.amount,0);
+    const totalLoss = totalOutcome + totalReturns;
+    const netIncome = totalIncome - totalLoss;
+    const cashIncome = incomeSales.filter(x=>x.payment_method==='cash').reduce((s,x)=>s+x.amount,0);
+    const cardIncome = incomeSales.filter(x=>x.payment_method==='card').reduce((s,x)=>s+x.amount,0);
     const subIncome = sales.filter(x=>x.type==='subscription').reduce((s,x)=>s+x.amount,0);
     const goodsIncome = sales.filter(x=>x.type==='product').reduce((s,x)=>s+x.amount,0);
     const extraIncome = sales.filter(x=>x.type==='service').reduce((s,x)=>s+x.amount,0);
@@ -922,20 +930,42 @@ async function loadStats(){
     document.getElementById('cl-badge').textContent=active;
     document.getElementById('goods-badge').textContent=lowStock.length;
 
-    // KPI
+    // KPI — картка доходу з витратами
     document.getElementById('stats-grid').innerHTML=`
-      <div class="inc-card" style="--ac:var(--y)">
+      <div class="inc-card" style="--ac:var(--y);grid-column:span 2">
         <div class="inc-top">
-          <div>
-            <div class="inc-lbl">Загальна виручка</div>
-            <div class="inc-val">${fmt(totalIncome)} ₴</div>
+          <div style="flex:1">
+            <div class="inc-lbl">Чистий дохід</div>
+            <div class="inc-val">${fmt(netIncome)} ₴</div>
             <div class="inc-subs">
-              <div class="inc-sub"><div class="inc-sub-l">Готівка</div><div class="inc-sub-v">${fmt(cashIncome)} ₴</div></div>
-              <div class="inc-sub"><div class="inc-sub-l">Карта</div><div class="inc-sub-v">${fmt(cardIncome)} ₴</div></div>
+              <div class="inc-sub">
+                <div class="inc-sub-l">Валова виручка</div>
+                <div class="inc-sub-v" style="color:var(--m3)">${fmt(totalIncome)} ₴</div>
+              </div>
+              <div class="inc-sub">
+                <div class="inc-sub-l">Готівка / Карта</div>
+                <div class="inc-sub-v" style="color:var(--m3)">${fmt(cashIncome)} / ${fmt(cardIncome)} ₴</div>
+              </div>
+              ${totalOutcome>0?`<div class="inc-sub">
+                <div class="inc-sub-l" style="color:var(--rd)">Винесення</div>
+                <div class="inc-sub-v" style="color:var(--rd)">− ${fmt(totalOutcome)} ₴</div>
+              </div>`:''}
+              ${totalReturns>0?`<div class="inc-sub">
+                <div class="inc-sub-l" style="color:var(--or)">Повернення</div>
+                <div class="inc-sub-v" style="color:var(--or)">− ${fmt(totalReturns)} ₴</div>
+              </div>`:''}
+              ${totalLoss>0?`<div class="inc-sub">
+                <div class="inc-sub-l" style="color:var(--rd);font-weight:700">ЗАГАЛЬНИЙ ЗБИТОК</div>
+                <div class="inc-sub-v" style="color:var(--rd);font-weight:700">− ${fmt(totalLoss)} ₴</div>
+              </div>`:''}
             </div>
           </div>
-          <span class="kd up">Всі продажі</span>
+          <span class="kd ${netIncome>=0?'up':'dn'}">${netIncome>=0?'↑':'↓'} ${totalIncome>0?Math.round(netIncome/totalIncome*100):0}%</span>
         </div>
+        ${totalLoss>0?`<div style="height:3px;background:var(--p3);border-radius:2px;overflow:hidden;margin-top:8px">
+          <div style="height:100%;background:linear-gradient(to right,var(--y) ${Math.round(netIncome/totalIncome*100)}%,var(--rd) 0%);border-radius:2px;width:100%"></div>
+        </div>
+        <div style="font-size:10px;color:var(--m);margin-top:3px">Маржа після витрат: ${totalIncome>0?Math.round(netIncome/totalIncome*100):0}%</div>`:''}
       </div>
       <div class="kc" style="--ac:var(--gr)">
         <div class="ktop"><div class="ki" style="background:#22C55E14"><svg viewBox="0 0 20 20" fill="none" style="color:var(--gr)"><circle cx="8" cy="6" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M2 17c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div><span class="kd up">Активні</span></div>
@@ -1879,24 +1909,59 @@ async function admSelectClient(id){
   document.getElementById('adm-sdrop').classList.remove('sh');
   document.getElementById('adm-search').value=c.last_name+' '+c.first_name;
   let subs=[];
-  try{subs=await sb.get('subscriptions',`?client_id=eq.${id}&status=eq.active&order=end_date.desc&limit=1`)}catch(e){}
-  const sub=subs[0]||null;
+  try{subs=await sb.get('subscriptions',`?client_id=eq.${id}&order=end_date.desc&limit=3`)}catch(e){}
+  const activeSub=subs.find(x=>x.status==='active')||null;
   const av=c.photo_url?`<img src="${c.photo_url}" style="width:100%;height:100%;object-fit:cover">`:`${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}`;
   const isIn=admInClub.find(x=>x.id===id);
+  const today=new Date().toISOString().split('T')[0];
+
   let subBlock='';
-  if(sub){
-    const s=new Date(sub.start_date),e2=new Date(sub.end_date);
+  if(activeSub){
+    const s=new Date(activeSub.start_date),e2=new Date(activeSub.end_date);
     const pct=Math.max(0,Math.min(100,Math.round((e2-new Date())/(e2-s)*100)));
     const dl=Math.max(0,Math.round((e2-new Date())/86400000));
-    subBlock=`<div class="cl-sub2"><div class="cl-sub-hd2"><div class="cl-sub-nm2">${sub.type_name}</div><span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;background:#22C55E14;color:var(--gr)">Активний</span></div><div class="sub-pr"><div class="sub-pr-f" style="width:${pct}%"></div></div><div class="sub-dt"><span>${dl} днів залишилось</span><span>${sub.price} ₴</span></div></div>`;
+    const notStarted=activeSub.start_date>today;
+    const returnBtn=notStarted
+      ?`<button class="ca rd" style="font-size:10px" onclick="returnSubscription('${activeSub.id}','${id}','${activeSub.type_name}',${activeSub.price},'${activeSub.start_date}','${activeSub.payment_method||'cash'}')">🔁 Повернення</button>`
+      :`<span style="font-size:10px;color:var(--m);padding:4px 8px">Повернення недоступне (активований)</span>`;
+    subBlock=`<div class="cl-sub2">
+      <div class="cl-sub-hd2">
+        <div class="cl-sub-nm2">${activeSub.type_name}</div>
+        <span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;background:#22C55E14;color:var(--gr)">${notStarted?'Не стартований':'Активний'}</span>
+      </div>
+      <div class="sub-pr"><div class="sub-pr-f" style="width:${pct}%"></div></div>
+      <div class="sub-dt">
+        <span>${notStarted?'Старт: '+activeSub.start_date:dl+' днів залишилось'}</span>
+        <span>${activeSub.price} ₴</span>
+      </div>
+      <div style="margin-top:8px">${returnBtn}</div>
+    </div>`;
   } else {
     subBlock=`<div class="cl-sub2"><div class="cl-sub-hd2"><div class="cl-sub-nm2" style="color:var(--m2)">Немає активного абонементу</div><span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;background:var(--p3);color:var(--m2)">Відсутній</span></div></div>`;
   }
+
+  // Останні покупки товарів
+  let recentSales=[];
+  try{recentSales=await sb.get('sales',`?client_id=eq.${id}&type=eq.product&order=created_at.desc&limit=5`)}catch(e){}
+  const purchasesHtml=recentSales.length?`
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bd)">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--m2);margin-bottom:6px">Останні покупки</div>
+      ${recentSales.map(s=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid var(--bd);font-size:11px">
+          <span>${s.item_name||'—'}</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-weight:700;color:var(--y)">${s.amount} ₴</span>
+            <button onclick="returnProduct('${s.id}',${s.amount},'${(s.item_name||'').replace(/'/g,'&#39;')}','${s.payment_method||'cash'}')" style="padding:2px 7px;border-radius:5px;background:#F9731614;border:1px solid #F9731628;color:var(--or);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer">🔁</button>
+          </div>
+        </div>`).join('')}
+    </div>`:''
+
   document.getElementById('adm-main').innerHTML=`
     <div class="cl-card2">
       <div class="cl-prof2"><div class="cl-ph2">${av}</div><div><div class="cl-nm2">${c.last_name} ${c.first_name}</div><div style="font-size:11px;color:var(--m2);margin-top:2px">${c.phone||'—'}</div><div style="font-size:10px;color:var(--m);margin-top:1px">${c.id} · Відвідувань: ${c.visits||0}</div></div></div>
       ${subBlock}
-      <div class="cl-acts">
+      ${purchasesHtml}
+      <div class="cl-acts" style="margin-top:8px">
         ${isIn?`<button class="ca rd" onclick="admCheckOut('${c.id}')">🔑 Здати ключ №${isIn.key}</button>`:`<button class="ca gr" onclick="admCheckIn('${c.id}')">✅ Зареєструвати вхід</button>`}
         <button class="ca pr" onclick="admOpenSell('${c.id}')">🎫 Продати абонемент</button>
         <button class="ca" onclick="admShopFor('${c.id}')">🛒 Магазин</button>
@@ -2055,7 +2120,7 @@ function kasaSetType(t,btn){
 
 function kasaRenderTx(){
   const list=kasaTypeFilter==='all'?kasaTxAll:kasaTxAll.filter(x=>x.payment_method===kasaTypeFilter);
-  const typeLabel={subscription:'Оплата абонементу',product:'Продаж товару',service:'Послуга',income:'💚 Внесення',outcome:'🔴 Винесення',manual:'Ручна операція'};
+  const typeLabel={subscription:'Оплата абонементу',product:'Продаж товару',service:'Послуга',income:'💚 Внесення',outcome:'🔴 Винесення',return:'🔁 Повернення',manual:'Ручна операція'};
   const payLabel={cash:'💵 Готівка',card:'💳 Картка'};
   if(!list.length){
     document.getElementById('kasa-tx-body').innerHTML='<tr><td colspan="6" style="padding:30px;text-align:center;font-size:12px;color:var(--m2)">Транзакцій немає</td></tr>';
@@ -2066,8 +2131,11 @@ function kasaRenderTx(){
     const t=new Date(tx.created_at);
     const time=t.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
     const date=t.toLocaleDateString('uk-UA',{day:'2-digit',month:'2-digit'});
-    const isNeg=tx.type==='outcome';
-    return `<tr style="border-top:1px solid var(--bd)">
+    const isNeg=tx.type==='outcome'||tx.type==='return';
+    // Outcome і return можна видалити (повернення суми)
+    const canDelete=tx.type==='outcome'||tx.type==='return';
+    const txJson=JSON.stringify({id:tx.id,amount:tx.amount,type:tx.type,item_name:tx.item_name}).replace(/"/g,'&quot;');
+    return `<tr style="border-top:1px solid var(--bd);background:${isNeg?'#EF444406':'transparent'}">
       <td style="padding:9px 13px;font-size:11px;color:var(--m2);white-space:nowrap">${date} ${time}</td>
       <td style="padding:9px 13px;font-size:12px">${tx.created_by||'—'}</td>
       <td style="padding:9px 13px;font-size:12px">${tx.client_id?cl[tx.client_id]||'—':'—'}</td>
@@ -2075,7 +2143,8 @@ function kasaRenderTx(){
       <td style="padding:9px 13px;font-size:11px">${payLabel[tx.payment_method]||tx.payment_method||'—'}</td>
       <td style="padding:9px 13px;font-size:13px;font-weight:700;color:${isNeg?'var(--rd)':'var(--y)'};text-align:right;white-space:nowrap">
         ${isNeg?'−':'+'} ${(tx.amount||0).toLocaleString('uk-UA')} ₴
-        <button onclick="showTxReceipt(${JSON.stringify(tx).replace(/"/g,'&quot;')})" style="margin-left:6px;background:var(--p3);border:1px solid var(--bd2);border-radius:5px;padding:2px 7px;font-size:10px;color:var(--m2);cursor:pointer;font-family:var(--f)">🧾</button>
+        <button onclick="showTxReceipt(${txJson})" style="margin-left:4px;background:var(--p3);border:1px solid var(--bd2);border-radius:5px;padding:2px 6px;font-size:10px;color:var(--m2);cursor:pointer;font-family:var(--f)">🧾</button>
+        ${canDelete?`<button onclick="deleteTx('${tx.id}',${tx.amount},'${tx.type}')" style="margin-left:2px;background:#EF444414;border:1px solid #EF444428;border-radius:5px;padding:2px 6px;font-size:10px;color:var(--rd);cursor:pointer;font-family:var(--f)">✕</button>`:''}
       </td>
     </tr>`;
   }).join('');
@@ -2083,10 +2152,10 @@ function kasaRenderTx(){
 
 function kasaUpdateStats(){
   const list=kasaTypeFilter==='all'?kasaTxAll:kasaTxAll.filter(x=>x.payment_method===kasaTypeFilter);
-  const cashIn=kasaTxAll.filter(x=>x.payment_method==='cash'&&x.type!=='outcome').reduce((s,x)=>s+x.amount,0);
-  const cashOut=kasaTxAll.filter(x=>x.payment_method==='cash'&&x.type==='outcome').reduce((s,x)=>s+x.amount,0);
+  const cashIn=kasaTxAll.filter(x=>x.payment_method==='cash'&&x.type!=='outcome'&&x.type!=='return').reduce((s,x)=>s+x.amount,0);
+  const cashOut=kasaTxAll.filter(x=>x.payment_method==='cash'&&(x.type==='outcome'||x.type==='return')).reduce((s,x)=>s+x.amount,0);
   const cashTurn=cashIn-cashOut;
-  const cardTurn=kasaTxAll.filter(x=>x.payment_method==='card'&&x.type!=='outcome').reduce((s,x)=>s+x.amount,0);
+  const cardTurn=kasaTxAll.filter(x=>x.payment_method==='card'&&x.type!=='return').reduce((s,x)=>s+x.amount,0);
   const cashStart=kasaShift?.cash_start||0;
   document.getElementById('k-cash-start').textContent=cashStart.toLocaleString('uk-UA')+' ₴';
   document.getElementById('k-cash-total').textContent=(cashStart+cashTurn).toLocaleString('uk-UA')+' ₴';
@@ -2094,8 +2163,9 @@ function kasaUpdateStats(){
   document.getElementById('k-card-start').textContent='0 ₴';
   document.getElementById('k-card-total').textContent=cardTurn.toLocaleString('uk-UA')+' ₴';
   document.getElementById('k-card-turn').textContent=cardTurn.toLocaleString('uk-UA')+' ₴';
-  const total=list.filter(x=>x.type!=='outcome').reduce((s,x)=>s+x.amount,0);
-  document.getElementById('k-total').textContent=total.toLocaleString('uk-UA')+' ₴';
+  const total=list.filter(x=>x.type!=='outcome'&&x.type!=='return').reduce((s,x)=>s+x.amount,0);
+  const losses=list.filter(x=>x.type==='outcome'||x.type==='return').reduce((s,x)=>s+x.amount,0);
+  document.getElementById('k-total').textContent=(total-losses).toLocaleString('uk-UA')+' ₴';
   document.getElementById('k-tx-cnt').textContent=list.length;
 }
 
@@ -2130,6 +2200,60 @@ async function kasaConfirmOp(){
     kasaLoadTx();
     alert(`✅ ${kasaOpType==='income'?'Внесено':'Винесено'}: ${amt.toLocaleString('uk-UA')} ₴\n${desc}`);
   }catch(e){alert('❌ '+e.message)}
+}
+
+// ВИДАЛЕННЯ транзакції (тільки outcome і return)
+async function deleteTx(id, amount, type){
+  const label=type==='outcome'?'винесення':'повернення';
+  if(!confirm(`Видалити ${label} на суму ${amount.toLocaleString('uk-UA')} ₴?\nСума повернеться до каси.`))return;
+  try{
+    await sb.del('sales',`id=eq.${id}`);
+    kasaLoadTx();
+    alert(`✅ Транзакцію видалено. ${amount.toLocaleString('uk-UA')} ₴ повернуто до каси.`);
+  }catch(e){alert('❌ '+e.message)}
+}
+
+// ПОВЕРНЕННЯ товару
+async function returnProduct(saleId, amount, itemName, payMethod){
+  if(!confirm(`Повернення: "${itemName}"\nСума: ${amount} ₴\n\nКошти будуть повернуті клієнту.`))return;
+  try{
+    await sb.post('sales',{
+      type:'return',
+      item_name:'Повернення: '+itemName,
+      amount:amount,
+      payment_method:payMethod||'cash',
+      created_by:curUser?.name||'admin'
+    });
+    if(kasaShift)kasaLoadTx();
+    alert('✅ Повернення оформлено!\n'+amount+' ₴ повернуто клієнту');
+  }catch(e){alert('❌ '+e.message)}
+}
+
+// ПОВЕРНЕННЯ абонементу (тільки якщо не стартований)
+async function returnSubscription(subId, clientId, typeName, price, startDate, payMethod){
+  const today=new Date().toISOString().split('T')[0];
+  if(startDate<=today){
+    alert('❌ Повернення неможливе!\n\nАбонемент вже активований '+startDate+'.\nПовернення можливе тільки до початку дії абонементу.');
+    return;
+  }
+  if(!confirm(`Повернення абонементу: "${typeName}"\nСума: ${price} ₴\n\nАбонемент буде скасовано.`))return;
+  try{
+    // Скасовуємо абонемент
+    await sb.patch('subscriptions',`id=eq.${subId}`,{status:'cancelled'});
+    // Записуємо повернення
+    await sb.post('sales',{
+      client_id:clientId,
+      type:'return',
+      item_name:'Повернення абонементу: '+typeName,
+      amount:price,
+      payment_method:payMethod||'cash',
+      created_by:curUser?.name||'admin'
+    });
+    if(kasaShift)kasaLoadTx();
+    alert('✅ Абонемент скасовано!\n'+price+' ₴ повернуто клієнту');
+    admSelectClient(clientId);
+  }catch(e){alert('❌ '+e.message)}
+}
 }
 
 // RECEIPTS
