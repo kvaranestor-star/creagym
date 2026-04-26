@@ -600,24 +600,6 @@ tr:hover td{background:#ffffff03;cursor:pointer}
               <input class="fi2-sm" type="text" id="sub-name" placeholder="Абонемент на 10 групових">
             </div>
           </div>
-          <div class="fr2">
-            <div class="ff">
-              <label>Тип абонементу</label>
-              <select class="fs fi2-sm" id="sub-type">
-                <option value="Клубне членство">Клубне членство</option>
-                <option value="Пакет послуг">Пакет послуг</option>
-                <option value="Разовий вхід">Разовий вхід</option>
-              </select>
-            </div>
-            <div class="ff">
-              <label>Тип продажу</label>
-              <select class="fs fi2-sm" id="sub-sale-type">
-                <option value="Будь-який">Будь-який</option>
-                <option value="Тільки новим">Тільки новим клієнтам</option>
-                <option value="Тільки поновлення">Тільки поновлення</option>
-              </select>
-            </div>
-          </div>
           <div class="ff">
             <label>Опис</label>
             <textarea class="fi2-sm" id="sub-desc" rows="2" placeholder="Опис абонементу..." style="resize:vertical"></textarea>
@@ -631,15 +613,11 @@ tr:hover td{background:#ffffff03;cursor:pointer}
               <label>Ціна (₴) <span style="color:var(--rd)">*</span></label>
               <input class="fi2-sm" type="number" id="sub-price" placeholder="1500" oninput="updatePricePreview()">
             </div>
-            <div id="price-preview" style="font-size:22px;font-weight:800;color:var(--y);display:none">0 ₴</div>
-            <label class="checkbox-row">
-              <input type="checkbox" id="sub-auto-renew">
-              Авто-продовження
-            </label>
+            <div id="price-preview" style="font-size:24px;font-weight:800;color:var(--y);display:none;margin-top:4px">0 ₴</div>
           </div>
 
           <div class="form-group">
-            <div class="form-group-title">Термін</div>
+            <div class="form-group-title">Термін дії</div>
             <div class="fr2">
               <div class="ff">
                 <label>Тривалість <span style="color:var(--rd)">*</span></label>
@@ -661,23 +639,19 @@ tr:hover td{background:#ffffff03;cursor:pointer}
                 <option value="з дати продажу">З дати продажу</option>
               </select>
             </div>
-            <label class="checkbox-row">
-              <input type="checkbox" id="sub-autostart">
-              Автостарт абонементу
-            </label>
           </div>
         </div>
 
         <div class="form-group">
           <div class="form-group-title">Заморозка</div>
-          <div class="fr2">
-            <div class="ff">
-              <label>Кількість заморозок</label>
-              <input class="fi2-sm" type="number" id="sub-freeze-cnt" placeholder="2" value="2">
-            </div>
-            <div class="ff">
-              <label>Максимум днів заморозки</label>
-              <input class="fi2-sm" type="number" id="sub-freeze-days" placeholder="14" value="14">
+          <div style="font-size:11px;color:var(--m2);margin-bottom:8px">Клієнт або адміністратор зможе заморозити абонемент на вказану кількість днів</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="ff" style="flex:none">
+              <label>Кількість днів заморозки</label>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                <input class="fi2-sm" type="number" id="sub-freeze-days" placeholder="14" value="14" style="max-width:100px">
+                <span style="font-size:12px;color:var(--m2)">днів</span>
+              </div>
             </div>
           </div>
         </div>
@@ -691,12 +665,12 @@ tr:hover td{background:#ffffff03;cursor:pointer}
             <div class="srv-row">
               <div class="srv-name">
                 <select class="fs fi2-sm" style="width:100%">
+                  <option>Тренажерний зал</option>
                   <option>Групове тренування</option>
                   <option>Персональне тренування</option>
                   <option>Масаж</option>
                   <option>Басейн</option>
                   <option>Сауна</option>
-                  <option>Тренажерний зал</option>
                 </select>
               </div>
               <input class="fi2-sm srv-qty" type="number" placeholder="10" value="10">
@@ -710,21 +684,34 @@ tr:hover td{background:#ffffff03;cursor:pointer}
           </div>
           <div class="add-srv-btn" onclick="addService()">+ Додати послугу</div>
         </div>
+
         <div class="form-group">
           <div class="form-group-title">Обмеження відвідувань</div>
           <div class="fr2">
             <div class="ff">
-              <label>Відвідувань на день</label>
-              <input class="fi2-sm" type="number" id="sub-vis-day" placeholder="1" value="1">
+              <label>На день</label>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                <input class="fi2-sm" type="number" id="sub-vis-day" placeholder="1" style="max-width:80px">
+                <label class="checkbox-row">
+                  <input type="checkbox" id="sub-vis-day-unlim" onchange="toggleVisUnlim('day',this)" checked>
+                  <span style="color:var(--y);font-weight:600">Безліміт</span>
+                </label>
+              </div>
             </div>
             <div class="ff">
-              <label>Відвідувань на тиждень</label>
-              <input class="fi2-sm" type="number" id="sub-vis-week" placeholder="7">
+              <label>На місяць</label>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                <input class="fi2-sm" type="number" id="sub-vis-month" placeholder="12" style="max-width:80px">
+                <label class="checkbox-row">
+                  <input type="checkbox" id="sub-vis-month-unlim" onchange="toggleVisUnlim('month',this)" checked>
+                  <span style="color:var(--y);font-weight:600">Безліміт</span>
+                </label>
+              </div>
             </div>
           </div>
-          <div class="ff">
-            <label>Час відвідування (розклад)</label>
-            <select class="fs fi2-sm" id="sub-schedule">
+          <div class="ff" style="margin-top:4px">
+            <label>Розклад відвідувань</label>
+            <select class="fs fi2-sm" id="sub-schedule" style="margin-top:6px">
               <option>Повний день 7 днів</option>
               <option>Будні 7:00–22:00</option>
               <option>Ранковий (до 14:00)</option>
@@ -1084,7 +1071,7 @@ function renderSubs(){
   </div>`;
   const rows = list.map(s=>{
     const cls = clsMap[s.class_name] || 'cls-kl';
-    const freeze = s.freeze_count>0 ? `${s.freeze_count}×${s.freeze_days}д` : '—';
+    const freeze = s.freeze_days>0 ? `${s.freeze_days} дн.` : '—';
     const srvCount = (s.services||[]).length;
     return `<div class="sub-row" onclick="editSub('${s.id}')">
       <button class="sub-toggle ${s.is_active?'on':''}" onclick="event.stopPropagation();toggleSubActive('${s.id}',${!s.is_active})" title="${s.is_active?'Деактивувати':'Активувати'}"></button>
@@ -1113,34 +1100,43 @@ function filterSubsActive(v){subFilterActive=v;renderSubs()}
 function openSubModal(id=null){
   editSubId=id;
   document.getElementById('sub-mo-title').textContent=id?'Редагувати абонемент':'Новий абонемент';
-  if(!id){
-    ['sub-name','sub-price','sub-dur','sub-desc'].forEach(i=>{const el=document.getElementById(i);if(el)el.value=''});
-    ['sub-class','sub-type','sub-sale-type','sub-dur-unit','sub-start','sub-schedule'].forEach(i=>{const el=document.getElementById(i);if(el)el.selectedIndex=0});
-    document.getElementById('sub-freeze-cnt').value='2';
-    document.getElementById('sub-freeze-days').value='14';
-    document.getElementById('sub-vis-day').value='1';
-    document.getElementById('sub-vis-week').value='';
-    document.getElementById('sub-auto-renew').checked=false;
-    document.getElementById('sub-autostart').checked=false;
-    document.getElementById('price-preview').style.display='none';
-    document.getElementById('srv-list').innerHTML=`<div class="srv-row"><div class="srv-name"><select class="fs fi2-sm" style="width:100%"><option>Тренажерний зал</option><option>Групове тренування</option><option>Персональне тренування</option><option>Масаж</option><option>Басейн</option><option>Сауна</option></select></div><input class="fi2-sm srv-qty" type="number" placeholder="—"><select class="fs fi2-sm srv-unit"><option>Необм.</option><option>1 год.</option><option>Разів</option></select><button class="sub-del-b" onclick="this.parentElement.remove()">✕</button></div>`;
-  } else {
-    const s = allSubs.find(x=>x.id===id);
-    if(!s)return;
-    document.getElementById('sub-name').value=s.name||'';
-    document.getElementById('sub-price').value=s.price||'';
-    document.getElementById('sub-dur').value=s.days||'';
-    document.getElementById('sub-desc').value=s.description||'';
-    document.getElementById('sub-freeze-cnt').value=s.freeze_count||2;
-    document.getElementById('sub-freeze-days').value=s.freeze_days||14;
-    document.getElementById('sub-vis-day').value=s.visits_per_day||1;
-    document.getElementById('sub-auto-renew').checked=!!s.auto_renew;
-    document.getElementById('sub-autostart').checked=!!s.autostart;
-    updatePricePreview();
-    // set selects
-    const setS=(id,v)=>{const el=document.getElementById(id);if(el&&v){[...el.options].forEach((o,i)=>{if(o.value===v)el.selectedIndex=i})}};
-    setS('sub-class',s.class_name);setS('sub-dur-unit',s.duration_unit);
-    setS('sub-start',s.start_type);setS('sub-type',s.sub_type);
+
+  // Reset
+  ['sub-name','sub-price','sub-dur','sub-desc'].forEach(i=>{const el=document.getElementById(i);if(el)el.value=''});
+  document.getElementById('sub-class').value='';
+  document.getElementById('sub-dur-unit').value='Доба';
+  document.getElementById('sub-start').value='з моменту першого входу';
+  document.getElementById('sub-freeze-days').value='14';
+  document.getElementById('sub-vis-day').value='';
+  document.getElementById('sub-vis-day').disabled=true;
+  document.getElementById('sub-vis-day-unlim').checked=true;
+  document.getElementById('sub-vis-month').value='';
+  document.getElementById('sub-vis-month').disabled=true;
+  document.getElementById('sub-vis-month-unlim').checked=true;
+  document.getElementById('price-preview').style.display='none';
+  document.getElementById('srv-list').innerHTML=`<div class="srv-row"><div class="srv-name"><select class="fs fi2-sm" style="width:100%"><option>Тренажерний зал</option><option>Групове тренування</option><option>Персональне тренування</option><option>Масаж</option><option>Басейн</option><option>Сауна</option></select></div><input class="fi2-sm srv-qty" type="number" placeholder="—"><select class="fs fi2-sm srv-unit"><option>Необм.</option><option>1 год.</option><option>Разів</option></select><button class="sub-del-b" onclick="this.parentElement.remove()">✕</button></div>`;
+
+  if(id){
+    const s=allSubs.find(x=>x.id===id);
+    if(s){
+      document.getElementById('sub-name').value=s.name||'';
+      document.getElementById('sub-price').value=s.price||'';
+      document.getElementById('sub-dur').value=s.days||'';
+      document.getElementById('sub-desc').value=s.description||'';
+      document.getElementById('sub-class').value=s.class_name||'';
+      document.getElementById('sub-dur-unit').value=s.duration_unit||'Доба';
+      document.getElementById('sub-start').value=s.start_type||'з моменту першого входу';
+      document.getElementById('sub-freeze-days').value=s.freeze_days||14;
+      const vDU=s.visits_per_day===null||s.visits_per_day===undefined;
+      document.getElementById('sub-vis-day-unlim').checked=vDU;
+      document.getElementById('sub-vis-day').value=vDU?'':s.visits_per_day;
+      document.getElementById('sub-vis-day').disabled=vDU;
+      const vMU=s.visits_per_month===null||s.visits_per_month===undefined;
+      document.getElementById('sub-vis-month-unlim').checked=vMU;
+      document.getElementById('sub-vis-month').value=vMU?'':s.visits_per_month;
+      document.getElementById('sub-vis-month').disabled=vMU;
+      updatePricePreview();
+    }
   }
   setSubTab('basic',document.querySelector('.mo-tab'));
   openMo('mo-sub');
@@ -1169,6 +1165,15 @@ function addService(){
   document.getElementById('srv-list').appendChild(row);
 }
 
+function toggleVisUnlim(type,cb){
+  const inp=document.getElementById('sub-vis-'+type);
+  inp.disabled=cb.checked;
+  if(cb.checked) inp.value='';
+}
+
+async function saveSub(){
+}
+
 async function saveSub(){
   const name=document.getElementById('sub-name').value.trim();
   const price=parseInt(document.getElementById('sub-price').value);
@@ -1179,43 +1184,51 @@ async function saveSub(){
   if(!days||days<=0){alert('Введіть тривалість');return}
   if(!cls){alert('Оберіть клас абонементу');return}
 
-  // Збираємо послуги
-  const services=[...document.querySelectorAll('#srv-list .srv-row')].map(row=>{
-    const sel=row.querySelector('select');
-    const qty=row.querySelector('.srv-qty');
-    const unit=row.querySelector('.srv-unit');
-    return {name:sel?.value,qty:qty?.value||'',unit:unit?.value||''};
-  });
+  // Відвідування: null = безліміт
+  const visDay=document.getElementById('sub-vis-day-unlim').checked
+    ? null : (parseInt(document.getElementById('sub-vis-day').value)||null);
+  const visMonth=document.getElementById('sub-vis-month-unlim').checked
+    ? null : (parseInt(document.getElementById('sub-vis-month').value)||null);
+
+  const services=[...document.querySelectorAll('#srv-list .srv-row')].map(row=>({
+    name:row.querySelector('select')?.value||'',
+    qty:row.querySelector('.srv-qty')?.value||'',
+    unit:row.querySelector('.srv-unit')?.value||''
+  }));
 
   const data={
-    name,price,days,
+    name,
+    price,
+    days,
+    description:document.getElementById('sub-desc').value.trim()||'',
     class_name:cls,
-    description:document.getElementById('sub-desc').value.trim(),
     duration_unit:document.getElementById('sub-dur-unit').value,
     start_type:document.getElementById('sub-start').value,
-    sub_type:document.getElementById('sub-type').value,
-    freeze_count:parseInt(document.getElementById('sub-freeze-cnt').value)||0,
-    freeze_days:parseInt(document.getElementById('sub-freeze-days').value)||0,
-    visits_per_day:parseInt(document.getElementById('sub-vis-day').value)||1,
-    auto_renew:document.getElementById('sub-auto-renew').checked,
-    autostart:document.getElementById('sub-autostart').checked,
+    freeze_days:parseInt(document.getElementById('sub-freeze-days').value)||14,
+    visits_per_day:visDay,
+    visits_per_month:visMonth,
     schedule:document.getElementById('sub-schedule').value,
-    services,
+    services:services,
     is_active:true
   };
 
   try {
+    let result;
     if(editSubId){
-      await sb.patch('subscription_types',`id=eq.${editSubId}`,data);
-      alert('✅ Абонемент оновлено!');
+      result=await sb.patch('subscription_types',`id=eq.${editSubId}`,data);
     } else {
-      await sb.post('subscription_types',data);
-      alert('✅ Абонемент "'+name+'" створено!');
+      result=await sb.post('subscription_types',data);
     }
+    // Перевіряємо помилку від Supabase
+    if(result && result.code){
+      alert('❌ Помилка БД: '+result.message+'\n\nЗапусти fix_subs.sql в Supabase SQL Editor!');
+      return;
+    }
+    alert(editSubId?'✅ Абонемент оновлено!':'✅ Абонемент "'+name+'" створено!');
     closeMoD('mo-sub');
     await loadSubs();
   } catch(e){
-    alert('❌ Помилка збереження. Перевірте підключення до БД.');
+    alert('❌ Помилка збереження:\n'+e.message);
   }
 }
 
