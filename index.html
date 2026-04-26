@@ -1172,9 +1172,6 @@ function toggleVisUnlim(type,cb){
 }
 
 async function saveSub(){
-}
-
-async function saveSub(){
   const name=document.getElementById('sub-name').value.trim();
   const price=parseInt(document.getElementById('sub-price').value);
   const days=parseInt(document.getElementById('sub-dur').value);
@@ -1219,16 +1216,20 @@ async function saveSub(){
     } else {
       result=await sb.post('subscription_types',data);
     }
-    // Перевіряємо помилку від Supabase
-    if(result && result.code){
-      alert('❌ Помилка БД: '+result.message+'\n\nЗапусти fix_subs.sql в Supabase SQL Editor!');
+    // Supabase повертає масив при успіху, об'єкт з code при помилці
+    if(result && !Array.isArray(result) && result.code){
+      if(result.code==='42703'){
+        alert('❌ Помилка: колонки не існують в базі даних.\n\nПотрібно запустити fix_subs.sql в Supabase SQL Editor!\n\nДеталі: '+result.message);
+      } else {
+        alert('❌ Помилка БД ('+result.code+'): '+result.message);
+      }
       return;
     }
     alert(editSubId?'✅ Абонемент оновлено!':'✅ Абонемент "'+name+'" створено!');
     closeMoD('mo-sub');
     await loadSubs();
   } catch(e){
-    alert('❌ Помилка збереження:\n'+e.message);
+    alert('❌ Помилка:\n'+e.message);
   }
 }
 
