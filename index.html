@@ -1954,7 +1954,7 @@ async function admSelectClient(id){
             <button onclick="returnProduct('${s.id}',${s.amount},'${(s.item_name||'').replace(/'/g,'&#39;')}','${s.payment_method||'cash'}')" style="padding:2px 7px;border-radius:5px;background:#F9731614;border:1px solid #F9731628;color:var(--or);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer">🔁</button>
           </div>
         </div>`).join('')}
-    </div>`:''
+    </div>`:'';
 
   document.getElementById('adm-main').innerHTML=`
     <div class="cl-card2">
