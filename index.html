@@ -1263,12 +1263,24 @@ async function toggleSubActive(id,val){
 }
 
 async function deleteSub(id,name){
-  if(!confirm(`Видалити абонемент "${name}"?\nЦе не вплине на вже продані абонементи.`))return;
+  if(!confirm(`Видалити тип абонементу "${name}"?`))return;
   try{
-    await fetch(`${SB_URL}/rest/v1/subscription_types?id=eq.${id}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    const activeSubs=await sb.get('subscriptions',`?type_id=eq.${id}&status=eq.active&select=id,client_id&limit=1`);
+    if(activeSubs&&activeSubs.length>0){
+      const cl=allClients.find(c=>c.id===activeSubs[0].client_id);
+      const clName=cl?cl.last_name+' '+cl.first_name:'клієнт';
+      alert(`❌ Неможливо видалити!\n\nТип "${name}" має активних клієнтів.\nНаприклад: ${clName}\n\nСпочатку завершіть або переоформіть їхні абонементи.`);
+      return;
+    }
+    const hist=await sb.get('subscriptions',`?type_id=eq.${id}&select=id&limit=1`);
+    if(hist&&hist.length>0){
+      if(!confirm(`⚠️ Цей тип використовувався раніше (є в історії).\nВидалення може вплинути на звіти.\n\nПродовжити?`))return;
+    }
+    const resp=await fetch(`${SB_URL}/rest/v1/subscription_types?id=eq.${id}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    if(!resp.ok){const err=await resp.json();alert('❌ Помилка: '+(err.message||resp.status));return;}
     await loadSubs();
-    alert('✅ Абонемент видалено');
-  }catch(e){alert('Помилка видалення')}
+    alert('✅ Тип абонементу видалено');
+  }catch(e){alert('❌ '+e.message)}
 }
 
 async function loadClients(){
@@ -1327,9 +1339,42 @@ async function openDos(id){
   const maxV=Math.max(...vd,1);
   const bars=vd.map((v,i)=>`<div class="vc-c"><div class="vc-b" style="height:${Math.round(v/maxV*38)+4}px"></div><div class="vc-l">${days[i]}</div></div>`).join('');
 
-  // Завантажуємо покупки
-  let purchases=[];
+  // Завантажуємо абонемент і покупки
+  let purchases=[], activeSub=null;
   try{purchases=await sb.get('sales',`?client_id=eq.${id}&order=created_at.desc&limit=5`);}catch(e){}
+  try{
+    const subs=await sb.get('subscriptions',`?client_id=eq.${id}&status=eq.active&order=end_date.desc&limit=1`);
+    activeSub=subs&&subs.length?subs[0]:null;
+  }catch(e){}
+
+  // Блок абонементу
+  let subBlock='';
+  if(activeSub){
+    const s=new Date(activeSub.start_date),e2=new Date(activeSub.end_date);
+    const pct=Math.max(0,Math.min(100,Math.round((e2-new Date())/(e2-s)*100)));
+    const dl=Math.max(0,Math.round((e2-new Date())/86400000));
+    const today=new Date().toISOString().split('T')[0];
+    const notStarted=activeSub.start_date>today;
+    subBlock=`
+    <div class="dos-sec">
+      <div class="dos-st">Активний абонемент</div>
+      <div style="background:var(--p2);border:1px solid var(--bd2);border-radius:9px;padding:11px 13px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:12px;font-weight:700">${activeSub.type_name}</span>
+          <span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;background:#22C55E14;color:var(--gr)">${notStarted?'Не стартований':'Активний'}</span>
+        </div>
+        <div style="height:3px;background:var(--p3);border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--y);border-radius:2px"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:5px;font-size:10px;color:var(--m2)">
+          <span>${notStarted?'Старт: '+activeSub.start_date:dl+' днів залишилось'}</span>
+          <span>${activeSub.price} ₴</span>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:6px">
+          <button onclick="ownerDeleteClientSub('${activeSub.id}','${id}','${activeSub.type_name}')" style="padding:4px 10px;border-radius:6px;background:#EF444414;border:1px solid #EF444428;color:var(--rd);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer">🗑 Видалити абонемент</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
   const purHtml=purchases.length?purchases.map(p=>`<div class="pur-i"><div class="pur-left"><div class="pur-n">${p.item_name}</div><div class="pur-d">${new Date(p.created_at).toLocaleDateString('uk-UA')}</div></div><div class="pur-p">${fmt(p.amount)} ₴</div></div>`).join(''):'<div style="font-size:11px;color:var(--m2);padding:8px 0">Покупок ще немає</div>';
 
   document.getElementById('dos-bd').innerHTML=`
@@ -1344,6 +1389,7 @@ async function openDos(id){
       <div class="ir"><span class="il">Всього візитів</span><span class="iv" style="color:var(--y)">${c.visits||0}</span></div>
       ${c.note?`<div class="ir"><span class="il">Примітка</span><span class="iv">${c.note}</span></div>`:''}
     </div>
+    ${subBlock}
     <div class="dos-sec">
       <div class="dos-st">Відвідуваність (тиждень)</div>
       <div class="vc">${bars}</div>
@@ -1353,14 +1399,31 @@ async function openDos(id){
       <div class="pur-l">${purHtml}</div>
     </div>
     <div class="das-as">
-      <button class="da-b" onclick="alert('Продовження абонементу')">Продовжити</button>
-      <button class="da-b" onclick="alert('Заморозити абонемент')">Заморозити</button>
-      <button class="da-b pr" onclick="alert('Оплата')">💳 Оплата</button>
+      <button class="da-b" onclick="alert('Функція в розробці')">📱 SMS</button>
+      <button class="da-b" onclick="closeDosD()">Закрити</button>
     </div>`;
   document.getElementById('dos-ov').classList.add('sh');
 }
 function closeDos(e){if(e.target===document.getElementById('dos-ov'))closeDosD()}
 function closeDosD(){document.getElementById('dos-ov').classList.remove('sh')}
+
+// Власник видаляє абонемент клієнта (без повернення коштів)
+async function ownerDeleteClientSub(subId,clientId,typeName){
+  if(!confirm(`Видалити абонемент "${typeName}" у клієнта?\n\n⚠️ Це адміністративне видалення.\nКошти не повертаються автоматично.\n\nПродовжити?`))return;
+  try{
+    await sb.patch('subscriptions',`id=eq.${subId}`,{status:'expired'});
+    // Оновлюємо статус клієнта
+    const otherSubs=await sb.get('subscriptions',`?client_id=eq.${clientId}&status=eq.active&select=id&limit=1`);
+    if(!otherSubs||!otherSubs.length){
+      await sb.patch('clients',`id=eq.${clientId}`,{status:'expired'});
+      const cl=allClients.find(x=>x.id===clientId);
+      if(cl)cl.status='expired';
+    }
+    closeDosD();
+    renderClients();
+    alert('✅ Абонемент видалено');
+  }catch(e){alert('❌ '+e.message)}
+}
 
 // ===== CREATE CLIENT =====
 function openMo(id){document.getElementById(id).classList.add('sh')}
@@ -2187,15 +2250,19 @@ async function kasaConfirmOp(){
   const note=document.getElementById('kop-note').value.trim();
   const cat=document.getElementById('kop-category').value;
   if(!amt||amt<=0){alert('Введіть коректну суму');return}
-  const desc=cat||(note||kasaOpType==='income'?'Внесення':'Винесення');
+  // Фікс: правильний пріоритет операторів
+  const desc=(cat||note||(kasaOpType==='income'?'Внесення':'Винесення'))+(note&&cat?' · '+note:'');
   try{
-    await sb.post('sales',{
+    const result=await sb.post('sales',{
       type:kasaOpType,
-      item_name:desc+(note?' · '+note:''),
+      item_name:desc,
       amount:amt,
       payment_method:'cash',
       created_by:curUser?.name||'admin'
     });
+    if(result&&!Array.isArray(result)&&result.code){
+      alert('❌ Помилка БД: '+result.message);return;
+    }
     admCloseMoD('kasa-op-mo');
     kasaLoadTx();
     alert(`✅ ${kasaOpType==='income'?'Внесено':'Винесено'}: ${amt.toLocaleString('uk-UA')} ₴\n${desc}`);
