@@ -1697,7 +1697,16 @@ async function createClient(){
             <button class="ktype-btn" onclick="kasaSetType('cash',this)">💵 Готівка</button>
             <button class="ktype-btn" onclick="kasaSetType('card',this)">💳 Картка</button>
           </div>
-          <button onclick="kasaAddManual()" style="margin-left:auto;padding:6px 12px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer">+ Операція вручну</button>
+          <div style="display:flex;gap:6px;margin-left:auto">
+            <button onclick="kasaManualOp('income')" style="display:flex;align-items:center;gap:5px;padding:6px 13px;border-radius:8px;border:1px solid #22C55E40;background:#22C55E14;color:var(--gr);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">
+              <svg viewBox="0 0 16 16" fill="none" width="12" height="12"><path d="M8 2v8M5 7l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              Внесення
+            </button>
+            <button onclick="kasaManualOp('outcome')" style="display:flex;align-items:center;gap:5px;padding:6px 13px;border-radius:8px;border:1px solid #EF444440;background:#EF444414;color:var(--rd);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">
+              <svg viewBox="0 0 16 16" fill="none" width="12" height="12"><path d="M8 14V6M5 9l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 4h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              Винесення
+            </button>
+          </div>
         </div>
 
         <!-- TRANSACTIONS TABLE -->
@@ -1759,8 +1768,69 @@ async function createClient(){
   </div>
 </div>
 
+<!-- CASH OPERATION MODAL -->
+<div class="mo2" id="kasa-op-mo" onclick="admCloseMo('kasa-op-mo',event)">
+  <div class="mo2-box" style="max-width:400px">
+    <div class="mo2-hd">
+      <div class="mo2-ti" id="kop-title">Внесення коштів</div>
+      <button class="cls-b" onclick="admCloseMoD('kasa-op-mo')">✕</button>
+    </div>
+    <div class="mo2-bd">
+      <div style="font-size:11px;color:var(--m2);background:var(--p2);border-radius:8px;padding:10px 12px" id="kop-desc">Введіть суму для внесення в касу</div>
+      <div class="ff2">
+        <label>Сума (₴) *</label>
+        <input class="fi3" type="number" id="kop-amount" placeholder="0.00" min="0">
+      </div>
+      <div class="ff2">
+        <label>Призначення</label>
+        <input class="fi3" type="text" id="kop-note" placeholder="Наприклад: здача, отримано від менеджера...">
+      </div>
+      <div class="ff2">
+        <label>Стаття витрат</label>
+        <select class="fi3" id="kop-category">
+          <option value="">— Оберіть статтю —</option>
+          <optgroup label="Внесення">
+            <option value="Здача">Здача</option>
+            <option value="Поповнення каси">Поповнення каси</option>
+            <option value="Інше внесення">Інше внесення</option>
+          </optgroup>
+          <optgroup label="Винесення">
+            <option value="Оренда">Оренда</option>
+            <option value="Зарплата">Зарплата</option>
+            <option value="Комунальні">Комунальні послуги</option>
+            <option value="Господарські">Господарські витрати</option>
+            <option value="Інше витрати">Інше витрати</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="fa2">
+        <button class="fb2 se" onclick="admCloseMoD('kasa-op-mo')">Скасувати</button>
+        <button class="fb2 pr" id="kop-confirm" onclick="kasaConfirmOp()">Зберегти</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RECEIPT MODAL -->
+<div class="mo2" id="receipt-mo" onclick="admCloseMo('receipt-mo',event)">
+  <div class="mo2-box" style="max-width:360px">
+    <div class="mo2-hd">
+      <div class="mo2-ti">Фіскальний чек</div>
+      <button class="cls-b" onclick="admCloseMoD('receipt-mo')">✕</button>
+    </div>
+    <div style="padding:16px">
+      <div id="receipt-content" style="font-family:'Courier New',monospace;font-size:12px;line-height:1.7;background:#fff;color:#000;padding:16px;border-radius:8px;white-space:pre-wrap;border:1px solid #ddd"></div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="fb2 se" onclick="admCloseMoD('receipt-mo')" style="flex:1">Закрити</button>
+        <button class="fb2 pr" onclick="printReceipt()" style="flex:1">🖨️ Друкувати</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 let admClients=[],admProducts=[],admSubTypes=[],admInClub=[],admCart=[],admSelSub=null,admPayM='cash',admSellCl=null,admClFilterTxt='';
+
 
 async function loadAdminData(){
   try{
@@ -1906,12 +1976,19 @@ async function admConfirmSell(){
 }
 
 // ===== KASA =====
-let kasaShift=null, kasaPeriod='today', kasaTypeFilter='all', kasaTxAll=[];
+let kasaShift=null, kasaPeriod='today', kasaTypeFilter='all', kasaTxAll=[], kasaOpType='income';
 
 async function kasaOpenShift(){
-  const cashStart=prompt('Готівка на початок зміни (₴):','0');
+  if(!confirm('Відкрити нову зміну?\nСума на початок буде скопійована з закриття попередньої зміни.'))return;
+  // Берем суму із закриття останньої зміни
+  let prevCashEnd=0;
+  try{
+    const prevShifts=await sb.get('shifts','?status=eq.closed&order=closed_at.desc&limit=1');
+    if(prevShifts&&prevShifts.length>0) prevCashEnd=prevShifts[0].cash_end||0;
+  }catch(e){}
+  const cashStart=prompt(`Готівка на початок зміни (₴):\n(Скопійовано з попереднього закриття)`,prevCashEnd||'0');
   if(cashStart===null)return;
-  const amt=parseInt(cashStart)||0;
+  const amt=parseFloat(cashStart)||0;
   try{
     const result=await sb.post('shifts',{
       opened_by:curUser?.name||'admin',
@@ -1919,16 +1996,14 @@ async function kasaOpenShift(){
       status:'open'
     });
     kasaShift=Array.isArray(result)?result[0]:result;
-    kasaUpdateShiftUI(true);
-    kasaLoadTx();
-    alert('✅ Зміну відкрито!\nГотівка на початок: '+amt.toLocaleString('uk-UA')+' ₴');
+    if(!kasaShift||kasaShift.code) kasaShift={id:'demo-'+Date.now(),opened_by:curUser?.name||'admin',cash_start:amt,opened_at:new Date().toISOString(),status:'open'};
   }catch(e){
-    // Якщо таблиця shifts не існує — демо режим
-    kasaShift={id:'demo',opened_by:curUser?.name||'admin',cash_start:amt,opened_at:new Date().toISOString(),status:'open'};
-    kasaUpdateShiftUI(true);
-    kasaLoadTx();
-    alert('✅ Зміну відкрито (демо режим)\nГотівка на початок: '+amt.toLocaleString('uk-UA')+' ₴');
+    kasaShift={id:'demo-'+Date.now(),opened_by:curUser?.name||'admin',cash_start:amt,opened_at:new Date().toISOString(),status:'open'};
   }
+  kasaUpdateShiftUI(true);
+  kasaLoadTx();
+  const t=new Date().toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
+  alert(`✅ Зміну відкрито о ${t}\n💵 Готівка на початок: ${amt.toLocaleString('uk-UA')} ₴`);
 }
 
 function kasaUpdateShiftUI(open){
@@ -1945,33 +2020,27 @@ function kasaUpdateShiftUI(open){
     const t=new Date(kasaShift.opened_at);
     sub.textContent='Відкрита о '+t.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})+' · '+kasaShift.opened_by;
     badge.textContent='ВІДКРИТО';badge.style.background='#22C55E20';badge.style.color='var(--gr)';
-    openBtn.style.display='none';
-    xBtn.style.display='flex';
-    zBtn.style.display='flex';
+    openBtn.style.display='none';xBtn.style.display='flex';zBtn.style.display='flex';
   } else {
     dot.style.background='var(--rd)';
     title.textContent='Зміна не відкрита';
     sub.textContent='Відкрийте зміну щоб розпочати роботу з касою';
     badge.textContent='ЗАЧИНЕНО';badge.style.background='#EF444420';badge.style.color='var(--rd)';
-    openBtn.style.display='flex';
-    xBtn.style.display='none';
-    zBtn.style.display='none';
+    openBtn.style.display='flex';xBtn.style.display='none';zBtn.style.display='none';
   }
 }
 
 async function kasaLoadTx(){
   try{
-    // Завантажуємо продажі
     const today=new Date().toISOString().split('T')[0];
-    let filter='?order=created_at.desc&limit=100';
+    let filter='?order=created_at.desc&limit=200';
     if(kasaPeriod==='today') filter=`?created_at=gte.${today}T00:00:00&order=created_at.desc`;
     else if(kasaPeriod==='week'){const w=new Date();w.setDate(w.getDate()-7);filter=`?created_at=gte.${w.toISOString()}&order=created_at.desc`;}
     else if(kasaPeriod==='month'){const m=new Date();m.setMonth(m.getMonth()-1);filter=`?created_at=gte.${m.toISOString()}&order=created_at.desc`;}
     kasaTxAll=await sb.get('sales',filter);
-    kasaRenderTx();
-    kasaUpdateStats();
+    kasaRenderTx();kasaUpdateStats();
   }catch(e){
-    document.getElementById('kasa-tx-body').innerHTML='<tr><td colspan="6" style="padding:20px;text-align:center;font-size:12px;color:var(--rd)">Помилка завантаження. Перевірте підключення до БД.</td></tr>';
+    document.getElementById('kasa-tx-body').innerHTML='<tr><td colspan="6" style="padding:20px;text-align:center;font-size:12px;color:var(--rd)">Помилка завантаження</td></tr>';
   }
 }
 
@@ -1986,7 +2055,7 @@ function kasaSetType(t,btn){
 
 function kasaRenderTx(){
   const list=kasaTypeFilter==='all'?kasaTxAll:kasaTxAll.filter(x=>x.payment_method===kasaTypeFilter);
-  const typeLabel={subscription:'Оплата абонементу',product:'Продаж товару',service:'Послуга',manual:'Ручна операція'};
+  const typeLabel={subscription:'Оплата абонементу',product:'Продаж товару',service:'Послуга',income:'💚 Внесення',outcome:'🔴 Винесення',manual:'Ручна операція'};
   const payLabel={cash:'💵 Готівка',card:'💳 Картка'};
   if(!list.length){
     document.getElementById('kasa-tx-body').innerHTML='<tr><td colspan="6" style="padding:30px;text-align:center;font-size:12px;color:var(--m2)">Транзакцій немає</td></tr>';
@@ -1997,23 +2066,27 @@ function kasaRenderTx(){
     const t=new Date(tx.created_at);
     const time=t.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
     const date=t.toLocaleDateString('uk-UA',{day:'2-digit',month:'2-digit'});
+    const isNeg=tx.type==='outcome';
     return `<tr style="border-top:1px solid var(--bd)">
       <td style="padding:9px 13px;font-size:11px;color:var(--m2);white-space:nowrap">${date} ${time}</td>
       <td style="padding:9px 13px;font-size:12px">${tx.created_by||'—'}</td>
-      <td style="padding:9px 13px;font-size:12px">${tx.client_id?cl[tx.client_id]||tx.client_id:'—'}</td>
-      <td style="padding:9px 13px;font-size:12px">${typeLabel[tx.type]||tx.type} · ${tx.item_name||''}</td>
+      <td style="padding:9px 13px;font-size:12px">${tx.client_id?cl[tx.client_id]||'—':'—'}</td>
+      <td style="padding:9px 13px;font-size:12px">${typeLabel[tx.type]||tx.type}${tx.item_name?' · '+tx.item_name:''}</td>
       <td style="padding:9px 13px;font-size:11px">${payLabel[tx.payment_method]||tx.payment_method||'—'}</td>
-      <td style="padding:9px 13px;font-size:13px;font-weight:700;color:var(--y);text-align:right">${(tx.amount||0).toLocaleString('uk-UA')} ₴</td>
+      <td style="padding:9px 13px;font-size:13px;font-weight:700;color:${isNeg?'var(--rd)':'var(--y)'};text-align:right;white-space:nowrap">
+        ${isNeg?'−':'+'} ${(tx.amount||0).toLocaleString('uk-UA')} ₴
+        <button onclick="showTxReceipt(${JSON.stringify(tx).replace(/"/g,'&quot;')})" style="margin-left:6px;background:var(--p3);border:1px solid var(--bd2);border-radius:5px;padding:2px 7px;font-size:10px;color:var(--m2);cursor:pointer;font-family:var(--f)">🧾</button>
+      </td>
     </tr>`;
   }).join('');
 }
 
 function kasaUpdateStats(){
   const list=kasaTypeFilter==='all'?kasaTxAll:kasaTxAll.filter(x=>x.payment_method===kasaTypeFilter);
-  const cashTx=kasaTxAll.filter(x=>x.payment_method==='cash');
-  const cardTx=kasaTxAll.filter(x=>x.payment_method==='card');
-  const cashTurn=cashTx.reduce((s,x)=>s+x.amount,0);
-  const cardTurn=cardTx.reduce((s,x)=>s+x.amount,0);
+  const cashIn=kasaTxAll.filter(x=>x.payment_method==='cash'&&x.type!=='outcome').reduce((s,x)=>s+x.amount,0);
+  const cashOut=kasaTxAll.filter(x=>x.payment_method==='cash'&&x.type==='outcome').reduce((s,x)=>s+x.amount,0);
+  const cashTurn=cashIn-cashOut;
+  const cardTurn=kasaTxAll.filter(x=>x.payment_method==='card'&&x.type!=='outcome').reduce((s,x)=>s+x.amount,0);
   const cashStart=kasaShift?.cash_start||0;
   document.getElementById('k-cash-start').textContent=cashStart.toLocaleString('uk-UA')+' ₴';
   document.getElementById('k-cash-total').textContent=(cashStart+cashTurn).toLocaleString('uk-UA')+' ₴';
@@ -2021,47 +2094,130 @@ function kasaUpdateStats(){
   document.getElementById('k-card-start').textContent='0 ₴';
   document.getElementById('k-card-total').textContent=cardTurn.toLocaleString('uk-UA')+' ₴';
   document.getElementById('k-card-turn').textContent=cardTurn.toLocaleString('uk-UA')+' ₴';
-  const total=list.reduce((s,x)=>s+x.amount,0);
+  const total=list.filter(x=>x.type!=='outcome').reduce((s,x)=>s+x.amount,0);
   document.getElementById('k-total').textContent=total.toLocaleString('uk-UA')+' ₴';
   document.getElementById('k-tx-cnt').textContent=list.length;
 }
 
-function kasaXReport(){
-  const cashTurn=kasaTxAll.filter(x=>x.payment_method==='cash').reduce((s,x)=>s+x.amount,0);
-  const cardTurn=kasaTxAll.filter(x=>x.payment_method==='card').reduce((s,x)=>s+x.amount,0);
+// ВНЕСЕННЯ / ВИНЕСЕННЯ
+function kasaManualOp(type){
+  if(!kasaShift){alert('Спочатку відкрийте зміну!');return}
+  kasaOpType=type;
+  document.getElementById('kop-title').textContent=type==='income'?'💚 Внесення коштів':'🔴 Винесення коштів';
+  document.getElementById('kop-desc').textContent=type==='income'?'Внесення готівки в касу (здача, поповнення)':'Винесення готівки з каси (витрати, зарплата)';
+  document.getElementById('kop-confirm').textContent=type==='income'?'✅ Внести':'✅ Винести';
+  document.getElementById('kop-amount').value='';
+  document.getElementById('kop-note').value='';
+  document.getElementById('kop-category').value='';
+  admOpenMo('kasa-op-mo');
+}
+
+async function kasaConfirmOp(){
+  const amt=parseFloat(document.getElementById('kop-amount').value);
+  const note=document.getElementById('kop-note').value.trim();
+  const cat=document.getElementById('kop-category').value;
+  if(!amt||amt<=0){alert('Введіть коректну суму');return}
+  const desc=cat||(note||kasaOpType==='income'?'Внесення':'Винесення');
+  try{
+    await sb.post('sales',{
+      type:kasaOpType,
+      item_name:desc+(note?' · '+note:''),
+      amount:amt,
+      payment_method:'cash',
+      created_by:curUser?.name||'admin'
+    });
+    admCloseMoD('kasa-op-mo');
+    kasaLoadTx();
+    alert(`✅ ${kasaOpType==='income'?'Внесено':'Винесено'}: ${amt.toLocaleString('uk-UA')} ₴\n${desc}`);
+  }catch(e){alert('❌ '+e.message)}
+}
+
+// RECEIPTS
+function buildReceiptText(items, total, method, operator, type='sale', extraInfo=''){
+  const now=new Date();
+  const dt=now.toLocaleDateString('uk-UA')+' '+now.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
+  const line='─'.repeat(32);
+  const center=(s)=>{const pad=Math.max(0,Math.floor((32-s.length)/2));return ' '.repeat(pad)+s};
+  const lr=(l,r)=>{const space=Math.max(1,32-l.length-r.length);return l+' '.repeat(space)+r};
+  let body=`${center('CREAGYM')}\n${center('Фітнес-клуб')}\n${line}\n${center(dt)}\n${line}\n`;
+  if(type==='xreport') body+=`${center('X-ЗВІТ (ПРОМІЖНИЙ)')}\n${line}\n`;
+  else if(type==='zreport') body+=`${center('Z-ЗВІТ (ЗАКРИТТЯ ЗМІНИ)')}\n${line}\n`;
+  else body+=`${center('ЧЕК ПРОДАЖУ')}\n${line}\n`;
+  if(items&&items.length){
+    items.forEach(i=>{
+      body+=`${i.name}\n`;
+      body+=`  ${lr(i.qty>1?i.qty+' шт × '+i.price+' ₴':'',i.total+' ₴')}\n`;
+    });
+    body+=`${line}\n`;
+  }
+  if(extraInfo) body+=extraInfo+'\n';
+  body+=`${lr('РАЗОМ:',total.toLocaleString('uk-UA')+' ₴')}\n`;
+  body+=`${lr('Оплата:',method==='cash'?'Готівка':'Картка')}\n`;
+  body+=`${line}\n`;
+  body+=`Касир: ${operator||'—'}\n`;
+  body+=`${line}\n`;
+  body+=`${center('Дякуємо за відвідування!')}\n`;
+  body+=`${center('CREAGYM — Ваш зал')}`;
+  return body;
+}
+
+function showTxReceipt(tx){
+  const cl=admClients.find(x=>x.id===tx.client_id);
+  const clName=cl?cl.last_name+' '+cl.first_name:'';
+  const items=[{name:tx.item_name||tx.type,qty:1,price:tx.amount,total:tx.amount}];
+  const text=buildReceiptText(items,tx.amount,tx.payment_method,tx.created_by)+(clName?'\nКлієнт: '+clName:'');
+  document.getElementById('receipt-content').textContent=text;
+  admOpenMo('receipt-mo');
+}
+
+function showShiftReport(type,cashTurn,cardTurn,cashStart,txList){
   const total=cashTurn+cardTurn;
-  const t=new Date().toLocaleString('uk-UA');
-  alert(`📊 X-ЗВІТ (проміжний)\n${'─'.repeat(30)}\nЗміна: ${kasaShift?.opened_by||'—'}\nЧас звіту: ${t}\n${'─'.repeat(30)}\n💵 Готівка: ${cashTurn.toLocaleString('uk-UA')} ₴\n💳 Картка: ${cardTurn.toLocaleString('uk-UA')} ₴\n${'─'.repeat(30)}\n✅ ЗАГАЛЬНИЙ ОБОРОТ: ${total.toLocaleString('uk-UA')} ₴\nТранзакцій: ${kasaTxAll.length}`);
+  const cashEnd=(cashStart||0)+cashTurn;
+  const items=[
+    {name:'💵 Готівка (оборот)',qty:1,price:cashTurn,total:cashTurn},
+    {name:'💳 Картка (оборот)',qty:1,price:cardTurn,total:cardTurn},
+  ];
+  const extra=`Зміна: ${kasaShift?.opened_by||'—'}\nТранзакцій: ${txList.length}\nГотівка поч.: ${(cashStart||0).toLocaleString('uk-UA')} ₴\nГотівка кін.: ${cashEnd.toLocaleString('uk-UA')} ₴`;
+  const text=buildReceiptText(items,total,'cash',kasaShift?.opened_by,type,extra);
+  document.getElementById('receipt-content').textContent=text;
+  admOpenMo('receipt-mo');
+}
+
+function printReceipt(){
+  const content=document.getElementById('receipt-content').textContent;
+  const w=window.open('','_blank','width=400,height=600');
+  w.document.write(`<html><head><title>Чек CREAGYM</title><style>body{font-family:'Courier New',monospace;font-size:13px;padding:20px;white-space:pre;line-height:1.7}@media print{body{margin:0}}</style></head><body>${content}</body></html>`);
+  w.document.close();
+  setTimeout(()=>w.print(),300);
+}
+
+function kasaXReport(){
+  const cashIn=kasaTxAll.filter(x=>x.payment_method==='cash'&&x.type!=='outcome').reduce((s,x)=>s+x.amount,0);
+  const cashOut=kasaTxAll.filter(x=>x.payment_method==='cash'&&x.type==='outcome').reduce((s,x)=>s+x.amount,0);
+  const cashTurn=cashIn-cashOut;
+  const cardTurn=kasaTxAll.filter(x=>x.payment_method==='card').reduce((s,x)=>s+x.amount,0);
+  showShiftReport('xreport',cashTurn,cardTurn,kasaShift?.cash_start||0,kasaTxAll);
 }
 
 async function kasaCloseShift(){
   if(!kasaShift)return;
   if(!confirm('Закрити зміну? Буде сформовано Z-звіт.'))return;
-  const cashTurn=kasaTxAll.filter(x=>x.payment_method==='cash').reduce((s,x)=>s+x.amount,0);
+  const cashIn=kasaTxAll.filter(x=>x.payment_method==='cash'&&x.type!=='outcome').reduce((s,x)=>s+x.amount,0);
+  const cashOut=kasaTxAll.filter(x=>x.payment_method==='cash'&&x.type==='outcome').reduce((s,x)=>s+x.amount,0);
+  const cashTurn=cashIn-cashOut;
   const cardTurn=kasaTxAll.filter(x=>x.payment_method==='card').reduce((s,x)=>s+x.amount,0);
   const cashEnd=(kasaShift.cash_start||0)+cashTurn;
   try{
-    if(kasaShift.id!=='demo') await sb.patch('shifts',`id=eq.${kasaShift.id}`,{status:'closed',closed_at:new Date().toISOString(),cash_end:cashEnd,total_cash:cashTurn,total_card:cardTurn});
+    if(!kasaShift.id.startsWith('demo')) await sb.patch('shifts',`id=eq.${kasaShift.id}`,{status:'closed',closed_at:new Date().toISOString(),cash_end:cashEnd,total_cash:cashTurn,total_card:cardTurn});
   }catch(e){}
-  const t=new Date().toLocaleString('uk-UA');
-  alert(`📋 Z-ЗВІТ (закриття зміни)\n${'─'.repeat(30)}\nЗміна: ${kasaShift.opened_by||'—'}\nЗакрито: ${t}\n${'─'.repeat(30)}\n💵 Готівка:\n  Початок: ${(kasaShift.cash_start||0).toLocaleString('uk-UA')} ₴\n  Оборот: ${cashTurn.toLocaleString('uk-UA')} ₴\n  Кінець: ${cashEnd.toLocaleString('uk-UA')} ₴\n💳 Картка: ${cardTurn.toLocaleString('uk-UA')} ₴\n${'─'.repeat(30)}\n✅ ЗАГАЛЬНИЙ ОБОРОТ: ${(cashTurn+cardTurn).toLocaleString('uk-UA')} ₴\nТранзакцій: ${kasaTxAll.length}`);
+  showShiftReport('zreport',cashTurn,cardTurn,kasaShift.cash_start||0,kasaTxAll);
   kasaShift=null;kasaTxAll=[];
   kasaUpdateShiftUI(false);
   document.getElementById('kasa-tx-body').innerHTML='<tr><td colspan="6" style="padding:30px;text-align:center;font-size:12px;color:var(--m2)">Зміну закрито</td></tr>';
   ['k-cash-total','k-card-total','k-total'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='0 ₴'});
   document.getElementById('k-tx-cnt').textContent='0';
-}
-
-async function kasaAddManual(){
-  if(!kasaShift){alert('Спочатку відкрийте зміну!');return}
-  const desc=prompt('Опис операції:');if(!desc)return;
-  const amt=prompt('Сума (₴):');if(!amt)return;
-  const method=confirm('Готівка? (Скасувати = Картка)')?'cash':'card';
-  try{
-    await sb.post('sales',{type:'manual',item_name:desc,amount:parseInt(amt)||0,payment_method:method,created_by:curUser?.name||'admin'});
-    kasaLoadTx();
-    alert('✅ Операцію записано');
-  }catch(e){alert('❌ '+e.message)}
+  document.getElementById('k-cash-turn').textContent='0 ₴';
+  document.getElementById('k-card-turn').textContent='0 ₴';
 }
 
 function admRenderShop(){
@@ -2098,9 +2254,27 @@ async function admCheckout(m){
   if(!admCart.length)return;
   const tot=admCart.reduce((s,x)=>s+x.price*x.qty,0);
   try{
-    for(const i of admCart)await sb.post('sales',{type:'product',item_name:i.name,amount:i.price*i.qty,payment_method:m,created_by:curUser?.name||'admin'});
+    // Всі товари в ОДНІЙ транзакції
+    const itemsDesc=admCart.map(i=>`${i.name}${i.qty>1?' ×'+i.qty:''}`).join(', ');
+    await sb.post('sales',{
+      type:'product',
+      item_name:itemsDesc,
+      amount:tot,
+      payment_method:m,
+      created_by:curUser?.name||'admin'
+    });
+    // Показуємо чек
+    const receiptItems=admCart.map(i=>({
+      name:i.emoji+' '+i.name,
+      qty:i.qty,
+      price:i.price,
+      total:i.price*i.qty
+    }));
+    const receiptText=buildReceiptText(receiptItems,tot,m,curUser?.name||'admin');
     admCart=[];admRenderCart();
-    alert(`✅ Продаж оформлено!\n💰 ${tot} ₴ · ${m==='cash'?'Готівка':'Картка'}`);
+    if(kasaShift)kasaLoadTx();
+    document.getElementById('receipt-content').textContent=receiptText;
+    admOpenMo('receipt-mo');
   }catch(e){alert('❌ '+e.message)}
 }
 
