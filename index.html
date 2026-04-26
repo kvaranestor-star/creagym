@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CREAGYM CRM</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0A0A0A;--p1:#111;--p2:#1A1A1A;--p3:#222;--p4:#2A2A2A;
+  --y:#FFD300;--yd:#FFD30012;--ym:#FFD30028;--yb:#FFD30050;
+  --w:#FFF;--m:#555;--m2:#777;--m3:#999;
+  --bd:#ffffff08;--bd2:#ffffff12;--bd3:#ffffff1e;
+  --gr:#22C55E;--rd:#EF4444;--bl:#3B82F6;--or:#F97316;--pu:#A855F7;
+  --f:'Montserrat',sans-serif;
+}
+html,body{height:100%;background:var(--bg);font-family:var(--f);color:var(--w);overflow:hidden}
+
+/* AUTH */
+#auth{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+#auth::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--bd) 1px,transparent 1px),linear-gradient(90deg,var(--bd) 1px,transparent 1px);background-size:48px 48px;pointer-events:none}
+#auth::after{content:'';position:fixed;top:-160px;left:50%;transform:translateX(-50%);width:500px;height:340px;background:radial-gradient(ellipse,#FFD30014 0%,transparent 70%);pointer-events:none}
+.auth-logo{display:flex;flex-direction:column;align-items:center;gap:4px;margin-bottom:32px;position:relative;z-index:1}
+.auth-lb{width:52px;height:52px;background:var(--y);border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:var(--bg);margin-bottom:10px}
+.auth-name{font-size:20px;font-weight:800;letter-spacing:.12em}
+.auth-sub{font-size:10px;color:var(--m2);letter-spacing:.2em;text-transform:uppercase;margin-top:2px}
+.auth-card{width:100%;max-width:400px;background:var(--p1);border:1px solid var(--bd2);border-radius:18px;padding:28px 24px;position:relative;z-index:1}
+.auth-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--y);border-radius:18px 18px 0 0}
+.role-tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;background:var(--p2);border-radius:9px;padding:3px;margin-bottom:20px}
+.rtab{border:none;background:transparent;color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;letter-spacing:.06em;padding:7px;border-radius:7px;cursor:pointer;transition:all .15s;text-transform:uppercase}
+.rtab.on{background:var(--y);color:var(--bg)}
+.ob{display:inline-flex;align-items:center;gap:5px;background:var(--yd);border:1px solid var(--ym);border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700;color:var(--y);margin-bottom:12px}
+.auth-title{font-size:16px;font-weight:700;margin-bottom:2px}
+.auth-desc{font-size:11px;color:var(--m2);margin-bottom:18px}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.field label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--m2)}
+.iw{position:relative}
+.iw svg.fi{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:13px;height:13px;opacity:.3;pointer-events:none}
+input[type=text],input[type=email],input[type=password],input[type=date]{width:100%;padding:10px 11px 10px 36px;background:var(--p2);border:1px solid var(--bd2);border-radius:8px;color:var(--w);font-family:var(--f);font-size:12px;outline:none;transition:border-color .15s}
+input::placeholder{color:var(--m)}
+input:focus{border-color:var(--ym)}
+.eye-b{position:absolute;right:11px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--m);display:flex;align-items:center}
+.eye-b:hover{color:var(--y)}
+.err{display:none;align-items:center;gap:6px;background:#EF444410;border:1px solid #EF444428;border-radius:7px;padding:8px 10px;font-size:11px;color:#f87171;margin-bottom:12px;font-weight:500}
+.err.sh{display:flex}
+.auth-btn{width:100%;padding:12px;background:var(--y);color:var(--bg);border:none;border-radius:8px;font-family:var(--f);font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;transition:background .15s;margin-top:4px;position:relative}
+.auth-btn:hover{background:#FFE033}
+.auth-btn:active{transform:scale(.98)}
+.sp{display:none;width:15px;height:15px;border:2px solid var(--bg);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
+.auth-btn.ld .btn-t{display:none}.auth-btn.ld .sp{display:block}
+.succ-scr{display:none;flex-direction:column;align-items:center;gap:10px;padding:10px 0;text-align:center}
+.succ-scr.sh{display:flex}
+.auth-foot{margin-top:16px;text-align:center;font-size:10px;color:var(--m);position:relative;z-index:1}
+.demo-hint{position:fixed;bottom:14px;right:14px;background:var(--p2);border:1px solid var(--bd2);border-radius:9px;padding:9px 13px;font-size:10px;color:var(--m2);z-index:1001;line-height:1.9}
+.demo-hint strong{color:var(--y);display:block;margin-bottom:2px;font-size:9px;letter-spacing:.1em}
+
+/* APP */
+#app{display:none;height:100vh;flex-direction:column}
+#app.sh{display:flex}
+.app-wrap{display:flex;flex:1;overflow:hidden}
+
+/* SIDEBAR */
+.sb{width:210px;flex-shrink:0;background:var(--p1);border-right:1px solid var(--bd2);display:flex;flex-direction:column;transition:width .22s cubic-bezier(.4,0,.2,1);overflow:hidden;position:relative;z-index:10}
+.sb.col{width:58px}
+.sb-logo{display:flex;align-items:center;gap:9px;padding:13px 11px;border-bottom:1px solid var(--bd);flex-shrink:0;overflow:hidden;min-height:50px;position:relative}
+.lb{width:28px;height:28px;flex-shrink:0;background:var(--y);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--bg)}
+.lt{font-size:12px;font-weight:800;letter-spacing:.12em;transition:opacity .18s;white-space:nowrap}
+.sb.col .lt{opacity:0}
+.sbt{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:20px;height:20px;background:var(--p2);border:1px solid var(--bd2);border-radius:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--m2);transition:all .15s}
+.sbt:hover{color:var(--y)}
+.sb.col .sbt{right:auto;left:50%;transform:translate(-50%,-50%)}
+.sb-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 0 8px}
+.sg{padding:11px 0 2px 13px;font-size:9px;font-weight:700;letter-spacing:.16em;color:var(--m);text-transform:uppercase;white-space:nowrap;transition:opacity .18s}
+.sb.col .sg{opacity:0}
+.ni{display:flex;align-items:center;gap:8px;padding:7px 9px;margin:1px 5px;border-radius:8px;cursor:pointer;transition:all .12s;white-space:nowrap;overflow:hidden;position:relative;border:1px solid transparent}
+.ni:hover{background:var(--p2)}
+.ni.on{background:var(--yd);border-color:var(--ym)}
+.ni.on .nic svg,.ni.on .nl{color:var(--y)}
+.ni.on .nl{font-weight:600}
+.nic{width:26px;height:26px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:6px}
+.ni.on .nic{background:var(--ym)}
+.nic svg{width:15px;height:15px;color:var(--m2);transition:color .12s}
+.nl{font-size:11px;font-weight:500;color:var(--m2);transition:opacity .18s;flex:1}
+.sb.col .nl,.sb.col .nbg{opacity:0;pointer-events:none}
+.nbg{background:var(--y);color:var(--bg);font-size:9px;font-weight:700;padding:2px 5px;border-radius:20px;flex-shrink:0;transition:opacity .18s}
+.nbg.r{background:var(--rd);color:#fff}
+.sb.col .ni:hover::after{content:attr(data-tip);position:absolute;left:62px;top:50%;transform:translateY(-50%);background:var(--p3);border:1px solid var(--bd2);color:var(--w);font-size:11px;font-weight:500;padding:5px 9px;border-radius:7px;white-space:nowrap;z-index:100;pointer-events:none}
+.sb-bot{margin-top:auto;border-top:1px solid var(--bd);padding:7px 5px}
+.uc{display:flex;align-items:center;gap:8px;padding:7px;border-radius:8px;cursor:pointer;transition:background .12s;overflow:hidden}
+.uc:hover{background:var(--p2)}
+.ua{width:26px;height:26px;flex-shrink:0;background:var(--y);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--bg)}
+.ui-i{min-width:0;flex:1;transition:opacity .18s}
+.sb.col .ui-i{opacity:0}
+.un{font-size:11px;font-weight:600;white-space:nowrap}
+.ur{font-size:9px;color:var(--y);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 18px;height:50px;border-bottom:1px solid var(--bd);background:var(--p1);flex-shrink:0;gap:10px}
+.tl{display:flex;flex-direction:column}
+.pt{font-size:15px;font-weight:700;letter-spacing:.02em}
+.ps{font-size:10px;color:var(--m2)}
+.tr{display:flex;align-items:center;gap:7px}
+.tbtn{display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:7px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:500;cursor:pointer;transition:all .12s;white-space:nowrap}
+.tbtn:hover{border-color:var(--ym);color:var(--y)}
+.tbtn svg{width:12px;height:12px}
+.tbtn.pr{background:var(--y);color:var(--bg);border-color:transparent;font-weight:700}
+.tbtn.pr:hover{background:#FFE033}
+.nbell{width:28px;height:28px;border-radius:7px;background:var(--p2);border:1px solid var(--bd2);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.nbell svg{width:13px;height:13px;color:var(--m2)}
+
+/* CONTENT */
+.cnt{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:13px}
+.cnt::-webkit-scrollbar{width:3px}
+.cnt::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px}
+.sec{display:none}.sec.on{display:contents}
+
+/* LOADING */
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;gap:10px;color:var(--m2);font-size:12px}
+.spin{width:16px;height:16px;border:2px solid var(--bd2);border-top-color:var(--y);border-radius:50%;animation:spin .7s linear infinite}
+
+/* STATS */
+.krow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kc{background:var(--p1);border:1px solid var(--bd2);border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .15s;position:relative;overflow:hidden}
+.kc:hover{border-color:var(--bd3)}
+.kc::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--ac,var(--y))}
+.ktop{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.ki{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.ki svg{width:15px;height:15px}
+.kd{font-size:10px;font-weight:700;padding:2px 6px;border-radius:20px}
+.kd.up{background:#22C55E14;color:var(--gr)}.kd.dn{background:#EF444414;color:var(--rd)}
+.kv{font-size:20px;font-weight:800;letter-spacing:-.01em;line-height:1.1;margin-bottom:2px}
+.kl{font-size:11px;color:var(--m2);font-weight:500}
+.ks{font-size:10px;color:var(--m);margin-top:2px}
+
+/* INCOME */
+.inc-card{background:var(--p1);border:1px solid var(--bd2);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden;grid-column:span 2}
+.inc-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--y)}
+.inc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.inc-val{font-size:26px;font-weight:800;color:var(--y);letter-spacing:-.01em;line-height:1}
+.inc-lbl{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--m2);margin-bottom:4px}
+.inc-subs{display:flex;gap:16px;margin-top:5px}
+.inc-sub{display:flex;flex-direction:column;gap:1px}
+.inc-sub-l{font-size:9px;color:var(--m);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.inc-sub-v{font-size:12px;font-weight:700}
+
+/* REV SPLIT */
+.rev3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.rc{background:var(--p1);border:1px solid var(--bd2);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden}
+.rc::before{content:'';position:absolute;top:0;left:0;bottom:0;width:3px;background:var(--rcc,var(--y))}
+.rc-l{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--m2);margin-bottom:4px}
+.rc-v{font-size:17px;font-weight:800;color:var(--rcc,var(--y));margin-bottom:2px}
+.rc-s{font-size:11px;color:var(--m2)}
+.rc-bar{height:3px;background:var(--p3);border-radius:2px;margin-top:8px;overflow:hidden}
+.rc-fill{height:100%;border-radius:2px;background:var(--rcc,var(--y));transition:width .5s ease}
+
+/* CHART */
+.crow{display:grid;grid-template-columns:1fr 270px;gap:12px}
+.pc{background:var(--p1);border:1px solid var(--bd2);border-radius:12px;overflow:hidden}
+.ph{display:flex;align-items:center;justify-content:space-between;padding:12px 15px;border-bottom:1px solid var(--bd)}
+.ph-t{font-size:12px;font-weight:700}
+.ph-s{font-size:10px;color:var(--m2);margin-top:1px}
+.csv{padding:12px 15px 8px;position:relative}
+svg.mc{width:100%;display:block;overflow:visible}
+.tt{position:absolute;background:var(--p3);border:1px solid var(--bd3);border-radius:8px;padding:6px 10px;font-size:11px;font-weight:600;pointer-events:none;white-space:nowrap;z-index:50;opacity:0;transition:opacity .12s}
+.tt.sh{opacity:1}
+.tt-v{color:var(--y);font-size:13px;font-weight:800}
+.tt-l{color:var(--m2);font-size:10px;margin-top:1px}
+.yr-sel{background:var(--p2);border:1px solid var(--bd2);border-radius:6px;color:var(--w);font-family:var(--f);font-size:11px;padding:4px 8px;outline:none;cursor:pointer}
+
+/* STOCK LIST */
+.sl{display:flex;flex-direction:column}
+.si{display:flex;align-items:center;gap:8px;padding:9px 13px;border-top:1px solid var(--bd);transition:background .12s;cursor:pointer}
+.si:first-child{border-top:none}
+.si:hover{background:var(--p2)}
+.si-ic{width:26px;height:26px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px}
+.si-n{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.si-c{font-size:10px;color:var(--m2);margin-top:1px}
+.si-s{font-size:12px;font-weight:700}
+.si-m{font-size:10px;color:var(--m);margin-top:1px}
+.cr{color:var(--rd)}.wn{color:var(--or)}.gok{color:var(--gr)}
+
+/* CLIENTS */
+.cl-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sw{position:relative;flex:1;min-width:160px}
+.sw svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:var(--m);pointer-events:none}
+.s-inp{width:100%;background:var(--p2);border:1px solid var(--bd2);border-radius:8px;padding:7px 11px 7px 33px;color:var(--w);font-family:var(--f);font-size:12px;outline:none;transition:border-color .15s}
+.s-inp:focus{border-color:var(--ym)}
+.s-inp::placeholder{color:var(--m)}
+.f-sel{background:var(--p2);border:1px solid var(--bd2);border-radius:8px;padding:7px 10px;color:var(--w);font-family:var(--f);font-size:11px;outline:none;cursor:pointer}
+.cl-wrap{background:var(--p1);border:1px solid var(--bd2);border-radius:12px;overflow:hidden}
+.cl-head{display:flex;align-items:center;justify-content:space-between;padding:11px 15px;border-bottom:1px solid var(--bd)}
+.cl-title{font-size:12px;font-weight:700}
+.cl-cnt{font-size:10px;color:var(--m2);background:var(--p2);padding:3px 8px;border-radius:20px}
+table{width:100%;border-collapse:collapse}
+thead tr{background:var(--p2)}
+th{font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600;white-space:nowrap}
+td{padding:9px 13px;border-top:1px solid var(--bd);font-size:12px;vertical-align:middle}
+tr:hover td{background:#ffffff03;cursor:pointer}
+.av{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;overflow:hidden;position:relative}
+.av img{width:100%;height:100%;object-fit:cover;border-radius:7px}
+.cf{display:flex;align-items:center;gap:8px}
+.cn{font-size:12px;font-weight:600}
+.cp{font-size:10px;color:var(--m2);margin-top:1px}
+.st{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+.st::before{content:'';width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.7}
+.s-act{background:#22C55E14;color:var(--gr)}
+.s-frz{background:#3B82F614;color:var(--bl)}
+.s-exp{background:#EF444414;color:var(--rd)}
+.s-tri{background:#F9731614;color:var(--or)}
+.ab-b{font-size:10px;color:var(--m2);background:var(--p2);padding:2px 6px;border-radius:6px;white-space:nowrap}
+.act-b{background:var(--p2);border:1px solid var(--bd2);border-radius:6px;padding:3px 9px;font-size:10px;font-weight:600;color:var(--m2);cursor:pointer;font-family:var(--f);transition:all .12s;white-space:nowrap}
+.act-b:hover{border-color:var(--ym);color:var(--y)}
+
+/* DOSSIER */
+.dos-ov{position:fixed;inset:0;background:#00000070;z-index:200;display:none;align-items:flex-start;justify-content:flex-end}
+.dos-ov.sh{display:flex}
+.dos{width:400px;height:100vh;background:var(--p1);border-left:1px solid var(--bd2);overflow-y:auto;display:flex;flex-direction:column;animation:slideIn .2s ease}
+@keyframes slideIn{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
+.dos::-webkit-scrollbar{width:3px}
+.dos::-webkit-scrollbar-thumb{background:var(--bd2)}
+.dos-hd{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--bd);flex-shrink:0;position:sticky;top:0;background:var(--p1);z-index:2}
+.dos-ti{font-size:12px;font-weight:700}
+.cls-b{width:24px;height:24px;background:var(--p2);border:1px solid var(--bd2);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--m2);transition:all .12s;font-size:13px;line-height:1}
+.cls-b:hover{color:var(--y)}
+.dos-bd{padding:16px;display:flex;flex-direction:column;gap:14px;flex:1}
+.dos-prof{display:flex;align-items:center;gap:12px}
+.dos-ph{width:58px;height:58px;border-radius:11px;overflow:hidden;flex-shrink:0;background:var(--p3);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;border:2px solid var(--bd2)}
+.dos-ph img{width:100%;height:100%;object-fit:cover}
+.dos-nm{font-size:15px;font-weight:700;margin-bottom:2px}
+.dos-ph-t{font-size:11px;color:var(--m2)}
+.dos-num{font-size:10px;color:var(--m);margin-top:2px}
+.dos-sec{display:flex;flex-direction:column;gap:7px}
+.dos-st{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--m);padding-bottom:5px;border-bottom:1px solid var(--bd)}
+.ir{display:flex;justify-content:space-between;align-items:center;font-size:11px}
+.il{color:var(--m2)}.iv{font-weight:600}
+.ab-cd{background:var(--p2);border:1px solid var(--bd2);border-radius:9px;padding:11px 13px}
+.ab-ch{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+.ab-cn{font-size:11px;font-weight:700}
+.ab-cs{font-size:9px;padding:2px 6px;border-radius:20px;font-weight:600}
+.ab-pr{height:3px;background:var(--p3);border-radius:2px;overflow:hidden;margin-top:5px}
+.ab-pf{height:100%;border-radius:2px;background:var(--y);transition:width .4s}
+.ab-dt{display:flex;justify-content:space-between;margin-top:5px}
+.ab-d{font-size:10px;color:var(--m2)}
+.vc{display:flex;align-items:flex-end;gap:3px;height:46px}
+.vc-c{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+.vc-b{width:100%;border-radius:2px 2px 0 0;background:var(--ym);min-height:2px}
+.vc-c:hover .vc-b{background:var(--y)}
+.vc-l{font-size:8px;color:var(--m)}
+.pur-l{display:flex;flex-direction:column;gap:5px}
+.pur-i{display:flex;justify-content:space-between;align-items:center;background:var(--p2);border-radius:7px;padding:8px 10px}
+.pur-n{font-size:11px;font-weight:600}
+.pur-d{font-size:10px;color:var(--m2)}
+.pur-p{font-size:11px;font-weight:700;color:var(--y)}
+.das-as{display:flex;gap:7px;flex-wrap:wrap}
+.da-b{flex:1;padding:9px;border-radius:7px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer;transition:all .12s;text-align:center;min-width:70px}
+.da-b:hover{border-color:var(--ym);color:var(--y)}
+.da-b.pr{background:var(--y);color:var(--bg);border-color:transparent;font-weight:700}
+.da-b.pr:hover{background:#FFE033}
+
+/* MODAL */
+.mo{position:fixed;inset:0;background:#00000080;z-index:300;display:none;align-items:center;justify-content:center;padding:20px}
+.mo.sh{display:flex}
+.mo-box{background:var(--p1);border:1px solid var(--bd2);border-radius:14px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;animation:fadeUp .2s ease}
+.mo-box::-webkit-scrollbar{width:3px}
+.mo-box::-webkit-scrollbar-thumb{background:var(--bd2)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.mo-hd{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--bd);position:sticky;top:0;background:var(--p1);z-index:2}
+.mo-ti{font-size:13px;font-weight:700}
+.mo-bd{padding:18px;display:flex;flex-direction:column;gap:13px}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ff{display:flex;flex-direction:column;gap:5px}
+.ff label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--m2)}
+.fi2{background:var(--p2);border:1px solid var(--bd2);border-radius:7px;padding:9px 11px;color:var(--w);font-family:var(--f);font-size:12px;outline:none;transition:border-color .15s;width:100%}
+.fi2:focus{border-color:var(--ym)}
+.fi2::placeholder{color:var(--m)}
+.fs{background:var(--p2);border:1px solid var(--bd2);border-radius:7px;padding:9px 11px;color:var(--w);font-family:var(--f);font-size:12px;outline:none;cursor:pointer;width:100%}
+.fs:focus{border-color:var(--ym)}
+.ph-up{border:2px dashed var(--bd2);border-radius:9px;padding:18px;text-align:center;cursor:pointer;transition:all .15s;position:relative}
+.ph-up:hover{border-color:var(--ym);background:var(--yd)}
+.ph-up input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.ph-up-t{font-size:11px;color:var(--m2);margin-top:5px}
+.ph-up-r{font-size:10px;color:var(--rd);margin-top:2px;font-weight:600}
+.ph-prev{width:70px;height:70px;border-radius:9px;object-fit:cover;margin:0 auto;display:block}
+.f-as{display:flex;gap:7px;padding-top:3px}
+.f-b{flex:1;padding:10px;border-radius:8px;border:none;font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer;transition:all .12s}
+.f-b.pr{background:var(--y);color:var(--bg)}
+.f-b.pr:hover{background:#FFE033}
+.f-b.se{background:var(--p2);border:1px solid var(--bd2);color:var(--m2)}
+.rn{font-size:10px;color:var(--m);text-align:center}
+.rn span{color:var(--rd)}
+
+/* PLACEHOLDER */
+.cs{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:60px;text-align:center}
+.cs-ic{width:52px;height:52px;background:var(--p1);border:1px solid var(--bd2);border-radius:12px;display:flex;align-items:center;justify-content:center}
+.cs-ic svg{width:22px;height:22px;color:var(--y)}
+.cs-t{font-size:14px;font-weight:700}
+.cs-s{font-size:11px;color:var(--m2);max-width:240px;line-height:1.6}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth">
+  <div class="auth-logo">
+    <div class="auth-lb">CG</div>
+    <div class="auth-name">CREAGYM</div>
+    <div class="auth-sub">Система управління залом</div>
+  </div>
+  <div class="auth-card">
+    <div class="role-tabs">
+      <button class="rtab on" onclick="setRole('owner',this)">Власник</button>
+      <button class="rtab" onclick="setRole('staff',this)">Персонал</button>
+    </div>
+    <div class="ob" id="ob">⭐ ПОВНИЙ ДОСТУП</div>
+    <div class="auth-title" id="at">Вхід для власника</div>
+    <div class="auth-desc" id="ad">Управляйте залом, персоналом та фінансами</div>
+    <div class="err" id="err">
+      <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><circle cx="7" cy="7" r="6" stroke="#f87171" stroke-width="1.3"/><path d="M7 4v3M7 9.5v.5" stroke="#f87171" stroke-width="1.3" stroke-linecap="round"/></svg>
+      <span id="err-t">Невірний email або пароль</span>
+    </div>
+    <div id="lf">
+      <div class="field">
+        <label>Email</label>
+        <div class="iw">
+          <svg class="fi" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="10" rx="2" stroke="white" stroke-width="1.2"/><path d="M1 5.5L8 9.5L15 5.5" stroke="white" stroke-width="1.2"/></svg>
+          <input type="email" id="em" placeholder="your@email.com" autocomplete="email">
+        </div>
+      </div>
+      <div class="field">
+        <label>Пароль</label>
+        <div class="iw">
+          <svg class="fi" viewBox="0 0 16 16" fill="none"><rect x="3" y="7" width="10" height="7" rx="1.5" stroke="white" stroke-width="1.2"/><path d="M5 7V5.5a3 3 0 016 0V7" stroke="white" stroke-width="1.2"/><circle cx="8" cy="10.5" r="1" fill="white"/></svg>
+          <input type="password" id="pw" placeholder="••••••••" autocomplete="current-password">
+          <button class="eye-b" type="button" onclick="togglePass()">
+            <svg viewBox="0 0 16 16" fill="none" width="13" height="13" id="eye-ic"><path d="M1 8C2.5 4.5 5 3 8 3s5.5 1.5 7 5c-1.5 3.5-4 5-7 5S2.5 11.5 1 8z" stroke="currentColor" stroke-width="1.2"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2"/></svg>
+          </button>
+        </div>
+      </div>
+      <button class="auth-btn" id="ab" onclick="doLogin()">
+        <span class="btn-t">Увійти</span>
+        <div class="sp"></div>
+      </button>
+    </div>
+    <div class="succ-scr" id="ss">
+      <div style="width:50px;height:50px;background:var(--yd);border:1px solid var(--ym);border-radius:50%;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" fill="none" width="22" height="22"><path d="M4 12l5 5L20 6" stroke="#FFD300" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div style="font-size:14px;font-weight:700" id="ss-n">Вхід успішний!</div>
+      <div style="font-size:11px;color:var(--m2)">Завантаження...</div>
+    </div>
+  </div>
+  <div class="auth-foot">CREAGYM CRM · Захищено SSL</div>
+  <div class="demo-hint">
+    <strong>ДЕМО АКАУНТИ</strong>
+    owner@creagym.com / admin123<br>
+    admin@creagym.com / admin123
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- HEADER -->
+  <div style="display:flex;align-items:center;padding:0 16px;height:50px;border-bottom:1px solid var(--bd);background:var(--p1);flex-shrink:0;gap:10px">
+    <div style="display:flex;align-items:center;gap:7px;flex:1">
+      <div style="font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--y)">CREAGYM</div>
+      <div style="font-size:9px;color:var(--m);background:var(--p2);border:1px solid var(--bd2);padding:2px 6px;border-radius:5px" id="rbadge">OWNER</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:7px">
+      <div class="nbell"><svg viewBox="0 0 20 20" fill="none"><path d="M10 2a6 6 0 016 6c0 3 1 4 2 5H2c1-1 2-2 2-5a6 6 0 016-6z" stroke="currentColor" stroke-width="1.4"/><path d="M8 17a2 2 0 004 0" stroke="currentColor" stroke-width="1.4"/></svg></div>
+      <div style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:5px 9px;border-radius:7px;border:1px solid var(--bd2);transition:all .12s" onclick="logout()">
+        <div style="width:22px;height:22px;background:var(--y);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:var(--bg)" id="u-av">ВЛ</div>
+        <span style="font-size:11px;font-weight:600" id="u-nm">Власник</span>
+        <span style="font-size:10px;color:var(--m2)">Вийти</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-wrap">
+    <!-- SIDEBAR -->
+    <aside class="sb" id="sb">
+      <div class="sb-logo">
+        <div class="lb">CG</div>
+        <span class="lt">CREAGYM</span>
+        <button class="sbt" onclick="toggleSb()">
+          <svg viewBox="0 0 12 12" fill="none" width="10" height="10" id="sbi"><path d="M8 2L4 6l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="sb-body">
+        <div class="sg">Головне</div>
+        <div class="ni on" data-tip="Статистика" onclick="gp('stats',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><rect x="2" y="10" width="3" height="8" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="7" y="6" width="3" height="12" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="12" y="2" width="3" height="16" rx="1" stroke="currentColor" stroke-width="1.4"/></svg></div><span class="nl">Статистика</span></div>
+        <div class="ni" data-tip="Клієнти" onclick="gp('clients',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><circle cx="8" cy="6" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M2 17c0-3.314 2.686-5 6-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="14" cy="13" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M11 18.5c0-1.93 1.343-3 3-3s3 1.07 3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div><span class="nl">Клієнти</span><span class="nbg" id="cl-badge">0</span></div>
+        <div class="ni" data-tip="Абонементи" onclick="gp('subs',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><rect x="2" y="5" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M6 5v10M2 8h4M2 12h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div><span class="nl">Абонементи</span></div>
+        <div class="sg">Склад і продажі</div>
+        <div class="ni" data-tip="Товари" onclick="gp('goods',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><path d="M3 3h2l2.5 9h7L17 6H7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="17" r="1.2" stroke="currentColor" stroke-width="1.4"/><circle cx="14" cy="17" r="1.2" stroke="currentColor" stroke-width="1.4"/></svg></div><span class="nl">Товари</span><span class="nbg r" id="goods-badge">0</span></div>
+        <div class="ni" data-tip="Фінанси" onclick="gp('fin',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.4"/><path d="M10 6v1m0 6v1m-2-4h3a1 1 0 010 2H9a1 1 0 000 2h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div><span class="nl">Фінанси</span></div>
+        <div class="sg">Зростання</div>
+        <div class="ni" data-tip="Маркетинг" onclick="gp('mkt',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><path d="M3 10c0-1 .5-2 2-3l8-4v14l-8-4c-1.5-1-2-2-2-3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></div><span class="nl">Маркетинг</span></div>
+        <div class="sg">Команда</div>
+        <div class="ni" data-tip="Персонал" onclick="gp('staff',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><path d="M3 16c0-2.5 2-4 4-4h6c2 0 4 1.5 4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="10" cy="7" r="3.5" stroke="currentColor" stroke-width="1.4"/></svg></div><span class="nl">Персонал</span></div>
+        <div class="ni" data-tip="Налаштування" onclick="gp('cfg',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M10 2v2m0 12v2M2 10h2m12 0h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div><span class="nl">Налаштування</span></div>
+      </div>
+      <div class="sb-bot"><div class="uc"><div class="ua" id="sb-av">ВЛ</div><div class="ui-i"><div class="un" id="sb-nm">Власник</div><div class="ur" id="sb-role">Owner</div></div></div></div>
+    </aside>
+
+    <!-- CONTENT -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0">
+      <div class="topbar">
+        <div class="tl"><div class="pt" id="pt">Статистика</div><div class="ps" id="ps">Огляд ключових показників</div></div>
+        <div class="tr">
+          <button class="tbtn pr" id="topact" onclick="handleTopAction()">
+            <svg viewBox="0 0 16 16" fill="none" width="12" height="12"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <span id="topact-l">Оновити</span>
+          </button>
+        </div>
+      </div>
+      <div class="cnt">
+
+        <!-- STATS -->
+        <div class="sec on" id="sec-stats">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px" id="stats-grid">
+            <div class="loading" style="grid-column:span 4"><div class="spin"></div>Завантаження даних...</div>
+          </div>
+          <div class="rev3" id="rev3-wrap">
+            <div class="loading"><div class="spin"></div></div>
+            <div class="loading"><div class="spin"></div></div>
+            <div class="loading"><div class="spin"></div></div>
+          </div>
+          <div class="crow" id="chart-wrap">
+            <div class="pc"><div class="loading"><div class="spin"></div>Графік...</div></div>
+            <div class="pc"><div class="loading"><div class="spin"></div>Склад...</div></div>
+          </div>
+        </div>
+
+        <!-- CLIENTS -->
+        <div class="sec" id="sec-clients">
+          <div class="cl-bar">
+            <div class="sw">
+              <svg viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.3"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+              <input class="s-inp" type="text" placeholder="Пошук за ім'ям, телефоном..." oninput="filterCl(this.value)" id="cl-s">
+            </div>
+            <select class="f-sel" onchange="filterClSt(this.value)">
+              <option value="">Всі статуси</option>
+              <option value="active">Активні</option>
+              <option value="frozen">Заморожені</option>
+              <option value="expired">Прострочені</option>
+              <option value="trial">Пробні</option>
+            </select>
+            <select class="f-sel" onchange="filterClG(this.value)">
+              <option value="">Стать</option>
+              <option value="М">Чоловіки</option>
+              <option value="Ж">Жінки</option>
+            </select>
+          </div>
+          <div class="cl-wrap">
+            <div class="cl-head">
+              <span class="cl-title">Клієнти клубу</span>
+              <span class="cl-cnt" id="cl-cnt">0 клієнтів</span>
+            </div>
+            <div id="cl-table-wrap">
+              <div class="loading"><div class="spin"></div>Завантаження клієнтів...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PLACEHOLDERS -->
+        <div class="sec" id="sec-subs"><div class="cs"><div class="cs-ic"><svg viewBox="0 0 28 28" fill="none"><rect x="3" y="7" width="22" height="14" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="M8 7v14M3 11h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div><div class="cs-t">Абонементи</div><div class="cs-s">Типи, ціни, строки — наступний модуль</div></div></div>
+        <div class="sec" id="sec-goods"><div class="cs"><div class="cs-ic"><svg viewBox="0 0 28 28" fill="none"><path d="M4 4h3l3.5 12h10L24 8H9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="cs-t">Товари</div><div class="cs-s">Склад, прихід, продажі — в розробці</div></div></div>
+        <div class="sec" id="sec-fin"><div class="cs"><div class="cs-ic"><svg viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="11" stroke="currentColor" stroke-width="1.6"/></svg></div><div class="cs-t">Фінанси</div><div class="cs-s">Транзакції, Чекбокс РРО — в розробці</div></div></div>
+        <div class="sec" id="sec-mkt"><div class="cs"><div class="cs-ic"><svg viewBox="0 0 28 28" fill="none"><path d="M4 14c0-1.5.7-3 3-4.5L18 4v20L7 18.5C4.7 17 4 15.5 4 14z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div><div class="cs-t">Маркетинг</div><div class="cs-s">SMS/Viber, промокоди — в розробці</div></div></div>
+        <div class="sec" id="sec-staff"><div class="cs"><div class="cs-ic"><svg viewBox="0 0 28 28" fill="none"><path d="M4 22c0-3.5 2.8-5.5 6-5.5h8c3.2 0 6 2 6 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="14" cy="10" r="5" stroke="currentColor" stroke-width="1.6"/></svg></div><div class="cs-t">Персонал</div><div class="cs-s">Акаунти, ролі, доступи — в розробці</div></div></div>
+        <div class="sec" id="sec-cfg"><div class="cs"><div class="cs-ic"><svg viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M14 3v3m0 16v3M3 14h3m16 0h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div><div class="cs-t">Налаштування</div><div class="cs-s">Профіль залу, інтеграції — в розробці</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DOSSIER -->
+<div class="dos-ov" id="dos-ov" onclick="closeDos(event)">
+  <div class="dos">
+    <div class="dos-hd"><div class="dos-ti" id="dos-ti">Досьє</div><button class="cls-b" onclick="closeDosD()">✕</button></div>
+    <div class="dos-bd" id="dos-bd"></div>
+  </div>
+</div>
+
+<!-- CREATE CLIENT -->
+<div class="mo" id="mo-cl" onclick="closeMo('mo-cl',event)">
+  <div class="mo-box">
+    <div class="mo-hd"><div class="mo-ti">Новий клієнт</div><button class="cls-b" onclick="closeMoD('mo-cl')">✕</button></div>
+    <div class="mo-bd">
+      <div class="fr">
+        <div class="ff"><label>Прізвище <span style="color:var(--rd)">*</span></label><input class="fi2" type="text" id="f-last" placeholder="Іваненко"></div>
+        <div class="ff"><label>Ім'я <span style="color:var(--rd)">*</span></label><input class="fi2" type="text" id="f-first" placeholder="Марія"></div>
+      </div>
+      <div class="fr">
+        <div class="ff"><label>Телефон <span style="color:var(--rd)">*</span></label><input class="fi2" type="text" id="f-phone" placeholder="+38 067 000 00 00"></div>
+        <div class="ff"><label>Стать <span style="color:var(--rd)">*</span></label><select class="fs" id="f-gender"><option value="">Оберіть...</option><option value="Ж">Жінка</option><option value="М">Чоловік</option></select></div>
+      </div>
+      <div class="fr">
+        <div class="ff"><label>Дата народження</label><input class="fi2" type="date" id="f-bday"></div>
+        <div class="ff"><label>Місто</label><input class="fi2" type="text" id="f-city" placeholder="Вінниця"></div>
+      </div>
+      <div class="ff">
+        <label>Фото <span style="color:var(--rd)">*</span></label>
+        <div class="ph-up" id="ph-zone">
+          <input type="file" accept="image/*" onchange="prevPhoto(this)">
+          <div id="ph-ph"><div style="font-size:26px">📷</div><div class="ph-up-t">Натисніть або перетягніть фото</div><div class="ph-up-r">Обов'язково — без фото реєстрація неможлива</div></div>
+          <img id="ph-prev" class="ph-prev" style="display:none">
+        </div>
+      </div>
+      <div class="ff"><label>Коментар</label><input class="fi2" type="text" id="f-note" placeholder="Алергії, особливості..."></div>
+      <div class="rn"><span>*</span> Обов'язкові поля. Без фото клієнт не може бути зареєстрований.</div>
+      <div class="f-as">
+        <button class="f-b se" onclick="closeMoD('mo-cl')">Скасувати</button>
+        <button class="f-b pr" onclick="createClient()">Зберегти клієнта</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== SUPABASE CONFIG =====
+const SB_URL = 'https://rkknbltiylsvmycbbyde.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJra25ibHRpeWxzdm15Y2JieWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNzkyMTksImV4cCI6MjA5Mjc1NTIxOX0.SrXSluAh8TMcXoCqVZLk_mylTSwzBu8tJDuUSudD-mA';
+
+const sb = {
+  async get(table, params=''){
+    const r = await fetch(`${SB_URL}/rest/v1/${table}${params}`,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'}});
+    return r.json();
+  },
+  async post(table, data){
+    const r = await fetch(`${SB_URL}/rest/v1/${table}`,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(data)});
+    return r.json();
+  },
+  async patch(table, filter, data){
+    const r = await fetch(`${SB_URL}/rest/v1/${table}?${filter}`,{method:'PATCH',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(data)});
+    return r.json();
+  }
+};
+
+// ===== AUTH =====
+let curRole='owner', passVis=false, curUser=null;
+let allClients=[], filterTxt='', filterSt='', filterGn='';
+
+function setRole(r,btn){
+  curRole=r;
+  document.querySelectorAll('.rtab').forEach(t=>t.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('ob').style.display=r==='owner'?'inline-flex':'none';
+  document.getElementById('at').textContent=r==='owner'?'Вхід для власника':'Вхід для персоналу';
+  document.getElementById('ad').textContent=r==='owner'?'Управляйте залом, персоналом та фінансами':'Доступ до робочих функцій залу';
+  document.getElementById('err').classList.remove('sh');
+}
+
+function togglePass(){
+  passVis=!passVis;
+  document.getElementById('pw').type=passVis?'text':'password';
+}
+
+async function doLogin(){
+  const email=document.getElementById('em').value.trim();
+  const pass=document.getElementById('pw').value;
+  const err=document.getElementById('err');
+  err.classList.remove('sh');
+  if(!email||!pass){document.getElementById('err-t').textContent='Заповніть всі поля';err.classList.add('sh');return}
+  const btn=document.getElementById('ab');
+  btn.classList.add('ld');
+  try {
+    // Перевіряємо в Supabase
+    const users = await sb.get('users',`?email=eq.${encodeURIComponent(email)}&password_hash=eq.${encodeURIComponent(pass)}&select=*`);
+    btn.classList.remove('ld');
+    if(users && users.length>0){
+      const u=users[0];
+      // Перевіряємо роль
+      if(curRole==='owner' && u.role!=='owner'){
+        document.getElementById('err-t').textContent='Цей акаунт не є власником';err.classList.add('sh');return;
+      }
+      if(curRole==='staff' && u.role==='owner'){
+        document.getElementById('err-t').textContent='Використайте вкладку Власник';err.classList.add('sh');return;
+      }
+      curUser=u;
+      document.getElementById('lf').style.display='none';
+      document.querySelectorAll('.rtab').forEach(t=>t.style.display='none');
+      document.getElementById('ob').style.display='none';
+      document.getElementById('at').textContent='';document.getElementById('ad').textContent='';
+      document.getElementById('ss-n').textContent='Ласкаво просимо, '+u.name+'!';
+      document.getElementById('ss').classList.add('sh');
+      setTimeout(()=>{
+        document.getElementById('auth').style.display='none';
+        setupApp(u);
+        document.getElementById('app').classList.add('sh');
+        loadStats();
+      },900);
+    } else {
+      btn.classList.remove('ld');
+      document.getElementById('err-t').textContent='Невірний email або пароль';
+      err.classList.add('sh');
+    }
+  } catch(e){
+    btn.classList.remove('ld');
+    document.getElementById('err-t').textContent='Помилка з\'єднання з базою даних';
+    err.classList.add('sh');
+  }
+}
+
+function setupApp(u){
+  document.getElementById('rbadge').textContent=u.role.toUpperCase();
+  document.getElementById('u-av').textContent=u.initials;
+  document.getElementById('u-nm').textContent=u.name;
+  document.getElementById('sb-av').textContent=u.initials;
+  document.getElementById('sb-nm').textContent=u.name;
+  document.getElementById('sb-role').textContent=u.role==='owner'?'Owner':u.role==='admin'?'Admin':'Trainer';
+}
+
+function logout(){
+  if(!confirm('Вийти з системи?'))return;
+  document.getElementById('app').classList.remove('sh');
+  document.getElementById('auth').style.display='flex';
+  document.getElementById('lf').style.display='block';
+  document.getElementById('ss').classList.remove('sh');
+  document.getElementById('em').value='';document.getElementById('pw').value='';
+  document.querySelectorAll('.rtab').forEach((t,i)=>{t.style.display='';i===0?t.classList.add('on'):t.classList.remove('on')});
+  document.getElementById('ob').style.display='inline-flex';
+  document.getElementById('at').textContent='Вхід для власника';
+  document.getElementById('ad').textContent='Управляйте залом, персоналом та фінансами';
+  document.getElementById('err').classList.remove('sh');
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('auth').style.display!=='none')doLogin()});
+
+// ===== SIDEBAR =====
+let sbCol=false;
+function toggleSb(){
+  sbCol=!sbCol;
+  document.getElementById('sb').classList.toggle('col',sbCol);
+  document.getElementById('sbi').innerHTML=sbCol
+    ?'<path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'
+    :'<path d="M8 2L4 6l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
+}
+
+// ===== PAGES =====
+const PC={stats:{t:'Статистика',s:'Огляд ключових показників',a:'Оновити'},clients:{t:'Клієнти',s:'База клієнтів залу',a:'Новий клієнт'},subs:{t:'Абонементи',s:'Управління абонементами',a:''},goods:{t:'Товари',s:'Склад та залишки',a:''},fin:{t:'Фінанси',s:'Доходи і витрати',a:''},mkt:{t:'Маркетинг',s:'Розсилки та акції',a:''},staff:{t:'Персонал',s:'Команда та доступи',a:''},cfg:{t:'Налаштування',s:'Конфігурація системи',a:''}};
+let curPage='stats';
+function gp(id,el){
+  curPage=id;
+  document.querySelectorAll('.ni').forEach(i=>i.classList.remove('on'));
+  el.classList.add('on');
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
+  document.getElementById('sec-'+id).classList.add('on');
+  const p=PC[id];
+  document.getElementById('pt').textContent=p.t;
+  document.getElementById('ps').textContent=p.s;
+  document.getElementById('topact-l').textContent=p.a;
+  document.getElementById('topact').style.display=p.a?'flex':'none';
+  if(id==='clients') loadClients();
+  if(id==='stats') loadStats();
+}
+function handleTopAction(){
+  if(curPage==='clients') openMo('mo-cl');
+  else if(curPage==='stats') loadStats();
+}
+
+// ===== STATS =====
+async function loadStats(){
+  try {
+    const [clients, sales, products, subs] = await Promise.all([
+      sb.get('clients','?select=id,status'),
+      sb.get('sales','?select=amount,type,payment_method,created_at'),
+      sb.get('products','?select=name,stock,min_stock,emoji,category'),
+      sb.get('subscriptions','?select=end_date,status,client_id&status=eq.active')
+    ]);
+
+    const active = clients.filter(c=>c.status==='active').length;
+    const totalIncome = sales.reduce((s,x)=>s+x.amount,0);
+    const cashIncome = sales.filter(x=>x.payment_method==='cash').reduce((s,x)=>s+x.amount,0);
+    const cardIncome = sales.filter(x=>x.payment_method==='card').reduce((s,x)=>s+x.amount,0);
+    const subIncome = sales.filter(x=>x.type==='subscription').reduce((s,x)=>s+x.amount,0);
+    const goodsIncome = sales.filter(x=>x.type==='product').reduce((s,x)=>s+x.amount,0);
+    const extraIncome = sales.filter(x=>x.type==='service').reduce((s,x)=>s+x.amount,0);
+    const lowStock = products.filter(p=>p.stock<=p.min_stock);
+
+    const today = new Date();
+    const in7 = new Date(today); in7.setDate(today.getDate()+7);
+    const expiring = subs.filter(s=>{const d=new Date(s.end_date);return d>=today&&d<=in7;});
+
+    document.getElementById('cl-badge').textContent=active;
+    document.getElementById('goods-badge').textContent=lowStock.length;
+
+    // KPI
+    document.getElementById('stats-grid').innerHTML=`
+      <div class="inc-card" style="--ac:var(--y)">
+        <div class="inc-top">
+          <div>
+            <div class="inc-lbl">Загальна виручка</div>
+            <div class="inc-val">${fmt(totalIncome)} ₴</div>
+            <div class="inc-subs">
+              <div class="inc-sub"><div class="inc-sub-l">Готівка</div><div class="inc-sub-v">${fmt(cashIncome)} ₴</div></div>
+              <div class="inc-sub"><div class="inc-sub-l">Карта</div><div class="inc-sub-v">${fmt(cardIncome)} ₴</div></div>
+            </div>
+          </div>
+          <span class="kd up">Всі продажі</span>
+        </div>
+      </div>
+      <div class="kc" style="--ac:var(--gr)">
+        <div class="ktop"><div class="ki" style="background:#22C55E14"><svg viewBox="0 0 20 20" fill="none" style="color:var(--gr)"><circle cx="8" cy="6" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M2 17c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div><span class="kd up">Активні</span></div>
+        <div class="kv">${active}</div><div class="kl">Клієнтів</div><div class="ks">Всього: ${clients.length}</div>
+      </div>
+      <div class="kc" style="--ac:var(--or)">
+        <div class="ktop"><div class="ki" style="background:#F9731614"><svg viewBox="0 0 20 20" fill="none" style="color:var(--or)"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M3 8h14M7 4V3m6 1V3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div><span class="kd ${expiring.length>0?'dn':'up'}">${expiring.length} скоро</span></div>
+        <div class="kv">${subs.length}</div><div class="kl">Активних абонементів</div><div class="ks">Закінчується за 7 днів: ${expiring.length}</div>
+      </div>`;
+
+    // Revenue split
+    const tot = totalIncome||1;
+    document.getElementById('rev3-wrap').innerHTML=`
+      <div class="rc" style="--rcc:var(--y)"><div class="rc-l">Абонементи</div><div class="rc-v">${fmt(subIncome)} ₴</div><div class="rc-s">${Math.round(subIncome/tot*100)}% від виручки</div><div class="rc-bar"><div class="rc-fill" style="width:${Math.round(subIncome/tot*100)}%"></div></div></div>
+      <div class="rc" style="--rcc:var(--or)"><div class="rc-l">Товари</div><div class="rc-v">${fmt(goodsIncome)} ₴</div><div class="rc-s">${Math.round(goodsIncome/tot*100)}% від виручки</div><div class="rc-bar"><div class="rc-fill" style="width:${Math.round(goodsIncome/tot*100)}%"></div></div></div>
+      <div class="rc" style="--rcc:var(--bl)"><div class="rc-l">Послуги</div><div class="rc-v">${fmt(extraIncome)} ₴</div><div class="rc-s">${Math.round(extraIncome/tot*100)}% від виручки</div><div class="rc-bar"><div class="rc-fill" style="width:${Math.round(extraIncome/tot*100)}%"></div></div></div>`;
+
+    // Chart + low stock
+    renderChart(sales);
+    const stockHtml=lowStock.length===0
+      ?'<div class="loading" style="color:var(--gr)">✓ Всі товари в нормі</div>'
+      :lowStock.map(p=>`<div class="si"><div class="si-ic" style="background:var(--yd)">${p.emoji}</div><div style="flex:1;min-width:0"><div class="si-n">${p.name}</div><div class="si-c">${p.category}</div></div><div style="text-align:right"><div class="si-s ${p.stock===0?'cr':p.stock<p.min_stock?'wn':'gok'}">${p.stock} шт.</div><div class="si-m">мін: ${p.min_stock}</div></div></div>`).join('');
+
+    document.getElementById('chart-wrap').innerHTML=`
+      <div class="pc">
+        <div class="ph"><div><div class="ph-t">Дохід по місяцях</div><div class="ph-s">Наведіть для перегляду суми</div></div>
+        <select class="yr-sel" id="yr-sel" onchange="renderChart(${JSON.stringify(sales).replace(/"/g,'&quot;')})">
+          <option>2025</option><option>2024</option>
+        </select></div>
+        <div class="csv"><svg class="mc" viewBox="0 0 480 130" id="mc"></svg><div class="tt" id="tt"><div class="tt-v" id="tt-v"></div><div class="tt-l" id="tt-l"></div></div></div>
+      </div>
+      <div class="pc">
+        <div class="ph"><div><div class="ph-t">Мало на складі</div><div class="ph-s">${lowStock.length} позицій потребують поповнення</div></div><span style="font-size:10px;background:#EF444414;color:var(--rd);padding:2px 7px;border-radius:20px;font-weight:600">${lowStock.length} критично</span></div>
+        <div class="sl">${stockHtml}</div>
+      </div>`;
+    renderChart(sales);
+  } catch(e){
+    document.getElementById('stats-grid').innerHTML='<div class="loading" style="color:var(--rd);grid-column:span 4">⚠️ Помилка завантаження. Перевірте підключення до БД.</div>';
+  }
+}
+
+function fmt(n){return(n||0).toLocaleString('uk-UA')}
+
+function renderChart(sales){
+  const months=['Січ','Лют','Бер','Кві','Тра','Чер','Лип','Сер','Вер','Жов','Лис','Гру'];
+  const yr=2025;
+  const data=Array(12).fill(0);
+  (sales||[]).forEach(s=>{
+    const d=new Date(s.created_at);
+    if(d.getFullYear()===yr) data[d.getMonth()]+=s.amount;
+  });
+  const mc=document.getElementById('mc');
+  if(!mc)return;
+  const W=480,H=130,PT=8,PB=28,BG=5;
+  const cH=H-PT-PB;
+  const maxV=Math.max(...data,1);
+  const bw=(W/12)-BG;
+  const curM=new Date().getMonth();
+  let html='';
+  data.forEach((v,i)=>{
+    const bh=v>0?Math.max((v/maxV)*cH,3):2;
+    const x=i*(bw+BG)+BG/2;
+    const y=PT+cH-bh;
+    const isCur=i===curM&&yr===2025;
+    html+=`<g style="cursor:${v?'pointer':'default'}" data-val="${v}" data-lbl="${months[i]} ${yr}" onmouseenter="showTT(event,this)" onmouseleave="hideTT()">
+      <rect x="${x}" y="${v?y:PT+cH-2}" width="${bw}" height="${v?bh:2}" rx="3" fill="${isCur?'#FFD300':v?'#FFD30022':'#ffffff06'}" stroke="${isCur?'#FFD300':v?'#FFD30040':'transparent'}" stroke-width="0.5"/>
+      <text x="${x+bw/2}" y="${H-6}" fill="${isCur?'#FFD300':'#555'}" font-size="9" font-family="Montserrat" font-weight="${isCur?700:400}" text-anchor="middle">${months[i].substring(0,3)}</text>
+    </g>`;
+  });
+  mc.innerHTML=html;
+}
+function showTT(e,el){
+  const v=parseInt(el.dataset.val);if(!v)return;
+  const tt=document.getElementById('tt');
+  const wrap=document.querySelector('.csv');
+  if(!tt||!wrap)return;
+  const wr=wrap.getBoundingClientRect(),er=el.getBoundingClientRect();
+  document.getElementById('tt-v').textContent=fmt(v)+' ₴';
+  document.getElementById('tt-l').textContent=el.dataset.lbl;
+  tt.classList.add('sh');
+  tt.style.left=Math.max(0,er.left-wr.left+er.width/2-50)+'px';
+  tt.style.top=Math.max(0,er.top-wr.top-52)+'px';
+}
+function hideTT(){const tt=document.getElementById('tt');if(tt)tt.classList.remove('sh')}
+
+// ===== CLIENTS =====
+async function loadClients(){
+  document.getElementById('cl-table-wrap').innerHTML='<div class="loading"><div class="spin"></div>Завантаження...</div>';
+  try {
+    allClients = await sb.get('clients','?select=*&order=created_at.desc');
+    document.getElementById('cl-badge').textContent=allClients.filter(c=>c.status==='active').length;
+    renderClients();
+  } catch(e){
+    document.getElementById('cl-table-wrap').innerHTML='<div class="loading" style="color:var(--rd)">⚠️ Помилка завантаження клієнтів</div>';
+  }
+}
+
+const stMap={active:{cls:'s-act',l:'Активний'},frozen:{cls:'s-frz',l:'Заморожений'},expired:{cls:'s-exp',l:'Прострочений'},trial:{cls:'s-tri',l:'Пробний'}};
+
+function renderClients(){
+  const list=allClients.filter(c=>{
+    const q=filterTxt.toLowerCase();
+    return(!q||[c.first_name,c.last_name,c.phone,c.id].some(f=>(f||'').toLowerCase().includes(q)))
+      &&(!filterSt||c.status===filterSt)
+      &&(!filterGn||c.gender===filterGn);
+  });
+  document.getElementById('cl-cnt').textContent=list.length+' клієнт'+(list.length===1?'':'ів');
+  if(!list.length){
+    document.getElementById('cl-table-wrap').innerHTML='<div class="loading" style="color:var(--m2)">Клієнтів не знайдено</div>';
+    return;
+  }
+  const rows=list.map(c=>{
+    const st=stMap[c.status]||stMap.trial;
+    const av=c.photo_url?`<img src="${c.photo_url}" alt="">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:7px;background:#FFD30020;color:var(--y);font-size:10px;font-weight:700">${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}</div>`;
+    return `<tr onclick="openDos('${c.id}')">
+      <td><div class="cf"><div class="av">${av}</div><div><div class="cn">${c.last_name} ${c.first_name}</div><div class="cp">${c.phone||''}</div></div></div></td>
+      <td><span class="ab-b">—</span></td>
+      <td style="color:var(--m3)">${c.visits||0}</td>
+      <td style="color:var(--m2)">${c.gender||'—'}</td>
+      <td><span class="st ${st.cls}">${st.l}</span></td>
+      <td><button class="act-b" onclick="event.stopPropagation();openDos('${c.id}')">Досьє</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('cl-table-wrap').innerHTML=`<table><thead><tr><th>Клієнт</th><th>Абонемент</th><th>Візити</th><th>Стать</th><th>Статус</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function filterCl(v){filterTxt=v;renderClients()}
+function filterClSt(v){filterSt=v;renderClients()}
+function filterClG(v){filterGn=v;renderClients()}
+
+// ===== DOSSIER =====
+async function openDos(id){
+  const c=allClients.find(x=>x.id===id);
+  if(!c)return;
+  document.getElementById('dos-ti').textContent=`${c.last_name} ${c.first_name}`;
+  const st=stMap[c.status]||stMap.trial;
+  const av=c.photo_url?`<img src="${c.photo_url}" style="width:100%;height:100%;object-fit:cover">`:`<span style="color:var(--y)">${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}</span>`;
+  const days=['Пн','Вт','Ср','Чт','Пт','Сб','Нд'];
+  const vd=[1,2,3,4,5,3,2];
+  const maxV=Math.max(...vd,1);
+  const bars=vd.map((v,i)=>`<div class="vc-c"><div class="vc-b" style="height:${Math.round(v/maxV*38)+4}px"></div><div class="vc-l">${days[i]}</div></div>`).join('');
+
+  // Завантажуємо покупки
+  let purchases=[];
+  try{purchases=await sb.get('sales',`?client_id=eq.${id}&order=created_at.desc&limit=5`);}catch(e){}
+  const purHtml=purchases.length?purchases.map(p=>`<div class="pur-i"><div class="pur-left"><div class="pur-n">${p.item_name}</div><div class="pur-d">${new Date(p.created_at).toLocaleDateString('uk-UA')}</div></div><div class="pur-p">${fmt(p.amount)} ₴</div></div>`).join(''):'<div style="font-size:11px;color:var(--m2);padding:8px 0">Покупок ще немає</div>';
+
+  document.getElementById('dos-bd').innerHTML=`
+    <div class="dos-prof">
+      <div class="dos-ph" style="background:var(--yd)">${av}</div>
+      <div><div class="dos-nm">${c.last_name} ${c.first_name}</div><div class="dos-ph-t">${c.phone||'—'}</div><div class="dos-num">${c.id} · ${c.gender==='Ж'?'Жінка':'Чоловік'} · ${c.city||'—'}</div></div>
+    </div>
+    <div class="dos-sec">
+      <div class="dos-st">Особисті дані</div>
+      <div class="ir"><span class="il">Дата народження</span><span class="iv">${c.birth_date||'—'}</span></div>
+      <div class="ir"><span class="il">Статус</span><span class="st ${st.cls}">${st.l}</span></div>
+      <div class="ir"><span class="il">Всього візитів</span><span class="iv" style="color:var(--y)">${c.visits||0}</span></div>
+      ${c.note?`<div class="ir"><span class="il">Примітка</span><span class="iv">${c.note}</span></div>`:''}
+    </div>
+    <div class="dos-sec">
+      <div class="dos-st">Відвідуваність (тиждень)</div>
+      <div class="vc">${bars}</div>
+    </div>
+    <div class="dos-sec">
+      <div class="dos-st">Останні покупки</div>
+      <div class="pur-l">${purHtml}</div>
+    </div>
+    <div class="das-as">
+      <button class="da-b" onclick="alert('Продовження абонементу')">Продовжити</button>
+      <button class="da-b" onclick="alert('Заморозити абонемент')">Заморозити</button>
+      <button class="da-b pr" onclick="alert('Оплата')">💳 Оплата</button>
+    </div>`;
+  document.getElementById('dos-ov').classList.add('sh');
+}
+function closeDos(e){if(e.target===document.getElementById('dos-ov'))closeDosD()}
+function closeDosD(){document.getElementById('dos-ov').classList.remove('sh')}
+
+// ===== CREATE CLIENT =====
+function openMo(id){document.getElementById(id).classList.add('sh')}
+function closeMo(id,e){if(e.target===document.getElementById(id))closeMoD(id)}
+function closeMoD(id){
+  document.getElementById(id).classList.remove('sh');
+  ['f-last','f-first','f-phone','f-note','f-city'].forEach(i=>{const el=document.getElementById(i);if(el)el.value=''});
+  const g=document.getElementById('f-gender');if(g)g.value='';
+  const pp=document.getElementById('ph-prev');if(pp)pp.style.display='none';
+  const php=document.getElementById('ph-ph');if(php)php.style.display='block';
+}
+
+function prevPhoto(inp){
+  if(!inp.files||!inp.files[0])return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const img=document.getElementById('ph-prev');
+    img.src=e.target.result;img.style.display='block';
+    document.getElementById('ph-ph').style.display='none';
+  };
+  r.readAsDataURL(inp.files[0]);
+}
+
+async function createClient(){
+  const last=document.getElementById('f-last').value.trim();
+  const first=document.getElementById('f-first').value.trim();
+  const phone=document.getElementById('f-phone').value.trim();
+  const gender=document.getElementById('f-gender').value;
+  const hasPhoto=document.getElementById('ph-prev').style.display!=='none';
+  if(!last){alert('Введіть прізвище');return}
+  if(!first){alert('Введіть ім\'я');return}
+  if(!phone){alert('Введіть телефон');return}
+  if(!gender){alert('Оберіть стать');return}
+  if(!hasPhoto){alert('⚠️ Фото обов\'язкове!\nБез фото клієнт не може бути зареєстрований.');return}
+
+  const id='CG-'+(Date.now().toString().slice(-6));
+  try {
+    await sb.post('clients',{
+      id,first_name:first,last_name:last,phone,gender,
+      birth_date:document.getElementById('f-bday').value||null,
+      city:document.getElementById('f-city').value.trim()||'Вінниця',
+      note:document.getElementById('f-note').value.trim()||'',
+      status:'trial',visits:0
+    });
+    closeMoD('mo-cl');
+    await loadClients();
+    alert('✅ Клієнт '+last+' '+first+' доданий до бази!');
+  } catch(e){
+    alert('❌ Помилка збереження. Спробуйте ще раз.');
+  }
+}
+</script>
+</body>
+</html>
