@@ -361,13 +361,8 @@ tr:hover td{background:#ffffff03;cursor:pointer}
     <div class="auth-sub">Система управління залом</div>
   </div>
   <div class="auth-card">
-    <div class="role-tabs">
-      <button class="rtab on" onclick="setRole('owner',this)">Власник</button>
-      <button class="rtab" onclick="setRole('staff',this)">Персонал</button>
-    </div>
-    <div class="ob" id="ob">⭐ ПОВНИЙ ДОСТУП</div>
-    <div class="auth-title" id="at">Вхід для власника</div>
-    <div class="auth-desc" id="ad">Управляйте залом, персоналом та фінансами</div>
+    <div class="auth-title" style="margin-bottom:3px">Вхід в систему</div>
+    <div class="auth-desc" style="margin-bottom:18px">Власник або адміністратор — система визначить автоматично</div>
     <div class="err" id="err">
       <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><circle cx="7" cy="7" r="6" stroke="#f87171" stroke-width="1.3"/><path d="M7 4v3M7 9.5v.5" stroke="#f87171" stroke-width="1.3" stroke-linecap="round"/></svg>
       <span id="err-t">Невірний email або пароль</span>
@@ -398,7 +393,7 @@ tr:hover td{background:#ffffff03;cursor:pointer}
     <div class="succ-scr" id="ss">
       <div style="width:50px;height:50px;background:var(--yd);border:1px solid var(--ym);border-radius:50%;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" fill="none" width="22" height="22"><path d="M4 12l5 5L20 6" stroke="#FFD300" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <div style="font-size:14px;font-weight:700" id="ss-n">Вхід успішний!</div>
-      <div style="font-size:11px;color:var(--m2)">Завантаження...</div>
+      <div style="font-size:11px;color:var(--m2)" id="ss-role">Завантаження...</div>
     </div>
   </div>
   <div class="auth-foot">CREAGYM CRM · Захищено SSL</div>
@@ -783,18 +778,8 @@ const sb = {
 };
 
 // ===== AUTH =====
-let curRole='owner', passVis=false, curUser=null;
+let passVis=false, curUser=null;
 let allClients=[], filterTxt='', filterSt='', filterGn='';
-
-function setRole(r,btn){
-  curRole=r;
-  document.querySelectorAll('.rtab').forEach(t=>t.classList.remove('on'));
-  btn.classList.add('on');
-  document.getElementById('ob').style.display=r==='owner'?'inline-flex':'none';
-  document.getElementById('at').textContent=r==='owner'?'Вхід для власника':'Вхід для персоналу';
-  document.getElementById('ad').textContent=r==='owner'?'Управляйте залом, персоналом та фінансами':'Доступ до робочих функцій залу';
-  document.getElementById('err').classList.remove('sh');
-}
 
 function togglePass(){
   passVis=!passVis;
@@ -810,31 +795,32 @@ async function doLogin(){
   const btn=document.getElementById('ab');
   btn.classList.add('ld');
   try {
-    // Перевіряємо в Supabase
-    const users = await sb.get('users',`?email=eq.${encodeURIComponent(email)}&password_hash=eq.${encodeURIComponent(pass)}&select=*`);
+    const users=await sb.get('users',`?email=eq.${encodeURIComponent(email)}&password_hash=eq.${encodeURIComponent(pass)}&select=*`);
     btn.classList.remove('ld');
-    if(users && users.length>0){
+    if(users&&users.length>0){
       const u=users[0];
-      // Перевіряємо роль
-      if(curRole==='owner' && u.role!=='owner'){
-        document.getElementById('err-t').textContent='Цей акаунт не є власником';err.classList.add('sh');return;
-      }
-      if(curRole==='staff' && u.role==='owner'){
-        document.getElementById('err-t').textContent='Використайте вкладку Власник';err.classList.add('sh');return;
+      if(u.role==='trainer'){
+        document.getElementById('err-t').textContent='Тренери не мають доступу до системи';err.classList.add('sh');return;
       }
       curUser=u;
       document.getElementById('lf').style.display='none';
-      document.querySelectorAll('.rtab').forEach(t=>t.style.display='none');
-      document.getElementById('ob').style.display='none';
-      document.getElementById('at').textContent='';document.getElementById('ad').textContent='';
       document.getElementById('ss-n').textContent='Ласкаво просимо, '+u.name+'!';
+      document.getElementById('ss-role').textContent=u.role==='owner'?'⭐ Панель власника':'🔧 Панель адміністратора';
       document.getElementById('ss').classList.add('sh');
       setTimeout(()=>{
         document.getElementById('auth').style.display='none';
-        setupApp(u);
-        document.getElementById('app').classList.add('sh');
-        loadStats();
-      },900);
+        if(u.role==='owner'){
+          // → ПАНЕЛЬ ВЛАСНИКА
+          setupOwnerApp(u);
+          document.getElementById('app').classList.add('sh');
+          loadStats();
+        } else {
+          // → ПАНЕЛЬ АДМІНА
+          setupAdminApp(u);
+          document.getElementById('app-admin').classList.add('sh');
+          loadAdminData();
+        }
+      },800);
     } else {
       btn.classList.remove('ld');
       document.getElementById('err-t').textContent='Невірний email або пароль';
@@ -842,31 +828,35 @@ async function doLogin(){
     }
   } catch(e){
     btn.classList.remove('ld');
-    document.getElementById('err-t').textContent='Помилка з\'єднання з базою даних';
+    document.getElementById('err-t').textContent='Помилка підключення до бази даних';
     err.classList.add('sh');
   }
 }
 
-function setupApp(u){
-  document.getElementById('rbadge').textContent=u.role.toUpperCase();
+function setupOwnerApp(u){
+  document.getElementById('rbadge').textContent='OWNER';
   document.getElementById('u-av').textContent=u.initials;
   document.getElementById('u-nm').textContent=u.name;
   document.getElementById('sb-av').textContent=u.initials;
   document.getElementById('sb-nm').textContent=u.name;
-  document.getElementById('sb-role').textContent=u.role==='owner'?'Owner':u.role==='admin'?'Admin':'Trainer';
+  document.getElementById('sb-role').textContent='Owner';
+}
+
+function setupAdminApp(u){
+  document.getElementById('adm-av').textContent=u.initials;
+  document.getElementById('adm-nm').textContent=u.name;
+  document.getElementById('adm-role').textContent='ADMIN';
 }
 
 function logout(){
   if(!confirm('Вийти з системи?'))return;
   document.getElementById('app').classList.remove('sh');
+  document.getElementById('app-admin').classList.remove('sh');
   document.getElementById('auth').style.display='flex';
   document.getElementById('lf').style.display='block';
   document.getElementById('ss').classList.remove('sh');
-  document.getElementById('em').value='';document.getElementById('pw').value='';
-  document.querySelectorAll('.rtab').forEach((t,i)=>{t.style.display='';i===0?t.classList.add('on'):t.classList.remove('on')});
-  document.getElementById('ob').style.display='inline-flex';
-  document.getElementById('at').textContent='Вхід для власника';
-  document.getElementById('ad').textContent='Управляйте залом, персоналом та фінансами';
+  document.getElementById('em').value='';
+  document.getElementById('pw').value='';
   document.getElementById('err').classList.remove('sh');
 }
 
@@ -1392,6 +1382,504 @@ async function createClient(){
     alert('❌ Помилка збереження. Спробуйте ще раз.');
   }
 }
+</script>
+</body>
+</html>
+
+<!-- ============================================================ -->
+<!-- ADMIN APP -->
+<!-- ============================================================ -->
+<style>
+#app-admin{display:none;height:100vh;flex-direction:column}
+#app-admin.sh{display:flex}
+.adm-hdr{display:flex;align-items:center;padding:0 16px;height:54px;background:var(--p1);border-bottom:1px solid var(--bd2);flex-shrink:0;gap:10px}
+.adm-logo{font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--y);flex-shrink:0}
+.adm-sep{width:1px;height:24px;background:var(--bd2);flex-shrink:0}
+.adm-tabs{display:flex;gap:2px;flex:1}
+.adm-tab{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;border:none;background:transparent;color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.adm-tab:hover{background:var(--p2);color:var(--w)}
+.adm-tab.on{background:var(--y);color:var(--bg)}
+.adm-tab svg{width:15px;height:15px}
+.adm-right{display:flex;align-items:center;gap:8px;margin-left:auto}
+.adm-inclub{display:flex;align-items:center;gap:7px;background:var(--p2);border:1px solid var(--bd2);border-radius:8px;padding:6px 12px;cursor:pointer;transition:all .15s}
+.adm-inclub:hover{border-color:var(--bd3)}
+.adm-dot{width:7px;height:7px;border-radius:50%;background:var(--gr);animation:admPulse 2s infinite}
+@keyframes admPulse{0%,100%{opacity:1}50%{opacity:.4}}
+.adm-cnt{font-size:16px;font-weight:800;color:var(--y)}
+.adm-lbl{font-size:10px;color:var(--m2)}
+.adm-user{display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:8px;border:1px solid var(--bd2);cursor:pointer;transition:all .15s}
+.adm-user:hover{border-color:var(--bd3)}
+.adm-av{width:24px;height:24px;background:var(--y);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--bg)}
+.adm-pages{flex:1;overflow:hidden;position:relative}
+.adm-page{position:absolute;inset:0;overflow-y:auto;display:none;flex-direction:column}
+.adm-page.on{display:flex}
+.adm-page::-webkit-scrollbar{width:3px}
+.adm-page::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px}
+.reg-top2{padding:14px 18px;border-bottom:1px solid var(--bd);background:var(--p1);flex-shrink:0}
+.reg-sw{position:relative;max-width:500px}
+.reg-sw svg.si{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--m2);pointer-events:none}
+.reg-inp{width:100%;padding:11px 14px 11px 38px;background:var(--p2);border:1px solid var(--bd2);border-radius:10px;color:var(--w);font-family:var(--f);font-size:13px;outline:none;transition:border-color .15s}
+.reg-inp:focus{border-color:var(--ym)}
+.reg-inp::placeholder{color:var(--m2)}
+.sdrop{position:absolute;top:calc(100%+6px);left:0;right:0;background:var(--p2);border:1px solid var(--bd2);border-radius:10px;overflow:hidden;z-index:200;box-shadow:0 8px 24px #00000060;display:none}
+.sdrop.sh{display:block}
+.sd-i{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;transition:background .12s;border-top:1px solid var(--bd)}
+.sd-i:first-child{border-top:none}
+.sd-i:hover{background:var(--p3)}
+.sd-av2{width:30px;height:30px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;background:var(--yd);color:var(--y);overflow:hidden}
+.sd-av2 img{width:100%;height:100%;object-fit:cover;border-radius:7px}
+.reg-body2{display:flex;gap:14px;padding:14px 18px;flex:1;overflow:hidden}
+.reg-main{flex:1;display:flex;flex-direction:column;gap:10px;min-width:0}
+.reg-panel{width:255px;flex-shrink:0;display:flex;flex-direction:column;gap:10px}
+.cl-card2{background:var(--p1);border:1px solid var(--bd2);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:11px}
+.cl-prof2{display:flex;align-items:center;gap:11px}
+.cl-ph2{width:52px;height:52px;border-radius:10px;flex-shrink:0;overflow:hidden;background:var(--p3);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;border:2px solid var(--bd2);color:var(--y)}
+.cl-ph2 img{width:100%;height:100%;object-fit:cover}
+.cl-nm2{font-size:14px;font-weight:700}
+.cl-sub2{background:var(--p2);border:1px solid var(--bd2);border-radius:8px;padding:10px 12px}
+.cl-sub-hd2{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.cl-sub-nm2{font-size:12px;font-weight:700}
+.sub-pr{height:3px;background:var(--p3);border-radius:2px;overflow:hidden;margin-top:4px}
+.sub-pr-f{height:100%;border-radius:2px;background:var(--y)}
+.sub-dt{display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--m2)}
+.cl-acts{display:flex;gap:6px;flex-wrap:wrap}
+.ca{flex:1;min-width:90px;padding:9px 8px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer;transition:all .12s;text-align:center}
+.ca:hover{border-color:var(--ym);color:var(--y)}
+.ca.pr{background:var(--y);color:var(--bg);border-color:transparent;font-weight:700}
+.ca.pr:hover{background:#FFE033}
+.ca.gr{background:#22C55E15;color:var(--gr);border-color:#22C55E28}
+.ca.rd{background:#EF444414;color:var(--rd);border-color:#EF444428}
+.icp2{background:var(--p1);border:1px solid var(--bd2);border-radius:12px;overflow:hidden}
+.icp2-hd{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-bottom:1px solid var(--bd)}
+.icp2-t{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--m2)}
+.icp2-c{font-size:15px;font-weight:800;color:var(--y)}
+.icp2-list{max-height:300px;overflow-y:auto}
+.icp2-i{display:flex;align-items:center;gap:8px;padding:8px 13px;border-top:1px solid var(--bd);cursor:pointer;transition:background .12s}
+.icp2-i:first-child{border-top:none}
+.icp2-i:hover{background:var(--p2)}
+.icp2-av{width:24px;height:24px;border-radius:6px;flex-shrink:0;background:var(--yd);color:var(--y);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700}
+.icp2-nm{flex:1;font-size:11px;font-weight:600}
+.icp2-key{font-size:11px;font-weight:700;color:var(--y);flex-shrink:0}
+.icp2-back{padding:3px 7px;border-radius:5px;background:#22C55E14;color:var(--gr);border:none;font-family:var(--f);font-size:9px;font-weight:700;cursor:pointer}
+.shop-wrap2{padding:14px 18px;display:flex;gap:14px;flex:1;overflow:hidden}
+.shop-left2{flex:1;display:flex;flex-direction:column;gap:10px;min-width:0;overflow-y:auto}
+.shop-cats2{display:flex;gap:6px;flex-wrap:wrap}
+.cat-b{padding:5px 13px;border-radius:20px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer;transition:all .12s}
+.cat-b:hover,.cat-b.on{background:var(--ym);color:var(--y);border-color:var(--ym)}
+.shop-grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px}
+.pc2{background:var(--p1);border:1px solid var(--bd2);border-radius:10px;padding:13px;cursor:pointer;transition:all .15s;position:relative}
+.pc2:hover{border-color:var(--ym);transform:translateY(-1px)}
+.pc2-e{font-size:26px;margin-bottom:7px}
+.pc2-n{font-size:12px;font-weight:700;margin-bottom:2px}
+.pc2-c{font-size:10px;color:var(--m2)}
+.pc2-p{font-size:14px;font-weight:800;color:var(--y);margin-top:7px}
+.pc2-add{position:absolute;top:9px;right:9px;width:20px;height:20px;background:var(--ym);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--y);font-weight:700}
+.cart2{width:245px;flex-shrink:0;background:var(--p1);border:1px solid var(--bd2);border-radius:12px;padding:13px;display:flex;flex-direction:column;gap:9px}
+.cart2-t{font-size:12px;font-weight:700}
+.cart2-cl{font-size:10px;color:var(--m2);padding-bottom:6px;border-bottom:1px solid var(--bd)}
+.cart2-empty{font-size:11px;color:var(--m2);text-align:center;padding:16px 0}
+.cart2-i{display:flex;align-items:center;gap:7px;padding:6px 0;border-top:1px solid var(--bd)}
+.ci2-nm{flex:1;font-size:11px;font-weight:600}
+.ci2-p{font-size:11px;font-weight:700;color:var(--y)}
+.ci2-d{background:none;border:none;color:var(--rd);cursor:pointer;font-size:13px;padding:1px}
+.cart2-tot{display:flex;justify-content:space-between;align-items:center;padding-top:7px;border-top:1px solid var(--bd2);font-size:12px;font-weight:700}
+.cart2-tv{font-size:17px;font-weight:800;color:var(--y)}
+.pay2-btns{display:flex;gap:5px}
+.pay2-b{flex:1;padding:9px;border-radius:8px;border:none;font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer;text-align:center}
+.pay2-b.cash{background:var(--p2);border:1px solid var(--bd2);color:var(--m2)}
+.pay2-b.cash:hover{border-color:var(--ym);color:var(--y)}
+.pay2-b.card{background:var(--y);color:var(--bg)}
+.pay2-b.card:hover{background:#FFE033}
+.adm-cl-wrap{padding:14px 18px;display:flex;flex-direction:column;gap:10px}
+.mo2{position:fixed;inset:0;background:#00000080;z-index:400;display:none;align-items:center;justify-content:center;padding:20px}
+.mo2.sh{display:flex}
+.mo2-box{background:var(--p1);border:1px solid var(--bd2);border-radius:14px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;animation:fadeUp .2s ease}
+.mo2-box::-webkit-scrollbar{width:3px}
+.mo2-box::-webkit-scrollbar-thumb{background:var(--bd2)}
+.mo2-hd{display:flex;align-items:center;justify-content:space-between;padding:13px 17px;border-bottom:1px solid var(--bd);position:sticky;top:0;background:var(--p1);z-index:2}
+.mo2-ti{font-size:13px;font-weight:700}
+.mo2-bd{padding:16px;display:flex;flex-direction:column;gap:11px}
+.ff2{display:flex;flex-direction:column;gap:5px}
+.ff2 label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--m2)}
+.fi3{background:var(--p2);border:1px solid var(--bd2);border-radius:8px;padding:9px 11px;color:var(--w);font-family:var(--f);font-size:12px;outline:none;transition:border-color .15s;width:100%}
+.fi3:focus{border-color:var(--ym)}
+.fi3::placeholder{color:var(--m)}
+.fr2b{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.sub-opts2{display:flex;flex-direction:column;gap:6px;max-height:320px;overflow-y:auto}
+.soi{display:flex;align-items:center;justify-content:space-between;background:var(--p2);border:1px solid var(--bd2);border-radius:9px;padding:11px 13px;cursor:pointer;transition:all .15s}
+.soi:hover,.soi.sel{background:var(--yd);border-color:var(--ym)}
+.soi-nm{font-size:13px;font-weight:700}
+.soi-meta{font-size:10px;color:var(--m2);margin-top:2px}
+.soi-p{font-size:15px;font-weight:800;color:var(--y);flex-shrink:0}
+.pm2{display:flex;gap:7px}
+.pmb{flex:1;padding:9px;border-radius:8px;border:2px solid var(--bd2);background:transparent;color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;text-align:center}
+.pmb.on{border-color:var(--y);color:var(--y);background:var(--yd)}
+.fa2{display:flex;gap:7px;padding-top:4px}
+.fb2{flex:1;padding:10px;border-radius:8px;border:none;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer}
+.fb2.pr{background:var(--y);color:var(--bg)}
+.fb2.pr:hover{background:#FFE033}
+.fb2.se{background:var(--p2);border:1px solid var(--bd2);color:var(--m2)}
+.ph-up2{border:2px dashed var(--bd2);border-radius:9px;padding:16px;text-align:center;cursor:pointer;transition:all .15s;position:relative}
+.ph-up2:hover{border-color:var(--ym);background:var(--yd)}
+.ph-up2 input{position:absolute;inset:0;opacity:0;cursor:pointer}
+</style>
+
+<div id="app-admin">
+  <div class="adm-hdr">
+    <div class="adm-logo">CREAGYM</div>
+    <div class="adm-sep"></div>
+    <div class="adm-tabs">
+      <button class="adm-tab on" onclick="admTab('reg',this)">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M10 10a4 4 0 100-8 4 4 0 000 8z" stroke="currentColor" stroke-width="1.4"/><path d="M3 18c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        Реєстрація
+      </button>
+      <button class="adm-tab" onclick="admTab('shop',this)">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M3 3h2l2.5 9h7L17 6H7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="17" r="1.2" stroke="currentColor" stroke-width="1.4"/><circle cx="14" cy="17" r="1.2" stroke="currentColor" stroke-width="1.4"/></svg>
+        Магазин
+      </button>
+      <button class="adm-tab" onclick="admTab('aclients',this)">
+        <svg viewBox="0 0 20 20" fill="none"><circle cx="8" cy="6" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M2 17c0-3.314 2.686-5 6-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="14" cy="13" r="3" stroke="currentColor" stroke-width="1.4"/></svg>
+        Клієнти
+      </button>
+    </div>
+    <div class="adm-right">
+      <div class="adm-inclub" onclick="admOpenInClub()">
+        <div class="adm-dot"></div>
+        <div><div class="adm-cnt" id="adm-cnt">0</div><div class="adm-lbl">В клубі</div></div>
+      </div>
+      <div class="adm-user" onclick="logout()">
+        <div class="adm-av" id="adm-av">АД</div>
+        <span style="font-size:11px;font-weight:600" id="adm-nm">Адмін</span>
+        <span style="font-size:10px;color:var(--m2);background:var(--p2);padding:2px 6px;border-radius:5px;font-weight:600" id="adm-role">ADMIN</span>
+        <span style="font-size:10px;color:var(--m2)">Вийти</span>
+      </div>
+    </div>
+  </div>
+  <div class="adm-pages">
+    <!-- REGISTRATION -->
+    <div class="adm-page on" id="adm-reg">
+      <div class="reg-top2">
+        <div class="reg-sw" id="adm-sw">
+          <svg class="si" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <input class="reg-inp" id="adm-search" type="text" placeholder="Прізвище або 4 останні цифри телефону..." oninput="admSearch(this.value)" autocomplete="off">
+          <div class="sdrop" id="adm-sdrop"></div>
+        </div>
+        <div style="font-size:11px;color:var(--m);margin-top:6px">Знайдіть клієнта → зареєструйте вхід або продайте абонемент</div>
+      </div>
+      <div class="reg-body2">
+        <div class="reg-main" id="adm-main">
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;flex:1;opacity:.35">
+            <div style="font-size:48px">🔍</div>
+            <div style="font-size:14px;font-weight:600">Знайдіть клієнта</div>
+            <div style="font-size:12px;color:var(--m2);text-align:center;max-width:240px;line-height:1.6">Введіть прізвище або 4 останні цифри телефону</div>
+          </div>
+        </div>
+        <div class="reg-panel">
+          <div class="icp2">
+            <div class="icp2-hd"><span class="icp2-t">Зараз в клубі</span><span class="icp2-c" id="icp2-cnt">0</span></div>
+            <div class="icp2-list" id="icp2-list"><div style="padding:12px;font-size:11px;color:var(--m2);text-align:center">Нікого немає</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- SHOP -->
+    <div class="adm-page" id="adm-shop">
+      <div class="shop-wrap2">
+        <div class="shop-left2">
+          <div class="shop-cats2" id="adm-cats"></div>
+          <div class="shop-grid2" id="adm-grid"></div>
+        </div>
+        <div class="cart2">
+          <div class="cart2-t">🛒 Кошик</div>
+          <div class="cart2-cl" id="cart2-cl">Клієнт: не обрано</div>
+          <div id="cart2-items"><div class="cart2-empty">Додайте товари</div></div>
+          <div class="cart2-tot" id="cart2-tot" style="display:none"><span>Разом:</span><span class="cart2-tv" id="cart2-sum">0 ₴</span></div>
+          <div class="pay2-btns" id="cart2-pay" style="display:none">
+            <button class="pay2-b cash" onclick="admCheckout('cash')">💵 Готівка</button>
+            <button class="pay2-b card" onclick="admCheckout('card')">💳 Карта</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- CLIENTS -->
+    <div class="adm-page" id="adm-aclients">
+      <div class="adm-cl-wrap">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div style="position:relative;flex:1;min-width:180px">
+            <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:var(--m);pointer-events:none" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.3"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            <input style="width:100%;background:var(--p2);border:1px solid var(--bd2);border-radius:8px;padding:7px 11px 7px 32px;color:var(--w);font-family:var(--f);font-size:12px;outline:none" type="text" placeholder="Пошук..." oninput="admClFilter(this.value)">
+          </div>
+          <button style="display:flex;align-items:center;gap:5px;padding:7px 13px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer" onclick="admOpenCreateCl()">+ Новий клієнт</button>
+        </div>
+        <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--bd)">
+            <span style="font-size:12px;font-weight:700">Клієнти клубу</span>
+            <span style="font-size:10px;color:var(--m2);background:var(--p2);padding:3px 8px;border-radius:20px" id="adm-cl-cnt">0 клієнтів</span>
+          </div>
+          <div id="adm-cl-table"><div class="loading"><div class="spin"></div>Завантаження...</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SELL MODAL -->
+<div class="mo2" id="adm-sell" onclick="admCloseMo('adm-sell',event)">
+  <div class="mo2-box" style="max-width:500px">
+    <div class="mo2-hd"><div class="mo2-ti">Продати абонемент</div><button class="cls-b" onclick="admCloseMoD('adm-sell')">✕</button></div>
+    <div class="mo2-bd">
+      <div style="font-size:11px;color:var(--m2)" id="adm-sell-cl">Клієнт: —</div>
+      <div class="sub-opts2" id="adm-sub-opts"></div>
+      <div class="ff2" id="adm-pm-wrap" style="display:none"><label>Спосіб оплати</label><div class="pm2"><button class="pmb on" id="adm-pm-cash" onclick="admSelPM('cash')">💵 Готівка</button><button class="pmb" id="adm-pm-card" onclick="admSelPM('card')">💳 Картка</button></div></div>
+      <div class="fa2" id="adm-sell-btn" style="display:none"><button class="fb2 se" onclick="admCloseMoD('adm-sell')">Скасувати</button><button class="fb2 pr" onclick="admConfirmSell()">Підтвердити продаж</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- CREATE CLIENT -->
+<div class="mo2" id="adm-cl-mo" onclick="admCloseMo('adm-cl-mo',event)">
+  <div class="mo2-box">
+    <div class="mo2-hd"><div class="mo2-ti">Новий клієнт</div><button class="cls-b" onclick="admCloseMoD('adm-cl-mo')">✕</button></div>
+    <div class="mo2-bd">
+      <div class="fr2b"><div class="ff2"><label>Прізвище *</label><input class="fi3" type="text" id="adm-last" placeholder="Іваненко"></div><div class="ff2"><label>Ім'я *</label><input class="fi3" type="text" id="adm-first" placeholder="Марія"></div></div>
+      <div class="fr2b"><div class="ff2"><label>Телефон *</label><input class="fi3" type="text" id="adm-phone" placeholder="+38 067 000 00 00"></div><div class="ff2"><label>Стать *</label><select class="fi3" id="adm-gender"><option value="">Оберіть...</option><option value="Ж">Жінка</option><option value="М">Чоловік</option></select></div></div>
+      <div class="ff2"><label>Фото * (обов'язково)</label>
+        <div class="ph-up2" id="adm-ph-zone"><input type="file" accept="image/*" onchange="admPrevPhoto(this)"><div id="adm-ph-ph"><div style="font-size:22px">📷</div><div style="font-size:11px;color:var(--m2);margin-top:4px">Натисніть або перетягніть фото</div><div style="font-size:10px;color:var(--rd);margin-top:2px;font-weight:600">Без фото реєстрація неможлива</div></div><img id="adm-ph-prev" style="display:none;width:70px;height:70px;border-radius:9px;object-fit:cover;margin:0 auto"></div>
+      </div>
+      <div class="fa2"><button class="fb2 se" onclick="admCloseMoD('adm-cl-mo')">Скасувати</button><button class="fb2 pr" onclick="admCreateClient()">Зберегти клієнта</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- IN CLUB MODAL -->
+<div class="mo2" id="adm-inclub-mo" onclick="admCloseMo('adm-inclub-mo',event)">
+  <div class="mo2-box" style="max-width:480px">
+    <div class="mo2-hd"><div class="mo2-ti">Зараз в клубі</div><button class="cls-b" onclick="admCloseMoD('adm-inclub-mo')">✕</button></div>
+    <div id="adm-inclub-list"></div>
+    <div style="padding:11px 17px;border-top:1px solid var(--bd);text-align:right"><button class="fb2 se" style="max-width:90px" onclick="admCloseMoD('adm-inclub-mo')">Закрити</button></div>
+  </div>
+</div>
+
+<script>
+let admClients=[],admProducts=[],admSubTypes=[],admInClub=[],admCart=[],admSelSub=null,admPayM='cash',admSellCl=null,admClFilterTxt='';
+
+async function loadAdminData(){
+  try{
+    [admClients,admProducts,admSubTypes]=await Promise.all([
+      sb.get('clients','?order=last_name.asc'),
+      sb.get('products','?is_active=eq.true&order=name.asc'),
+      sb.get('subscription_types','?is_active=eq.true&order=price.asc')
+    ]);
+    admRenderICP();admRenderShop();admRenderClients();
+  }catch(e){console.error(e)}
+}
+
+function admTab(id,btn){
+  document.querySelectorAll('.adm-tab').forEach(t=>t.classList.remove('on'));btn.classList.add('on');
+  document.querySelectorAll('.adm-page').forEach(p=>p.classList.remove('on'));
+  document.getElementById('adm-'+id).classList.add('on');
+}
+
+let admST=null;
+function admSearch(v){
+  const drop=document.getElementById('adm-sdrop');
+  clearTimeout(admST);
+  if(!v||v.length<2){drop.classList.remove('sh');return}
+  admST=setTimeout(()=>{
+    const q=v.toLowerCase(),last4=v.replace(/\D/g,'');
+    const res=admClients.filter(c=>{
+      const full=((c.last_name||'')+' '+(c.first_name||'')).toLowerCase();
+      const phone=(c.phone||'').replace(/\D/g,'');
+      return full.includes(q)||(last4.length===4&&phone.endsWith(last4));
+    }).slice(0,6);
+    if(!res.length){drop.innerHTML='<div style="padding:11px 13px;font-size:12px;color:var(--m2)">Клієнта не знайдено</div>';drop.classList.add('sh');return}
+    const stM={active:'#22C55E',expired:'#EF4444',trial:'#F97316',frozen:'#3B82F6'};
+    const stL={active:'Активний',expired:'Прострочений',trial:'Пробний',frozen:'Заморожений'};
+    drop.innerHTML=res.map(c=>{
+      const av=c.photo_url?`<img src="${c.photo_url}" alt="">`:`<span>${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}</span>`;
+      return `<div class="sd-i" onclick="admSelectClient('${c.id}')"><div class="sd-av2">${av}</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600">${c.last_name} ${c.first_name}</div><div style="font-size:10px;color:var(--m2)">${c.phone||''}</div></div><span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;color:${stM[c.status]||'#777'};background:${stM[c.status]||'#777'}18">${stL[c.status]||'—'}</span></div>`;
+    }).join('');
+    drop.classList.add('sh');
+  },200);
+}
+document.addEventListener('click',e=>{if(!document.getElementById('adm-sw')?.contains(e.target))document.getElementById('adm-sdrop')?.classList.remove('sh')});
+
+async function admSelectClient(id){
+  const c=admClients.find(x=>x.id===id);if(!c)return;
+  document.getElementById('adm-sdrop').classList.remove('sh');
+  document.getElementById('adm-search').value=c.last_name+' '+c.first_name;
+  let subs=[];
+  try{subs=await sb.get('subscriptions',`?client_id=eq.${id}&status=eq.active&order=end_date.desc&limit=1`)}catch(e){}
+  const sub=subs[0]||null;
+  const av=c.photo_url?`<img src="${c.photo_url}" style="width:100%;height:100%;object-fit:cover">`:`${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}`;
+  const isIn=admInClub.find(x=>x.id===id);
+  let subBlock='';
+  if(sub){
+    const s=new Date(sub.start_date),e2=new Date(sub.end_date);
+    const pct=Math.max(0,Math.min(100,Math.round((e2-new Date())/(e2-s)*100)));
+    const dl=Math.max(0,Math.round((e2-new Date())/86400000));
+    subBlock=`<div class="cl-sub2"><div class="cl-sub-hd2"><div class="cl-sub-nm2">${sub.type_name}</div><span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;background:#22C55E14;color:var(--gr)">Активний</span></div><div class="sub-pr"><div class="sub-pr-f" style="width:${pct}%"></div></div><div class="sub-dt"><span>${dl} днів залишилось</span><span>${sub.price} ₴</span></div></div>`;
+  } else {
+    subBlock=`<div class="cl-sub2"><div class="cl-sub-hd2"><div class="cl-sub-nm2" style="color:var(--m2)">Немає активного абонементу</div><span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;background:var(--p3);color:var(--m2)">Відсутній</span></div></div>`;
+  }
+  document.getElementById('adm-main').innerHTML=`
+    <div class="cl-card2">
+      <div class="cl-prof2"><div class="cl-ph2">${av}</div><div><div class="cl-nm2">${c.last_name} ${c.first_name}</div><div style="font-size:11px;color:var(--m2);margin-top:2px">${c.phone||'—'}</div><div style="font-size:10px;color:var(--m);margin-top:1px">${c.id} · Відвідувань: ${c.visits||0}</div></div></div>
+      ${subBlock}
+      <div class="cl-acts">
+        ${isIn?`<button class="ca rd" onclick="admCheckOut('${c.id}')">🔑 Здати ключ №${isIn.key}</button>`:`<button class="ca gr" onclick="admCheckIn('${c.id}')">✅ Зареєструвати вхід</button>`}
+        <button class="ca pr" onclick="admOpenSell('${c.id}')">🎫 Продати абонемент</button>
+        <button class="ca" onclick="admShopFor('${c.id}')">🛒 Магазин</button>
+      </div>
+    </div>`;
+}
+
+function admCheckIn(id){
+  const c=admClients.find(x=>x.id===id);if(!c)return;
+  const key=Math.floor(Math.random()*99)+1;
+  admInClub.push({...c,key});
+  document.getElementById('adm-cnt').textContent=admInClub.length;
+  admRenderICP();admSelectClient(id);
+  alert(`✅ ${c.last_name} ${c.first_name} зареєстрований\n🔑 Виданий ключ №${key}`);
+}
+function admCheckOut(id){
+  const c=admInClub.find(x=>x.id===id);if(!c)return;
+  admInClub=admInClub.filter(x=>x.id!==id);
+  document.getElementById('adm-cnt').textContent=admInClub.length;
+  admRenderICP();admSelectClient(id);
+  alert(`👋 ${c.last_name} ${c.first_name} вийшов\n🔑 Ключ №${c.key} повернуто`);
+}
+function admRenderICP(){
+  document.getElementById('icp2-cnt').textContent=admInClub.length;
+  const el=document.getElementById('icp2-list');
+  if(!admInClub.length){el.innerHTML='<div style="padding:12px;font-size:11px;color:var(--m2);text-align:center">Нікого немає</div>';return}
+  el.innerHTML=admInClub.map(c=>`<div class="icp2-i" onclick="admSelectClient('${c.id}')"><div class="icp2-av">${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}</div><span class="icp2-nm">${c.last_name} ${c.first_name}</span><span class="icp2-key">🔑${c.key}</span><button class="icp2-back" onclick="event.stopPropagation();admCheckOut('${c.id}')">Здати</button></div>`).join('');
+}
+function admOpenInClub(){
+  const el=document.getElementById('adm-inclub-list');
+  el.innerHTML=admInClub.length?admInClub.map(c=>`<div style="display:flex;align-items:center;gap:11px;padding:10px 17px;border-top:1px solid var(--bd)"><div style="width:32px;height:32px;border-radius:8px;background:var(--yd);color:var(--y);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}</div><div style="flex:1"><div style="font-size:13px;font-weight:600">${c.last_name} ${c.first_name}</div><div style="font-size:10px;color:var(--m2)">${c.phone||''}</div></div><span style="font-size:15px;font-weight:800;color:var(--y);margin:0 8px">🔑 ${c.key}</span><button class="icp2-back" onclick="admCheckOut('${c.id}');admCloseMoD('adm-inclub-mo')">Здати ключ</button></div>`).join(''):'<div style="padding:20px;text-align:center;font-size:12px;color:var(--m2)">В клубі нікого немає</div>';
+  admOpenMo('adm-inclub-mo');
+}
+
+function admOpenSell(id){
+  const c=admClients.find(x=>x.id===id);if(!c)return;
+  admSellCl=c;admSelSub=null;admPayM='cash';
+  document.getElementById('adm-sell-cl').textContent='Клієнт: '+c.last_name+' '+c.first_name;
+  document.getElementById('adm-pm-wrap').style.display='none';
+  document.getElementById('adm-sell-btn').style.display='none';
+  document.getElementById('adm-pm-cash').classList.add('on');
+  document.getElementById('adm-pm-card').classList.remove('on');
+  document.getElementById('adm-sub-opts').innerHTML=admSubTypes.length?admSubTypes.map(s=>`<div class="soi" id="asoi-${s.id}" onclick="admSelSub2('${s.id}')"><div><div class="soi-nm">${s.name}</div><div class="soi-meta">${s.days} ${s.duration_unit||'дн.'} · ${s.class_name||''}</div></div><div class="soi-p">${(s.price||0).toLocaleString('uk-UA')} ₴</div></div>`).join(''):'<div style="font-size:12px;color:var(--m2)">Немає активних абонементів. Додайте їх у панелі власника.</div>';
+  admOpenMo('adm-sell');
+}
+function admSelSub2(id){
+  document.querySelectorAll('.soi').forEach(el=>el.classList.remove('sel'));
+  document.getElementById('asoi-'+id)?.classList.add('sel');
+  admSelSub=id;
+  document.getElementById('adm-pm-wrap').style.display='flex';
+  document.getElementById('adm-sell-btn').style.display='flex';
+}
+function admSelPM(m){
+  admPayM=m;
+  document.getElementById('adm-pm-cash').classList.toggle('on',m==='cash');
+  document.getElementById('adm-pm-card').classList.toggle('on',m==='card');
+}
+async function admConfirmSell(){
+  if(!admSelSub||!admSellCl)return;
+  const s=admSubTypes.find(x=>x.id===admSelSub);if(!s)return;
+  const today=new Date(),end=new Date(today);end.setDate(today.getDate()+s.days);
+  try{
+    await sb.post('subscriptions',{client_id:admSellCl.id,type_id:s.id,type_name:s.name,price:s.price,start_date:today.toISOString().split('T')[0],end_date:end.toISOString().split('T')[0],status:'active',payment_method:admPayM});
+    await sb.post('sales',{client_id:admSellCl.id,type:'subscription',item_name:s.name,amount:s.price,payment_method:admPayM,created_by:curUser?.name||'admin'});
+    await sb.patch('clients',`id=eq.${admSellCl.id}`,{status:'active'});
+    const cl=admClients.find(x=>x.id===admSellCl.id);if(cl)cl.status='active';
+    admCloseMoD('adm-sell');
+    alert(`✅ Абонемент "${s.name}" продано!\n💰 ${s.price} ₴ · ${admPayM==='cash'?'Готівка':'Картка'}`);
+    admSelectClient(admSellCl.id);
+  }catch(e){alert('❌ Помилка: '+e.message)}
+}
+
+function admRenderShop(){
+  const cats=[...new Set(admProducts.map(p=>p.category))];
+  document.getElementById('adm-cats').innerHTML='<button class="cat-b on" onclick="admFilterShop(\'\',this)">Всі</button>'+cats.map(c=>`<button class="cat-b" onclick="admFilterShop('${c}',this)">${c}</button>`).join('');
+  admFilterShop('',document.querySelector('#adm-cats .cat-b'));
+}
+function admFilterShop(cat,btn){
+  document.querySelectorAll('#adm-cats .cat-b').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  const list=cat?admProducts.filter(p=>p.category===cat):admProducts;
+  document.getElementById('adm-grid').innerHTML=list.map(p=>`<div class="pc2" onclick="admAddCart('${p.id}')"><div class="pc2-e">${p.emoji||'📦'}</div><div class="pc2-n">${p.name}</div><div class="pc2-c">${p.category}</div><div class="pc2-p">${p.price} ₴</div><div style="font-size:10px;margin-top:2px;color:${p.stock>p.min_stock?'var(--gr)':'var(--rd)'}">${p.stock} шт.</div><div class="pc2-add">+</div></div>`).join('')||'<div style="color:var(--m2);font-size:12px;padding:16px">Товарів немає</div>';
+}
+function admShopFor(id){
+  const c=admClients.find(x=>x.id===id);
+  if(c)document.getElementById('cart2-cl').textContent='Клієнт: '+c.last_name+' '+c.first_name;
+  admTab('shop',document.querySelectorAll('.adm-tab')[1]);
+}
+function admAddCart(id){
+  const p=admProducts.find(x=>x.id===id);if(!p)return;
+  const ex=admCart.find(x=>x.id===id);
+  if(ex)ex.qty++;else admCart.push({...p,qty:1});
+  admRenderCart();
+}
+function admRemoveCart(id){admCart=admCart.filter(x=>x.id!==id);admRenderCart()}
+function admRenderCart(){
+  if(!admCart.length){document.getElementById('cart2-items').innerHTML='<div class="cart2-empty">Додайте товари</div>';document.getElementById('cart2-tot').style.display='none';document.getElementById('cart2-pay').style.display='none';return}
+  const tot=admCart.reduce((s,x)=>s+x.price*x.qty,0);
+  document.getElementById('cart2-items').innerHTML=admCart.map(x=>`<div class="cart2-i"><span class="ci2-nm">${x.emoji} ${x.name}${x.qty>1?' ×'+x.qty:''}</span><span class="ci2-p">${x.price*x.qty} ₴</span><button class="ci2-d" onclick="admRemoveCart('${x.id}')">✕</button></div>`).join('');
+  document.getElementById('cart2-sum').textContent=tot.toLocaleString('uk-UA')+' ₴';
+  document.getElementById('cart2-tot').style.display='flex';
+  document.getElementById('cart2-pay').style.display='flex';
+}
+async function admCheckout(m){
+  if(!admCart.length)return;
+  const tot=admCart.reduce((s,x)=>s+x.price*x.qty,0);
+  try{
+    for(const i of admCart)await sb.post('sales',{type:'product',item_name:i.name,amount:i.price*i.qty,payment_method:m,created_by:curUser?.name||'admin'});
+    admCart=[];admRenderCart();
+    alert(`✅ Продаж оформлено!\n💰 ${tot} ₴ · ${m==='cash'?'Готівка':'Картка'}`);
+  }catch(e){alert('❌ '+e.message)}
+}
+
+function admRenderClients(){
+  const q=admClFilterTxt.toLowerCase();
+  const list=admClients.filter(c=>!q||((c.last_name||'')+' '+(c.first_name||'')+' '+(c.phone||'')).toLowerCase().includes(q));
+  document.getElementById('adm-cl-cnt').textContent=list.length+' клієнт'+(list.length===1?'':'ів');
+  const stBg={active:'#22C55E14',expired:'#EF444414',trial:'#F9731614',frozen:'#3B82F614'};
+  const stC={active:'var(--gr)',expired:'var(--rd)',trial:'var(--or)',frozen:'var(--bl)'};
+  const stL={active:'Активний',expired:'Прострочений',trial:'Пробний',frozen:'Заморожений'};
+  if(!list.length){document.getElementById('adm-cl-table').innerHTML='<div class="loading" style="color:var(--m2)">Клієнтів не знайдено</div>';return}
+  const rows=list.map(c=>{
+    const av=c.photo_url?`<img src="${c.photo_url}" alt="" style="width:30px;height:30px;object-fit:cover;border-radius:7px">`:`<div style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;background:var(--yd);color:var(--y);border-radius:7px">${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}</div>`;
+    return `<tr style="cursor:pointer" onclick="admGoClient('${c.id}')"><td><div style="display:flex;align-items:center;gap:8px">${av}<div><div style="font-size:12px;font-weight:600">${c.last_name} ${c.first_name}</div><div style="font-size:10px;color:var(--m2)">${c.phone||''}</div></div></div></td><td style="font-size:11px;color:var(--m3)">${c.visits||0}</td><td><span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;background:${stBg[c.status]||'var(--p3)'};color:${stC[c.status]||'var(--m2)'}">${stL[c.status]||'—'}</span></td><td><button style="padding:4px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer" onclick="event.stopPropagation();admOpenSell('${c.id}')">🎫 Абонемент</button></td></tr>`;
+  }).join('');
+  document.getElementById('adm-cl-table').innerHTML=`<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--p2)"><th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600;white-space:nowrap">Клієнт</th><th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600">Візити</th><th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600">Статус</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function admClFilter(v){admClFilterTxt=v;admRenderClients()}
+function admGoClient(id){admTab('reg',document.querySelector('.adm-tab'));admSelectClient(id)}
+
+function admOpenCreateCl(){admOpenMo('adm-cl-mo')}
+function admPrevPhoto(inp){
+  if(!inp.files||!inp.files[0])return;
+  const r=new FileReader();
+  r.onload=e=>{const img=document.getElementById('adm-ph-prev');img.src=e.target.result;img.style.display='block';document.getElementById('adm-ph-ph').style.display='none';};
+  r.readAsDataURL(inp.files[0]);
+}
+async function admCreateClient(){
+  const last=document.getElementById('adm-last').value.trim(),first=document.getElementById('adm-first').value.trim(),phone=document.getElementById('adm-phone').value.trim(),gender=document.getElementById('adm-gender').value;
+  const hasPhoto=document.getElementById('adm-ph-prev').style.display!=='none';
+  if(!last||!first||!phone||!gender){alert('Заповніть всі поля');return}
+  if(!hasPhoto){alert('⚠️ Фото обов\'язкове!');return}
+  const id='CG-'+Date.now().toString().slice(-6);
+  try{
+    const result=await sb.post('clients',{id,first_name:first,last_name:last,phone,gender,status:'trial',visits:0});
+    if(result&&!Array.isArray(result)&&result.code){alert('❌ '+result.message);return}
+    admClients.unshift(Array.isArray(result)?result[0]:{id,first_name:first,last_name:last,phone,gender,status:'trial',visits:0});
+    admCloseMoD('adm-cl-mo');admRenderClients();
+    alert('✅ Клієнт '+last+' '+first+' доданий!');
+  }catch(e){alert('❌ '+e.message)}
+}
+function admOpenMo(id){document.getElementById(id).classList.add('sh')}
+function admCloseMo(id,e){if(e.target===document.getElementById(id))admCloseMoD(id)}
+function admCloseMoD(id){document.getElementById(id).classList.remove('sh')}
 </script>
 </body>
 </html>
