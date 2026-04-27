@@ -831,6 +831,94 @@ tr:hover td{background:#ffffff03;cursor:pointer}
   </div>
 </div>
 
+<!-- PRODUCT MODAL -->
+<div class="mo" id="mo-prod" onclick="closeMoProd(event)">
+  <div class="mo-bx" style="width:520px;max-width:95vw">
+    <div class="mo-hd">
+      <div class="mo-ti" id="mo-prod-title">Новий товар</div>
+      <button class="cls-b" onclick="closeMoProdD()">✕</button>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="ff">
+          <label>Категорія *</label>
+          <select class="fi2" id="prod-cat">
+            <option value="">Виберіть категорію</option>
+            <option>Спорт. харчування</option>
+            <option>Напої</option>
+            <option>Мерч</option>
+            <option>Обладнання</option>
+            <option>Аксесуари</option>
+            <option>БАД</option>
+            <option>BCAA</option>
+            <option>Протеїни</option>
+            <option>Інше</option>
+          </select>
+          <div style="margin-top:4px;display:flex;gap:6px;align-items:center">
+            <input id="prod-cat-new" placeholder="або нова категорія..." class="fi2" style="font-size:11px;padding:5px 8px">
+          </div>
+        </div>
+        <div class="ff">
+          <label>Емодзі</label>
+          <input class="fi2" type="text" id="prod-emoji" placeholder="📦" maxlength="2">
+        </div>
+      </div>
+      <div class="ff">
+        <label>Назва товару *</label>
+        <input class="fi2" type="text" id="prod-name" placeholder="Протеїн 900г">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div class="ff">
+          <label>Ціна (₴) *</label>
+          <input class="fi2" type="number" id="prod-price" placeholder="0" min="0">
+        </div>
+        <div class="ff">
+          <label>Собівартість (₴)</label>
+          <input class="fi2" type="number" id="prod-cost" placeholder="0" min="0">
+        </div>
+        <div class="ff">
+          <label>Одиниця виміру</label>
+          <select class="fi2" id="prod-unit">
+            <option value="шт">шт</option>
+            <option value="кг">кг</option>
+            <option value="л">л</option>
+            <option value="г">г</option>
+            <option value="мл">мл</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="ff">
+          <label>Залишок (шт)</label>
+          <input class="fi2" type="number" id="prod-stock" placeholder="0" min="0">
+        </div>
+        <div class="ff">
+          <label>Мін. залишок (шт)</label>
+          <input class="fi2" type="number" id="prod-min" placeholder="5" min="0">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="ff">
+          <label>Штрих-код</label>
+          <input class="fi2" type="text" id="prod-barcode" placeholder="4820000000000">
+        </div>
+        <div class="ff">
+          <label>Артикул</label>
+          <input class="fi2" type="text" id="prod-sku" placeholder="SKU-001">
+        </div>
+      </div>
+      <div class="ff">
+        <label>Опис</label>
+        <textarea class="fi2" id="prod-desc" rows="2" placeholder="Короткий опис товару..." style="resize:vertical"></textarea>
+      </div>
+    </div>
+    <div class="mo-ft">
+      <button class="f-b se" onclick="closeMoProdD()">Скасувати</button>
+      <button class="f-b" onclick="saveProduct()" id="prod-save-btn">Зберегти</button>
+    </div>
+  </div>
+</div>
+
 <!-- DOSSIER -->
 <div class="dos-ov" id="dos-ov" onclick="closeDos(event)">
   <div class="dos">
@@ -3621,557 +3709,75 @@ async function deleteProduct(id,name){
   alert('✅ Товар видалено');
 }
 
-function editProduct(id){
-  const p=gProducts.find(x=>x.id===id);
-  if(!p)return;
-  const name=prompt('Назва:',p.name);if(name===null)return;
-  const price=parseInt(prompt('Ціна (₴):',p.price));if(isNaN(price))return;
-  const min=parseInt(prompt('Мін. залишок:',p.min_stock));
-  sb.patch('products',`id=eq.${id}`,{name,price,min_stock:isNaN(min)?p.min_stock:min});
-  p.name=name;p.price=price;p.min_stock=isNaN(min)?p.min_stock:min;
-  renderAssortment();
-}
+let _editProductId=null;
 
-async function openAddProduct(){
-  const name=prompt('Назва товару:');if(!name)return;
-  const cat=prompt('Категорія:','Спорт. харчування');if(!cat)return;
-  const price=parseInt(prompt('Ціна (₴):'));if(isNaN(price))return;
-  const stock=parseInt(prompt('Початковий залишок (шт.):','0'));
-  const min=parseInt(prompt('Мінімальний залишок (шт.):','5'));
-  const emoji=prompt('Емодзі:','📦')||'📦';
-  const result=await sb.post('products',{name,category:cat,price,stock:isNaN(stock)?0:stock,min_stock:isNaN(min)?5:min,emoji,is_active:true});
-  const newP=Array.isArray(result)?result[0]:result;
-  if(newP?.id) gProducts.push(newP);
-  renderAssortment();
-  alert('✅ Товар додано!');
-}
+function editProduct(id){ _editProductId=id; openAddProduct(); }
 
-
-// Кешуємо налаштування в пам'яті після завантаження з БД
-let cbSettings = {
-  cb_login: 'creagym1',
-  cb_pass: 'creagym02',
-  cb_key: '8f3b0bda72f889802cd21f7',
-  cb_prro_name: 'ПРРО2',
-  cb_prro_num: '4001020534',
-  cb_fiscalize_cash: 'true',
-  cb_fiscalize_card: 'true',
-};
-
-// Завантажити налаштування з Supabase
-async function loadCbSettings(){
-  try{
-    const rows = await sb.get('settings','?select=key,value');
-    if(rows && Array.isArray(rows)){
-      rows.forEach(r=>{ cbSettings[r.key]=r.value; });
-    }
-  }catch(e){ console.warn('loadCbSettings:', e); }
-  applyCbSettingsToForm();
-}
-
-// Застосувати до форми
-function applyCbSettingsToForm(){
-  const s = cbSettings;
-  const f = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
-  f('cfg-cb-login',   s.cb_login);
-  f('cfg-cb-pass',    s.cb_pass);
-  f('cfg-cb-key',     s.cb_key);
-  f('cfg-prro-name',  s.cb_prro_name);
-  f('cfg-prro-num',   s.cb_prro_num);
-  const cash = document.getElementById('cfg-fisk-cash');
-  const card = document.getElementById('cfg-fisk-card');
-  if(cash){ cash.checked = s.cb_fiscalize_cash !== 'false'; updateFiskRow('cash', cash); }
-  if(card){ card.checked = s.cb_fiscalize_card !== 'false'; updateFiskRow('card', card); }
-}
-
-function updateFiskRow(type, cb){
-  const row = document.getElementById('fisk-'+type+'-row');
-  if(row) row.style.borderColor = cb.checked ? 'var(--ym)' : 'var(--bd2)';
-}
-
-// Зберегти налаштування в Supabase
-async function saveCbSettings(){
-  const login   = document.getElementById('cfg-cb-login')?.value.trim();
-  const pass    = document.getElementById('cfg-cb-pass')?.value.trim();
-  const key     = document.getElementById('cfg-cb-key')?.value.trim() || '';
-  const prroNm  = document.getElementById('cfg-prro-name')?.value.trim() || 'ПРРО';
-  const prroNum = document.getElementById('cfg-prro-num')?.value.trim()  || '';
-  const fCash   = document.getElementById('cfg-fisk-cash')?.checked;
-  const fCard   = document.getElementById('cfg-fisk-card')?.checked;
-
-  if(!login || !pass){ alert('Введіть логін і пароль касира'); return; }
-  if(!key){ alert('Введіть ключ ліцензії каси з my.checkbox.ua → Каси'); return; }
-
-  const updates = {
-    cb_login:          login,
-    cb_pass:           pass,
-    cb_key:            key,
-    cb_prro_name:      prroNm,
-    cb_prro_num:       prroNum,
-    cb_fiscalize_cash: fCash ? 'true' : 'false',
-    cb_fiscalize_card: fCard ? 'true' : 'false',
-  };
-
-  try{
-    for(const [key, value] of Object.entries(updates)){
-      await sb.patch('settings', `key=eq.${key}`, { value, updated_at: new Date().toISOString() });
-      cbSettings[key] = value;
-    }
-    alert(`✅ Налаштування збережено!\nПРРО: ${prroNm}\nКасир: ${login}\nФіскалізація: ${fCash?'Готівка ':''}${fCard?'Картка':''}`);
-  }catch(e){
-    alert('❌ Помилка збереження: '+e.message);
+function openAddProduct(){
+  const p=_editProductId?gProducts.find(x=>x.id===_editProductId):null;
+  document.getElementById('mo-prod-title').textContent=p?'Редагувати товар':'Новий товар';
+  document.getElementById('prod-save-btn').textContent=p?'Зберегти зміни':'Додати товар';
+  const cats=[...new Set(gProducts.map(x=>x.category))];
+  const defaults=['Спорт. харчування','Напої','Мерч','Обладнання','Аксесуари','БАД','BCAA','Протеїни','Інше'];
+  const allCats=[...new Set([...defaults,...cats])];
+  const sel=document.getElementById('prod-cat');
+  sel.innerHTML='<option value="">Виберіть категорію</option>'+allCats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  if(p){
+    sel.value=p.category||'';
+    document.getElementById('prod-name').value=p.name||'';
+    document.getElementById('prod-price').value=p.price||'';
+    document.getElementById('prod-cost').value=p.cost||'';
+    document.getElementById('prod-stock').value=p.stock||0;
+    document.getElementById('prod-min').value=p.min_stock||5;
+    document.getElementById('prod-emoji').value=p.emoji||'📦';
+    document.getElementById('prod-unit').value=p.unit||'шт';
+    document.getElementById('prod-barcode').value=p.barcode||'';
+    document.getElementById('prod-sku').value=p.sku||'';
+    document.getElementById('prod-desc').value=p.description||'';
   }
+  document.getElementById('mo-prod').classList.add('sh');
 }
 
-function getCbLogin(){ return cbSettings.cb_login || 'creagym1'; }
-function getCbPass(){  return cbSettings.cb_pass  || 'creagym02'; }
-function shouldFiscalize(method){
-  if(method === 'cash') return cbSettings.cb_fiscalize_cash !== 'false';
-  if(method === 'card') return cbSettings.cb_fiscalize_card !== 'false';
-  return true;
+function closeMoProd(e){if(e.target===document.getElementById('mo-prod'))closeMoProdD();}
+function closeMoProdD(){
+  document.getElementById('mo-prod').classList.remove('sh');
+  _editProductId=null;
+  ['prod-name','prod-price','prod-cost','prod-stock','prod-min','prod-barcode','prod-sku','prod-desc','prod-emoji','prod-cat-new'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const cat=document.getElementById('prod-cat');if(cat)cat.value='';
+  const unit=document.getElementById('prod-unit');if(unit)unit.value='шт';
 }
 
-function toggleCfgPass(){
-  const inp = document.getElementById('cfg-cb-pass');
-  if(inp) inp.type = inp.type === 'password' ? 'text' : 'password';
-}
-
-async function testCbConnection(){
-  const dot=document.getElementById('cb-status-dot');
-  const txt=document.getElementById('cb-status-text');
-  const res=document.getElementById('cfg-cb-result');
-  if(dot) dot.style.background='var(--or)';
-  if(txt) txt.textContent='Перевірка...';
-  if(res){res.style.display='block';res.innerHTML='<div style="color:var(--m2)">⏳ Перевіряємо підключення...</div>';}
-
-  const formLogin=document.getElementById('cfg-cb-login')?.value.trim()||'';
-  const formPass=document.getElementById('cfg-cb-pass')?.value.trim()||'';
-  const formKey=document.getElementById('cfg-cb-key')?.value.trim()||'';
-
-  if(!formLogin||!formPass||!formKey){
-    if(dot) dot.style.background='var(--rd)';
-    if(txt) txt.textContent='❌ Заповніть поля';
-    res.innerHTML=`<div style="color:var(--rd)">❌ Заповніть логін, пароль і ключ ліцензії</div>`;
-    return;
-  }
-
+async function saveProduct(){
+  const catSel=document.getElementById('prod-cat').value;
+  const catNew=(document.getElementById('prod-cat-new')?.value||'').trim();
+  const cat=catNew||catSel;
+  const name=(document.getElementById('prod-name')?.value||'').trim();
+  const price=parseInt(document.getElementById('prod-price')?.value)||0;
+  const cost=parseInt(document.getElementById('prod-cost')?.value)||0;
+  const stock=parseInt(document.getElementById('prod-stock')?.value)||0;
+  const min_stock=parseInt(document.getElementById('prod-min')?.value)||5;
+  const emoji=(document.getElementById('prod-emoji')?.value||'📦').trim()||'📦';
+  const unit=document.getElementById('prod-unit')?.value||'шт';
+  const barcode=(document.getElementById('prod-barcode')?.value||'').trim();
+  const sku=(document.getElementById('prod-sku')?.value||'').trim();
+  const description=(document.getElementById('prod-desc')?.value||'').trim();
+  if(!cat){alert('Оберіть або введіть категорію');return;}
+  if(!name){alert('Введіть назву товару');return;}
+  if(!price){alert('Введіть ціну');return;}
+  const btn=document.getElementById('prod-save-btn');
+  btn.textContent='Збереження...';btn.disabled=true;
   try{
-    // Перевіряємо логін/пароль напряму
-    const lr=await fetch(CB_PROXY,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+CB_ANON},
-      body:JSON.stringify({action:'login',data:{_login:formLogin,_pass:formPass,_license_key:formKey}})
-    }).then(r=>r.json());
-
-    if(!lr.access_token){
-      if(dot) dot.style.background='var(--rd)';
-      if(txt) txt.textContent='❌ Невірний логін/пароль';
-      res.innerHTML=`
-        <div style="color:var(--rd);font-size:13px;font-weight:700;margin-bottom:8px">❌ Невірний логін або пароль</div>
-        <div style="color:var(--m2);font-size:12px">Перевірте дані в my.checkbox.ua → Касири</div>
-        <div style="color:var(--m);font-size:11px;margin-top:4px">${lr.message||''}</div>`;
-      return;
-    }
-
-    // Логін/пароль правильні. Ключ ліцензії перевіряємо при відкритті зміни
-    // Перевіряємо стан зміни
-    const sh=await fetch(CB_PROXY,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+CB_ANON},
-      body:JSON.stringify({action:'shift_status',data:{token:lr.access_token,_login:formLogin,_pass:formPass,_license_key:formKey}})
-    }).then(r=>r.json());
-
-    const shiftOpen=sh?.status==='OPENED';
-    const fCash=document.getElementById('cfg-fisk-cash')?.checked;
-    const fCard=document.getElementById('cfg-fisk-card')?.checked;
-
-    if(dot) dot.style.background='var(--gr)';
-    if(txt) txt.textContent='✅ Підключено';
-    res.innerHTML=`
-      <div style="color:var(--gr);font-size:13px;font-weight:700;margin-bottom:10px">✅ Логін і пароль правильні</div>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        <div style="font-size:12px">✅ Касир: <b style="color:var(--w)">${formLogin}</b></div>
-        <div style="font-size:12px;padding:6px 10px;background:var(--p3);border-radius:7px;color:var(--or)">
-          ⚠️ Ключ ліцензії перевіряється при відкритті зміни.<br>
-          <span style="font-size:11px;color:var(--m2)">Натисніть "Відкрити зміну" щоб перевірити ключ.</span>
-        </div>
-        <div style="font-size:12px">${shiftOpen?'✅':'⚠️'} Зміна: <b style="color:${shiftOpen?'var(--gr)':'var(--or)'}">${shiftOpen?'Відкрита':'Закрита'}</b></div>
-        <div style="font-size:12px">💳 Фіскалізація: <b style="color:var(--w)">${fCash?'Готівка ':''}${fCard?'Картка':''}</b></div>
-      </div>`;
-  }catch(e){
-    if(dot) dot.style.background='var(--rd)';
-    if(txt) txt.textContent='❌ Недоступний';
-    res.innerHTML=`<div style="color:var(--rd)">❌ ${e.message}</div>`;
-  }
-}
-// Блокуємо/розблоковуємо налаштування залежно від стану зміни
-function updateCfgShiftLock(isOpen){
-  const fields=['cfg-cb-login','cfg-cb-pass','cfg-cb-key','cfg-prro-name','cfg-prro-num'];
-  const cashCb=document.getElementById('cfg-fisk-cash');
-  const cardCb=document.getElementById('cfg-fisk-card');
-  const saveBtn=document.getElementById('cfg-save-btn');
-  const openBtn=document.getElementById('cfg-open-shift-btn');
-  const closeBtn=document.getElementById('cfg-close-shift-btn');
-
-  fields.forEach(id=>{
-    const el=document.getElementById(id);
-    if(el){
-      el.disabled=isOpen;
-      el.style.opacity=isOpen?'0.5':'1';
-      el.style.cursor=isOpen?'not-allowed':'text';
-    }
-  });
-  if(cashCb){ cashCb.disabled=isOpen; cashCb.style.opacity=isOpen?'0.5':'1'; cashCb.style.cursor=isOpen?'not-allowed':'pointer'; }
-  if(cardCb){ cardCb.disabled=isOpen; cardCb.style.opacity=isOpen?'0.5':'1'; cardCb.style.cursor=isOpen?'not-allowed':'pointer'; }
-  if(saveBtn){ saveBtn.disabled=isOpen; saveBtn.style.opacity=isOpen?'0.5':'1'; saveBtn.style.cursor=isOpen?'not-allowed':'pointer'; }
-  if(openBtn){ openBtn.disabled=isOpen; openBtn.style.opacity=isOpen?'0.5':'1'; openBtn.style.cursor=isOpen?'not-allowed':'pointer'; }
-  if(closeBtn){ closeBtn.style.display=isOpen?'inline-flex':'none'; }
-
-  // Показуємо попередження якщо зміна відкрита
-  const warn=document.getElementById('cfg-shift-warn');
-  if(warn) warn.style.display=isOpen?'block':'none';
-}
-
-async function openCbShiftManual(){
-  // Читаємо з полів форми — не з cbSettings
-  const formLogin=document.getElementById('cfg-cb-login')?.value.trim()||getCbLogin();
-  const formPass=document.getElementById('cfg-cb-pass')?.value.trim()||getCbPass();
-  const formKey=document.getElementById('cfg-cb-key')?.value.trim()||cbSettings.cb_key||'';
-
-  try{
-    const lr=await fetch(CB_PROXY,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+CB_ANON},
-      body:JSON.stringify({action:'login',data:{_login:formLogin,_pass:formPass,_license_key:formKey}})
-    }).then(r=>r.json());
-
-    if(!lr.access_token){alert('❌ Помилка авторизації Checkbox\n'+( lr.message||'Перевірте логін і пароль'));return;}
-
-    const res=await fetch(CB_PROXY,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+CB_ANON},
-      body:JSON.stringify({action:'open_shift',data:{token:lr.access_token,_login:formLogin,_pass:formPass,_license_key:formKey}})
-    }).then(r=>r.json());
-
-    if(res.id||res.status==='CREATING'||res.status==='OPENED'){
-      alert('✅ Зміну в Checkbox відкрито!');
-      updateCfgShiftLock(true);
+    if(_editProductId){
+      await sb.patch('products',`id=eq.${_editProductId}`,{name,category:cat,price,cost,stock,min_stock,emoji,unit,barcode,sku,description});
+      const p=gProducts.find(x=>x.id===_editProductId);
+      if(p) Object.assign(p,{name,category:cat,price,cost,stock,min_stock,emoji,unit,barcode,sku,description});
     } else {
-      const err=res.message||res.detail?.[0]?.msg||JSON.stringify(res);
-      alert('❌ Помилка відкриття зміни:\n'+err);
+      const result=await sb.post('products',{name,category:cat,price,cost,stock,min_stock,emoji,unit,barcode,sku,description,is_active:true});
+      const newP=Array.isArray(result)?result[0]:result;
+      if(newP?.id) gProducts.push(newP);
     }
+    closeMoProdD();
+    renderAssortment();
   }catch(e){alert('❌ '+e.message);}
+  finally{btn.textContent=_editProductId?'Зберегти зміни':'Додати товар';btn.disabled=false;}
 }
-
-async function closeCbShiftManual(){
-  if(!confirm('Закрити зміну в Checkbox?\n\nПісля закриття можна змінити налаштування і відкрити нову зміну.'))return;
-  try{
-    const lr=await cbCall('login');
-    if(!lr.access_token){alert('❌ Помилка авторизації');return;}
-    await cbCall('close_shift',{token:lr.access_token});
-    alert('✅ Зміну в Checkbox закрито.\nТепер можна змінювати налаштування.');
-    updateCfgShiftLock(false);
-  }catch(e){alert('❌ '+e.message);}
-}
-
-// ===== CHECKBOX ПРРО ІНТЕГРАЦІЯ =====
-const CB_PROXY = 'https://rkknbltiylsvmycbbyde.supabase.co/functions/v1/checkbox-proxy';
-const CB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJra25ibHRpeWxzdm15Y2JieWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNzkyMTksImV4cCI6MjA5Mjc1NTIxOX0.SrXSluAh8TMcXoCqVZLk_mylTSwzBu8tJDuUSudD-mA';
-
-async function cbCall(action, data={}) {
-  const r = await fetch(CB_PROXY, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+CB_ANON },
-    body: JSON.stringify({ action, data: {
-      ...data,
-      _login: getCbLogin(),
-      _pass: getCbPass(),
-      _license_key: cbSettings.cb_key || '',
-    }})
-  });
-  return r.json();
-}
-
-// Головна функція — щоразу логіниться, перевіряє/відкриває зміну, пробиває чек
-async function cbCreateReceipt(items, total, payMethod, client) {
-  // Перевіряємо чи треба фіскалізувати цей тип оплати
-  if(!shouldFiscalize(payMethod)){
-    showLocalReceipt(items, total, payMethod, '');
-    return;
-  }
-  showCbLoading(true, 'Підключення до Checkbox...');
-  try {
-    // 1. Логін
-    const loginRes = await cbCall('login');
-    if(!loginRes.access_token) {
-      showCbLoading(false);
-      showLocalReceipt(items, total, payMethod, 'Checkbox: помилка авторизації');
-      return;
-    }
-    const token = loginRes.access_token;
-
-    // 2. Перевіряємо зміну — якщо не відкрита, не відкриваємо автоматично
-    showCbLoading(true, 'Перевірка зміни в Checkbox...');
-    let shiftOk = false;
-    try {
-      const st = await cbCall('shift_status', { token });
-      if(st?.status === 'OPENED') shiftOk = true;
-    } catch(e) {}
-
-    if(!shiftOk) {
-      showCbLoading(false);
-      // Зміна в Checkbox не відкрита — показуємо звичайний чек
-      // (зміна в CREAGYM вже перевірена раніше, це тільки Checkbox)
-      showLocalReceipt(items, total, payMethod,
-        `⚠️ Зміна в Checkbox не відкрита.\nЗайдіть: Налаштування → Відкрити зміну вручну`);
-      return;
-    }
-
-    // 4. Створюємо чек
-    showCbLoading(true, 'Фіскалізація чека...');
-    const receiptRes = await cbCall('create_receipt', {
-      token,
-      items: items.map(i => ({
-        name: (i.name||'Послуга').replace(/[^\w\s\u0400-\u04FF\-]/g,'').trim().substring(0,50) || 'Posluga',
-        price: i.price,
-        qty: i.qty || 1,
-        code: i.code || '001',
-      })),
-      total,
-      payment_method: payMethod,
-      client_phone: client?.phone || null,
-    });
-
-    if(!receiptRes.id) {
-      showCbLoading(false);
-      showLocalReceipt(items, total, payMethod, 'Checkbox помилка: '+(receiptRes.message||JSON.stringify(receiptRes)));
-      return;
-    }
-
-    // 5. Чекаємо підтвердження
-    showCbLoading(true, 'Очікування підтвердження ДПС...');
-    let receipt = receiptRes;
-    for(let i=0; i<10; i++) {
-      await new Promise(r=>setTimeout(r,1000));
-      try {
-        const upd = await cbCall('get_receipt', { token, receipt_id: receiptRes.id });
-        if(upd.status === 'DONE' || upd.status === 'ERROR') { receipt = upd; break; }
-      } catch(e) { break; }
-    }
-    showCbLoading(false);
-    // Зберігаємо fiscal_receipt_id в останній транзакції продажу
-    if(receipt.status === 'DONE' && receipt.id){
-      try{
-        const lastSales = await sb.get('sales','?order=created_at.desc&limit=1&type=neq.return');
-        if(lastSales&&lastSales.length){
-          await sb.patch('sales',`id=eq.${lastSales[0].id}`,{fiscal_receipt_id:receipt.id});
-        }
-      }catch(e){}
-    }
-    showCbReceipt(receipt, items, total, payMethod, client);
-
-  } catch(e) {
-    showCbLoading(false);
-    showLocalReceipt(items, total, payMethod, 'Помилка: '+e.message);
-  }
-}
-
-function showCbReceipt(receipt, items, total, payMethod, client) {
-  const fiscal = receipt.fiscal_code || receipt.id?.slice(0,8).toUpperCase() || 'PENDING';
-  const dt = receipt.created_at ? new Date(receipt.created_at).toLocaleString('uk-UA') : new Date().toLocaleString('uk-UA');
-  const checkUrl = receipt.public_url || 'https://check.checkbox.ua/'+receipt.id;
-  const isDone = receipt.status === 'DONE';
-  const prroName = localStorage.getItem('cb_prro_name') || 'ПРРО';
-  const prroNum = localStorage.getItem('cb_prro_num') || '';
-  const el = document.getElementById('receipt-content');
-  el.innerHTML = `
-    <div style="font-family:'Courier New',monospace;font-size:12px;line-height:1.8;color:#000;text-align:center">
-      <div style="font-weight:800;font-size:15px">CREAGYM FITNESS</div>
-      <div style="font-size:10px;color:#777">ПРРО Checkbox · ${prroName}${prroNum?' · №'+prroNum:''}</div>
-      <div style="border-top:1px dashed #ccc;margin:8px 0"></div>
-      <div style="text-align:left">
-        ${items.map(i=>`<div style="font-weight:600">${i.name||'Послуга'}</div>
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:#555">
-            <span>${i.qty||1} × ${(i.price||0).toLocaleString('uk-UA')} ₴</span>
-            <span>${((i.qty||1)*(i.price||0)).toLocaleString('uk-UA')} ₴</span>
-          </div>`).join('')}
-      </div>
-      <div style="border-top:1px dashed #ccc;margin:8px 0"></div>
-      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:14px">
-        <span>РАЗОМ:</span><span>${total.toLocaleString('uk-UA')} ₴</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:#777">
-        <span>Оплата:</span><span>${payMethod==='card'?'Картка':'Готівка'}</span>
-      </div>
-      <div style="border-top:1px dashed #ccc;margin:8px 0"></div>
-      <div style="font-size:11px;color:#777">Касир: ${curUser?.name||'—'} | ${dt}</div>
-      <div style="margin:8px 0">
-        <span style="background:${isDone?'#22C55E':'#F97316'};color:#fff;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:700">
-          ${isDone?'✅ ФІСКАЛЬНИЙ ЧЕК':'⏳ Фіскалізується...'}
-        </span>
-      </div>
-      <div style="font-size:11px">Фіскальний №: <b>${fiscal}</b></div>
-      ${isDone?`<div style="margin:10px 0">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(checkUrl)}" style="width:130px;height:130px;border:1px solid #eee;border-radius:4px" onerror="this.style.display='none'">
-        <div style="font-size:10px;margin-top:4px;word-break:break-all"><a href="${checkUrl}" target="_blank" style="color:#3B82F6">${checkUrl}</a></div>
-      </div>`:''}
-      <div style="border-top:1px dashed #ccc;margin:8px 0"></div>
-      <div style="font-size:11px">Дякуємо за відвідування!</div>
-    </div>`;
-  admOpenMo('receipt-mo');
-}
-
-function showLocalReceipt(items, total, payMethod, note='') {
-  const receiptItems = items.map(i=>({name:i.name,qty:i.qty||1,price:i.price,total:i.price*(i.qty||1)}));
-  let text = buildReceiptText(receiptItems, total, payMethod, curUser?.name||'—');
-  if(note) text += '\n\n'+note;
-  document.getElementById('receipt-content').textContent = text;
-  admOpenMo('receipt-mo');
-}
-
-function showCbLoading(show, msg='Фіскалізація...') {
-  let el = document.getElementById('cb-loading');
-  if(!el && show) {
-    el = document.createElement('div');
-    el.id = 'cb-loading';
-    el.style.cssText = 'position:fixed;inset:0;background:#00000085;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#fff;font-family:Montserrat,sans-serif;font-size:13px;font-weight:600';
-    el.innerHTML = '<div style="width:40px;height:40px;border:3px solid #FFD30040;border-top-color:#FFD300;border-radius:50%;animation:spin .7s linear infinite"></div><div id="cb-loading-msg" style="color:#FFD300"></div><div style="font-size:11px;color:#ffffff80">Checkbox ПРРО</div>';
-    document.body.appendChild(el);
-  }
-  if(el) {
-    el.style.display = show ? 'flex' : 'none';
-    const m = document.getElementById('cb-loading-msg');
-    if(m) m.textContent = msg;
-  }
-}
-
-async function cbOpenShift() {
-  console.log('Checkbox: зміна відкриється автоматично при першому чеку');
-}
-
-async function cbCloseShift() {
-  try {
-    const r = await cbCall('login');
-    if(r.access_token) {
-      await cbCall('close_shift', { token: r.access_token });
-      console.log('Checkbox зміну закрито');
-    }
-  } catch(e) { console.warn('cbCloseShift:', e); }
-}
-
-// Фіскальний чек повернення
-async function cbReturnReceipt(itemName, amount, payMethod, reason, originalSaleId=null) {
-  // Фіскалізуємо повернення ТІЛЬКИ якщо оригінальний продаж мав fiscal_receipt_id
-  // Тобто якщо він реально пройшов через Checkbox
-  let wasФіскалізований = false;
-
-  if(originalSaleId){
-    try{
-      const origSales = await sb.get('sales',`?id=eq.${originalSaleId}&select=payment_method,fiscal_receipt_id`);
-      const orig = origSales&&origSales.length?origSales[0]:null;
-      if(orig && orig.fiscal_receipt_id){
-        // Є ID чека в Checkbox — точно фіскалізований
-        wasФіскалізований = true;
-      }
-      // Якщо fiscal_receipt_id немає — продаж НЕ фіскалізований, не чіпаємо
-    }catch(e){ wasФіскалізований = false; }
-  }
-  // Якщо немає originalSaleId — не фіскалізуємо (не знаємо чи був фіскальним)
-
-  if(!wasФіскалізований) {
-    alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴\n(нефіскальний продаж — чек повернення не потрібен)`);
-    return;
-  }
-  showCbLoading(true, 'Фіскалізація повернення...');
-  try {
-    // 1. Логін
-    const loginRes = await cbCall('login');
-    if(!loginRes.access_token) {
-      showCbLoading(false);
-      alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴\n\n⚠️ Фіскальний чек повернення не створено (помилка авторизації Checkbox)`);
-      return;
-    }
-    const token = loginRes.access_token;
-
-    // 2. Перевіряємо зміну
-    const sh = await cbCall('shift_status', { token });
-    if(sh?.status !== 'OPENED') {
-      showCbLoading(false);
-      alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴\n\n⚠️ Фіскальний чек повернення не створено (зміна закрита)`);
-      return;
-    }
-
-    // 3. Чек повернення через Edge Function
-    showCbLoading(true, 'Фіскалізація повернення...');
-    const returnRes = await cbCall('return_receipt', {
-      token,
-      items: [{ name: itemName.substring(0,50), price: amount, qty: 1, code: '001' }],
-      payment_method: payMethod,
-      total: amount,
-      reason: reason,
-    });
-    showCbLoading(false);
-
-    if(returnRes.id) {
-      let receipt = returnRes;
-      showCbLoading(true, 'Очікування підтвердження ДПС...');
-      for(let i=0; i<8; i++) {
-        await new Promise(r=>setTimeout(r,1000));
-        try {
-          const upd = await cbCall('get_receipt', { token, receipt_id: returnRes.id });
-          if(upd.status === 'DONE' || upd.status === 'ERROR') { receipt = upd; break; }
-        } catch(e) { break; }
-      }
-      showCbLoading(false);
-
-      // Показуємо чек повернення
-      const fiscal = receipt.fiscal_code || receipt.id?.slice(0,8).toUpperCase() || '—';
-      const checkUrl = receipt.public_url || `https://check.checkbox.ua/${receipt.id}`;
-      const isDone = receipt.status === 'DONE';
-      const el = document.getElementById('receipt-content');
-      if(el) {
-        el.innerHTML = `
-          <div style="font-family:'Courier New',monospace;font-size:12px;line-height:1.8;color:#000;text-align:center">
-            <div style="font-weight:800;font-size:15px">CREAGYM FITNESS</div>
-            <div style="font-size:11px;color:#777">ПРРО Checkbox</div>
-            <div style="border-top:1px dashed #ccc;margin:8px 0"></div>
-            <div style="font-weight:700;color:#EF4444;font-size:13px">ЧЕК ПОВЕРНЕННЯ</div>
-            <div style="border-top:1px dashed #ccc;margin:8px 0"></div>
-            <div style="text-align:left">
-              <div style="font-weight:600">${itemName}</div>
-              <div style="display:flex;justify-content:space-between;font-size:11px;color:#555">
-                <span>1 × ${amount.toLocaleString('uk-UA')} ₴</span>
-                <span>${amount.toLocaleString('uk-UA')} ₴</span>
-              </div>
-            </div>
-            <div style="border-top:1px dashed #ccc;margin:8px 0"></div>
-            <div style="display:flex;justify-content:space-between;font-weight:800;font-size:14px">
-              <span>ПОВЕРНЕНО:</span><span>${amount.toLocaleString('uk-UA')} ₴</span>
-            </div>
-            <div style="font-size:11px;color:#555">Причина: ${reason}</div>
-            <div style="border-top:1px dashed #ccc;margin:8px 0"></div>
-            <div style="margin:8px 0">
-              <span style="background:${isDone?'#22C55E':'#F97316'};color:#fff;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:700">
-                ${isDone?'✅ ФІСКАЛЬНИЙ ЧЕК ПОВЕРНЕННЯ':'⏳ Фіскалізується...'}
-              </span>
-            </div>
-            <div style="font-size:11px">Фіскальний №: <b>${fiscal}</b></div>
-            ${isDone?`<div style="margin:10px 0">
-              <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(checkUrl)}" style="width:120px;height:120px;border:1px solid #eee;border-radius:4px">
-              <div style="font-size:10px;margin-top:4px;word-break:break-all"><a href="${checkUrl}" target="_blank" style="color:#3B82F6">${checkUrl}</a></div>
-            </div>`:''}
-          </div>`;
-        admOpenMo('receipt-mo');
-      }
-    } else {
-      alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴\n\n⚠️ Checkbox: ${returnRes.message||'помилка створення чека повернення'}`);
-    }
-  } catch(e) {
-    showCbLoading(false);
-    alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴\n\n⚠️ Помилка фіскалізації: ${e.message}`);
-  }
-}
-
-</script>
-</body>
-</html>
