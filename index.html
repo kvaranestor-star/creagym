@@ -629,7 +629,91 @@ tr:hover td{background:#ffffff03;cursor:pointer}
         </div>
         <div class="sec" id="sec-mkt"><div class="cs"><div class="cs-ic"><svg viewBox="0 0 28 28" fill="none"><path d="M4 14c0-1.5.7-3 3-4.5L18 4v20L7 18.5C4.7 17 4 15.5 4 14z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div><div class="cs-t">Маркетинг</div><div class="cs-s">SMS/Viber, промокоди — в розробці</div></div></div>
         <div class="sec" id="sec-staff"><div class="cs"><div class="cs-ic"><svg viewBox="0 0 28 28" fill="none"><path d="M4 22c0-3.5 2.8-5.5 6-5.5h8c3.2 0 6 2 6 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="14" cy="10" r="5" stroke="currentColor" stroke-width="1.6"/></svg></div><div class="cs-t">Персонал</div><div class="cs-s">Акаунти, ролі, доступи — в розробці</div></div></div>
-        <div class="sec" id="sec-cfg"><div class="cs"><div class="cs-ic"><svg viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M14 3v3m0 16v3M3 14h3m16 0h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div><div class="cs-t">Налаштування</div><div class="cs-s">Профіль залу, інтеграції — в розробці</div></div></div>
+        <div class="sec" id="sec-cfg">
+          <div style="display:flex;flex-direction:column;gap:16px;max-width:700px">
+
+            <!-- CHECKBOX INTEGRATION CARD -->
+            <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:14px;overflow:hidden">
+              <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--bd)">
+                <div style="width:40px;height:40px;background:#22C55E14;border:1px solid #22C55E28;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px">🔗</div>
+                <div>
+                  <div style="font-size:14px;font-weight:700">Checkbox ПРРО</div>
+                  <div style="font-size:11px;color:var(--m2);margin-top:2px">Програмний реєстратор розрахункових операцій</div>
+                </div>
+                <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+                  <div id="cb-status-dot" style="width:8px;height:8px;border-radius:50%;background:var(--m)"></div>
+                  <span id="cb-status-text" style="font-size:11px;color:var(--m2)">Не перевірено</span>
+                  <button onclick="testCbConnection()" style="padding:5px 12px;border-radius:7px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer">Перевірити</button>
+                </div>
+              </div>
+
+              <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+                <!-- ПРРО Info -->
+                <div style="background:var(--p2);border:1px solid var(--bd2);border-radius:10px;padding:14px">
+                  <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--m2);margin-bottom:10px">ПРРО / Каса</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                    <div>
+                      <div style="font-size:10px;color:var(--m2);margin-bottom:4px">Назва ПРРО</div>
+                      <div style="font-size:13px;font-weight:600" id="cfg-prro-name">ПРРО2</div>
+                    </div>
+                    <div>
+                      <div style="font-size:10px;color:var(--m2);margin-bottom:4px">Фіскальний номер</div>
+                      <div style="font-size:13px;font-weight:600" id="cfg-prro-num">4001020534</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Cashier settings -->
+                <div>
+                  <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--m2);margin-bottom:10px">Параметри касира</div>
+                  <div style="display:flex;flex-direction:column;gap:10px">
+                    <div style="display:flex;flex-direction:column;gap:5px">
+                      <label style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--m2)">Логін касира *</label>
+                      <input class="fi2" type="text" id="cfg-cb-login" placeholder="sportzal" style="max-width:300px">
+                      <div style="font-size:10px;color:var(--m)">Логін касира в особистому кабінеті my.checkbox.ua</div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:5px">
+                      <label style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--m2)">Пароль касира *</label>
+                      <div style="position:relative;max-width:300px">
+                        <input class="fi2" type="password" id="cfg-cb-pass" placeholder="••••••••" style="width:100%;padding-right:36px">
+                        <button onclick="toggleCfgPass()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--m2);font-size:13px">👁</button>
+                      </div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:5px">
+                      <label style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--m2)">Ключ ліцензії ПРРО</label>
+                      <input class="fi2" type="text" id="cfg-cb-key" placeholder="8f3b0bda72f889802cd21f7..." style="max-width:400px">
+                      <div style="font-size:10px;color:var(--m)">З налаштувань ПРРО в Checkbox (необов'язково)</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Status after test -->
+                <div id="cfg-cb-result" style="display:none;background:var(--p2);border:1px solid var(--bd2);border-radius:9px;padding:12px 14px;font-size:12px"></div>
+
+                <!-- Actions -->
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <button onclick="saveCbSettings()" style="padding:9px 18px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">💾 Зберегти налаштування</button>
+                  <button onclick="testCbConnection()" style="padding:9px 18px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">🔌 Перевірити з'єднання</button>
+                  <button onclick="openCbShiftManual()" style="padding:9px 18px;border-radius:8px;border:1px solid #22C55E40;background:#22C55E14;color:var(--gr);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">▶ Відкрити зміну вручну</button>
+                  <button onclick="closeCbShiftManual()" style="padding:9px 18px;border-radius:8px;border:1px solid #EF444440;background:#EF444414;color:var(--rd);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">⏹ Закрити зміну Checkbox</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- INSTRUCTIONS -->
+            <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:14px;padding:16px 20px">
+              <div style="font-size:12px;font-weight:700;margin-bottom:12px">📋 Як налаштувати Checkbox</div>
+              <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--m2);line-height:1.7">
+                <div>1. Зайдіть в <a href="https://my.checkbox.ua" target="_blank" style="color:var(--y)">my.checkbox.ua</a> → Інтеграції → Онлайн РРО → Checkbox</div>
+                <div>2. Знайдіть касира та перегляньте його <b style="color:var(--w)">Ім'я користувача</b> (логін) і <b style="color:var(--w)">Пароль</b></div>
+                <div>3. Введіть ці дані вище та натисніть <b style="color:var(--y)">Зберегти налаштування</b></div>
+                <div>4. Натисніть <b style="color:var(--w)">Перевірити з'єднання</b> — має з'явитись ✅</div>
+                <div>5. Після цього при кожному продажу буде автоматично видаватись фіскальний чек з QR кодом</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -954,7 +1038,7 @@ function toggleSb(){
 }
 
 // ===== PAGES =====
-const PC={stats:{t:'Статистика',s:'Огляд ключових показників',a:'Оновити'},clients:{t:'Клієнти',s:'База клієнтів залу',a:'Новий клієнт'},subs:{t:'Абонементи',s:'Типи та класи абонементів',a:'Новий абонемент'},goods:{t:'Товари',s:'Склад та залишки',a:''},fin:{t:'Каса',s:'Операції з касою і транзакції',a:''},mkt:{t:'Маркетинг',s:'Розсилки та акції',a:''},staff:{t:'Персонал',s:'Команда та доступи',a:''},cfg:{t:'Налаштування',s:'Конфігурація системи',a:''}};
+const PC={stats:{t:'Статистика',s:'Огляд ключових показників',a:'Оновити'},clients:{t:'Клієнти',s:'База клієнтів залу',a:'Новий клієнт'},subs:{t:'Абонементи',s:'Типи та класи абонементів',a:'Новий абонемент'},goods:{t:'Товари',s:'Склад та залишки',a:''},fin:{t:'Каса',s:'Операції з касою і транзакції',a:''},mkt:{t:'Маркетинг',s:'Розсилки та акції',a:''},staff:{t:'Персонал',s:'Команда та доступи',a:''},cfg:{t:'Налаштування',s:'Інтеграції та конфігурація',a:''}};
 let curPage='stats';
 function gp(id,el){
   curPage=id;
@@ -971,6 +1055,7 @@ function gp(id,el){
   if(id==='stats') loadStats();
   if(id==='subs') loadSubs();
   if(id==='fin'){okUpdateShiftUI(!!okShift);okLoadTx();}
+  if(id==='cfg') loadCbSettings();
 }
 function handleTopAction(){
   if(curPage==='clients') openMo('mo-cl');
@@ -2403,11 +2488,7 @@ async function kasaOpenShift(){
   kasaUpdateShiftUI(true);
   kasaLoadTx();
   const t=new Date().toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
-  alert(`✅ Зміну відкрито о ${t}\n💵 Готівка на початок: ${amt.toLocaleString('uk-UA')} ₴`);
-  // Відкриваємо зміну в Checkbox (асинхронно)
-  cbOpenShift().then(id=>{
-    if(id) console.log('Checkbox зміна:', id);
-  });
+  alert(`✅ Зміну відкрито о ${t}\n💵 Готівка на початок: ${amt.toLocaleString('uk-UA')} ₴\n\nCheckbox зміна відкриється автоматично при першому чеку`);
 }
 
 function kasaUpdateShiftUI(open){
@@ -2701,8 +2782,7 @@ async function kasaCloseShift(){
   showShiftReport('zreport',cashTurn,cardTurn,kasaShift.cash_start||0,kasaTxAll);
   kasaShift=null;kasaTxAll=[];
   kasaUpdateShiftUI(false);
-  // Закриваємо зміну в Checkbox
-  cbCloseShift();
+  // НЕ закриваємо зміну Checkbox автоматично — вона закриється при наступному відкритті
   document.getElementById('kasa-tx-body').innerHTML='<tr><td colspan="6" style="padding:30px;text-align:center;font-size:12px;color:var(--m2)">Зміну закрито</td></tr>';
   ['k-cash-total','k-card-total','k-total'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='0 ₴'});
   document.getElementById('k-tx-cnt').textContent='0';
@@ -2796,6 +2876,100 @@ function admOpenMo(id){document.getElementById(id).classList.add('sh')}
 function admCloseMo(id,e){if(e.target===document.getElementById(id))admCloseMoD(id)}
 function admCloseMoD(id){document.getElementById(id).classList.remove('sh')}
 
+// ===== CHECKBOX НАЛАШТУВАННЯ =====
+function getCbLogin(){ return localStorage.getItem('cb_login') || 'sportzal'; }
+function getCbPass(){ return localStorage.getItem('cb_pass') || 'creagym02'; }
+
+function loadCbSettings(){
+  const l=document.getElementById('cfg-cb-login');
+  const p=document.getElementById('cfg-cb-pass');
+  const k=document.getElementById('cfg-cb-key');
+  if(l) l.value=getCbLogin();
+  if(p) p.value=getCbPass();
+  if(k) k.value=localStorage.getItem('cb_key')||'';
+}
+
+function saveCbSettings(){
+  const login=document.getElementById('cfg-cb-login')?.value.trim();
+  const pass=document.getElementById('cfg-cb-pass')?.value.trim();
+  const key=document.getElementById('cfg-cb-key')?.value.trim();
+  if(!login||!pass){alert('Введіть логін і пароль касира');return}
+  localStorage.setItem('cb_login',login);
+  localStorage.setItem('cb_pass',pass);
+  if(key) localStorage.setItem('cb_key',key);
+  alert('✅ Налаштування збережено!\nЛогін: '+login);
+}
+
+function toggleCfgPass(){
+  const inp=document.getElementById('cfg-cb-pass');
+  if(inp) inp.type=inp.type==='password'?'text':'password';
+}
+
+async function testCbConnection(){
+  const dot=document.getElementById('cb-status-dot');
+  const txt=document.getElementById('cb-status-text');
+  const res=document.getElementById('cfg-cb-result');
+  if(dot) dot.style.background='var(--or)';
+  if(txt) txt.textContent='Перевірка...';
+
+  // Оновлюємо пароль в Edge Function перед тестом
+  const login=getCbLogin();
+  const pass=getCbPass();
+
+  try{
+    const r=await cbCall('login');
+    if(r.access_token){
+      if(dot){dot.style.background='var(--gr)';}
+      if(txt) txt.textContent='✅ Підключено';
+      // Перевіряємо зміну
+      const sh=await cbCall('shift_status',{token:r.access_token});
+      const shiftInfo=sh.status==='OPENED'?`✅ Зміна відкрита (з ${new Date(sh.opened_at||'').toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})})`:`⚠️ Зміна закрита (${sh.status||'невідомо'})`;
+      if(res){
+        res.style.display='block';
+        res.innerHTML=`<div style="color:var(--gr);font-weight:600;margin-bottom:6px">✅ З'єднання успішне</div>
+          <div style="color:var(--m2)">Касир: <b style="color:var(--w)">${login}</b></div>
+          <div style="color:var(--m2);margin-top:4px">${shiftInfo}</div>`;
+      }
+    } else {
+      if(dot) dot.style.background='var(--rd)';
+      if(txt) txt.textContent='❌ Помилка';
+      if(res){
+        res.style.display='block';
+        res.innerHTML=`<div style="color:var(--rd);font-weight:600">❌ Помилка авторизації</div>
+          <div style="color:var(--m2);margin-top:4px">${r.message||JSON.stringify(r)}</div>
+          <div style="color:var(--m2);margin-top:4px">Перевірте логін/пароль касира в my.checkbox.ua → Інтеграції</div>`;
+      }
+    }
+  }catch(e){
+    if(dot) dot.style.background='var(--rd)';
+    if(txt) txt.textContent='❌ Недоступний';
+    if(res){res.style.display='block';res.innerHTML=`<div style="color:var(--rd)">❌ ${e.message}</div>`;}
+  }
+}
+
+async function openCbShiftManual(){
+  try{
+    const lr=await cbCall('login');
+    if(!lr.access_token){alert('❌ Помилка авторизації Checkbox');return}
+    const res=await cbCall('open_shift',{token:lr.access_token});
+    if(res.id){
+      alert('✅ Зміну в Checkbox відкрито!\nID: '+res.id);
+    } else {
+      alert('⚠️ Відповідь: '+JSON.stringify(res));
+    }
+  }catch(e){alert('❌ '+e.message)}
+}
+
+async function closeCbShiftManual(){
+  if(!confirm('Закрити зміну в Checkbox?\nПісля цього фіскалізація не буде можлива до відкриття нової зміни.'))return;
+  try{
+    const lr=await cbCall('login');
+    if(!lr.access_token){alert('❌ Помилка авторизації');return}
+    await cbCall('close_shift',{token:lr.access_token});
+    alert('✅ Зміну в Checkbox закрито');
+  }catch(e){alert('❌ '+e.message)}
+}
+
 // ===== CHECKBOX ПРРО ІНТЕГРАЦІЯ =====
 const CB_PROXY = 'https://rkknbltiylsvmycbbyde.supabase.co/functions/v1/checkbox-proxy';
 const CB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJra25ibHRpeWxzdm15Y2JieWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNzkyMTksImV4cCI6MjA5Mjc1NTIxOX0.SrXSluAh8TMcXoCqVZLk_mylTSwzBu8tJDuUSudD-mA';
@@ -2804,7 +2978,12 @@ async function cbCall(action, data={}) {
   const r = await fetch(CB_PROXY, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+CB_ANON },
-    body: JSON.stringify({ action, data })
+    body: JSON.stringify({ action, data: {
+      ...data,
+      // Передаємо логін/пароль з налаштувань (для дії login)
+      _login: getCbLogin(),
+      _pass: getCbPass(),
+    }})
   });
   return r.json();
 }
