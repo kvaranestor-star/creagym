@@ -2045,7 +2045,7 @@ async function okCloseShift(){
 
   // 3. Показуємо звіт
   if(cbZReportId){
-    await showFiscalReceipt(cbZReportId);
+    await showFiscalReport(cbZReportId);
     setTimeout(()=>{ showLocalShiftReport(closedShift,closedTx,cashTurn,cardTurn); },500);
   } else {
     showLocalShiftReport(closedShift,closedTx,cashTurn,cardTurn);
@@ -3830,7 +3830,7 @@ async function kasaCloseShift(){
 
   // 3. Показуємо звіт - спочатку фіскальний Z-чек з Checkbox, потім локальний зведений
   if(cbZReportId){
-    await showFiscalReceipt(cbZReportId);
+    await showFiscalReport(cbZReportId);
     // Після закриття фіскального чека юзером - показуємо локальний зведений
     setTimeout(()=>{ showLocalShiftReport(closedShift,closedTx,cashTurn,cardTurn); },500);
   } else {
@@ -4458,6 +4458,52 @@ function printFiscalReceipt(){
     frame.contentWindow.focus();
     frame.contentWindow.print();
   }catch(e){alert('❌ Не вдалося надрукувати: ' + e.message);}
+}
+
+// Показати фіскальний Z-звіт (окремий endpoint /reports)
+async function showFiscalReport(reportId){
+  if(!reportId){alert('Немає ID Z-звіту');return;}
+  try{
+    await loadCbSettings();
+    const lr = await cbCall('login');
+    if(!lr.access_token){alert('Не вдалося авторизуватися в Checkbox');return;}
+    const r = await cbCall('get_report_html', {
+      token: lr.access_token,
+      _license_key: _cbSettings.cb_key,
+      report_id: reportId
+    });
+    if(!r || !r.html){
+      alert('Не вдалося отримати фіскальний Z-звіт: ' + (r.error || 'невідома помилка'));
+      return;
+    }
+    let mo = document.getElementById('fiscal-receipt-mo');
+    if(!mo){
+      mo = document.createElement('div');
+      mo.id = 'fiscal-receipt-mo';
+      mo.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)';
+      mo.onclick = function(e){if(e.target===mo)mo.remove();};
+      document.body.appendChild(mo);
+    } else { mo.innerHTML = ''; mo.style.display='flex'; }
+
+    mo.innerHTML = `
+      <div style="background:#fff;border-radius:12px;width:100%;max-width:400px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #eee;background:#fafafa;flex-shrink:0">
+          <div style="font-size:13px;font-weight:700;color:#000">📋 Фіскальний Z-звіт</div>
+          <button onclick="document.getElementById('fiscal-receipt-mo').remove()" style="width:26px;height:26px;background:#f0f0f0;border:none;border-radius:6px;cursor:pointer;color:#666;font-size:14px">✕</button>
+        </div>
+        <iframe id="fiscal-receipt-frame" style="flex:1;width:100%;border:none;background:#fff;min-height:0"></iframe>
+        <div style="display:flex;gap:8px;padding:10px 16px;border-top:1px solid #eee;background:#fafafa;flex-shrink:0">
+          <button onclick="document.getElementById('fiscal-receipt-mo').remove()" style="flex:1;padding:10px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#666;font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">Закрити</button>
+          <button onclick="printFiscalReceipt()" style="flex:1;padding:10px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">🖨️ Друкувати</button>
+        </div>
+      </div>`;
+
+    const frame = document.getElementById('fiscal-receipt-frame');
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    doc.open();
+    doc.write(r.html);
+    doc.close();
+  }catch(e){alert('❌ ' + e.message);}
 }
 
 async function cbReturnReceipt(itemName, amount, payMethod, reason, origSaleId){
