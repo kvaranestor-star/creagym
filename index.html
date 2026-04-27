@@ -3385,34 +3385,57 @@ async function testCbConnection(){
   if(dot) dot.style.background='var(--or)';
   if(txt) txt.textContent='Перевірка...';
   if(res){res.style.display='block';res.innerHTML='<div style="color:var(--m2)">⏳ Перевіряємо підключення...</div>';}
+
+  // Читаємо ПРЯМО З ПОЛІВ ФОРМИ — не з cbSettings!
+  const formLogin=document.getElementById('cfg-cb-login')?.value.trim()||'';
+  const formPass=document.getElementById('cfg-cb-pass')?.value.trim()||'';
+  const formKey=document.getElementById('cfg-cb-key')?.value.trim()||'';
+
+  if(!formLogin||!formPass||!formKey){
+    if(dot) dot.style.background='var(--rd)';
+    if(txt) txt.textContent='❌ Заповніть поля';
+    res.innerHTML=`<div style="color:var(--rd)">❌ Заповніть логін, пароль і ключ ліцензії</div>`;
+    return;
+  }
+
   try{
-    const r=await cbCall('verify_all');
+    // Відправляємо дані з форми напряму в Edge Function
+    const r=await fetch(CB_PROXY,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+CB_ANON},
+      body:JSON.stringify({action:'verify_all',data:{
+        _login:formLogin,
+        _pass:formPass,
+        _license_key:formKey
+      }})
+    }).then(r=>r.json());
+
     if(!r.ok){
       if(dot) dot.style.background='var(--rd)';
       if(txt) txt.textContent='❌ Помилка';
       const isLogin=r.step==='login';
       res.innerHTML=`
-        ${isLogin?'':' <div style="color:var(--or);font-size:12px;margin-bottom:6px">✅ Логін і пароль — вірні</div>'}
+        ${!isLogin?'<div style="color:var(--or);font-size:12px;margin-bottom:6px">✅ Логін і пароль — вірні</div>':''}
         <div style="color:var(--rd);font-size:13px;font-weight:700;margin-bottom:8px">
           ${isLogin?'❌ Невірний логін або пароль':'❌ Невірний ключ ліцензії каси'}
         </div>
         <div style="color:var(--m2);font-size:12px">
           ${isLogin?'Перевірте дані в my.checkbox.ua → Касири':'Перевірте ключ в my.checkbox.ua → Каси → "Ключ ліцензії"'}
         </div>
-        ${!isLogin?`<div style="color:var(--m);font-size:11px;margin-top:4px">Введений ключ: <code style="background:var(--p3);padding:2px 6px;border-radius:4px">${cbSettings.cb_key||'—'}</code></div>
-        ${r.available?`<div style="color:var(--m);font-size:11px;margin-top:4px">Доступні ключі касира: <b style="color:var(--w)">${r.available}</b></div>`:''}
-        `:''}`;
+        ${!isLogin?`<div style="color:var(--m);font-size:11px;margin-top:4px">Введений ключ: <code style="background:var(--p3);padding:2px 6px;border-radius:4px">${formKey}</code></div>
+        ${r.available?`<div style="color:var(--m2);font-size:11px;margin-top:4px">Доступні ключі: <b style="color:var(--w)">${r.available}</b></div>`:''}`:''}`
       return;
     }
+
     const shiftOpen=r.shift_status==='OPENED';
-    const fCash=cbSettings.cb_fiscalize_cash!=='false';
-    const fCard=cbSettings.cb_fiscalize_card!=='false';
+    const fCash=document.getElementById('cfg-fisk-cash')?.checked;
+    const fCard=document.getElementById('cfg-fisk-card')?.checked;
     if(dot) dot.style.background='var(--gr)';
     if(txt) txt.textContent='✅ Підключено';
     res.innerHTML=`
       <div style="color:var(--gr);font-size:13px;font-weight:700;margin-bottom:10px">✅ Всі дані правильні</div>
       <div style="display:flex;flex-direction:column;gap:5px">
-        <div style="font-size:12px">✅ Логін і пароль: <b style="color:var(--w)">${getCbLogin()}</b></div>
+        <div style="font-size:12px">✅ Логін: <b style="color:var(--w)">${formLogin}</b></div>
         <div style="font-size:12px">✅ Ключ ліцензії: <b style="color:var(--gr)">Валідний</b></div>
         <div style="font-size:12px">${shiftOpen?'✅':'⚠️'} Зміна: <b style="color:${shiftOpen?'var(--gr)':'var(--or)'}">${shiftOpen?'Відкрита':'Закрита'}</b></div>
         <div style="font-size:12px">💳 Фіскалізація: <b style="color:var(--w)">${fCash?'Готівка ':''}${fCard?'Картка':''}</b></div>
