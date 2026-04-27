@@ -3379,46 +3379,51 @@ function toggleCfgPass(){
 }
 
 async function testCbConnection(){
-  const dot = document.getElementById('cb-status-dot');
-  const txt = document.getElementById('cb-status-text');
-  const res = document.getElementById('cfg-cb-result');
-  if(dot) dot.style.background = 'var(--or)';
-  if(txt) txt.textContent = 'Перевірка...';
+  const dot=document.getElementById('cb-status-dot');
+  const txt=document.getElementById('cb-status-text');
+  const res=document.getElementById('cfg-cb-result');
+  if(dot) dot.style.background='var(--or)';
+  if(txt) txt.textContent='Перевірка...';
+  if(res) res.style.display='none';
   try{
-    // 1. Логін
-    const r = await cbCall('login');
-    if(!r.access_token){
-      if(dot) dot.style.background = 'var(--rd)';
-      if(txt) txt.textContent = '❌ Невірний логін/пароль';
-      if(res){ res.style.display='block'; res.innerHTML=`<div style="color:var(--rd);font-weight:600">❌ Невірний логін або пароль касира</div><div style="color:var(--m2);margin-top:4px">${r.message||''}</div>`; }
+    // Крок 1: Перевіряємо логін/пароль
+    const lr=await cbCall('login');
+    if(!lr.access_token){
+      if(dot) dot.style.background='var(--rd)';
+      if(txt) txt.textContent='❌ Невірний логін/пароль';
+      if(res){res.style.display='block';res.innerHTML=`<div style="color:var(--rd);font-weight:600">❌ Невірний логін або пароль касира</div><div style="color:var(--m2);margin-top:4px">${lr.message||'Перевірте дані в my.checkbox.ua'}</div>`;}
       return;
     }
-    // 2. Перевіряємо ключ ліцензії — він перевіряється при shift_status
-    const sh = await cbCall('shift_status', {token: r.access_token});
-    // Якщо є помилка ключа
-    if(sh?.code === 'cash_register.invalid_license_key'){
-      if(dot) dot.style.background = 'var(--rd)';
-      if(txt) txt.textContent = '❌ Невірний ключ ліцензії';
-      if(res){ res.style.display='block'; res.innerHTML=`<div style="color:var(--rd);font-weight:600">❌ Невірний ключ ліцензії каси</div><div style="color:var(--m2);margin-top:4px">Перевірте ключ в my.checkbox.ua → Каси → "Ключ ліцензії"</div>`; }
+
+    // Крок 2: Перевіряємо ключ ліцензії через cash-registers/shift
+    const ck=await cbCall('check_license',{token:lr.access_token});
+    if(ck?.code==='cash_register.invalid_license_key'||ck?.message?.toLowerCase().includes('ліцензі')||ck?.message?.toLowerCase().includes('license')){
+      if(dot) dot.style.background='var(--rd)';
+      if(txt) txt.textContent='❌ Невірний ключ ліцензії';
+      if(res){res.style.display='block';res.innerHTML=`<div style="color:var(--rd);font-weight:600">❌ Невірний ключ ліцензії каси</div><div style="color:var(--m2);margin-top:4px">Перевірте ключ в my.checkbox.ua → Каси → колонка "Ключ ліцензії"<br>Введений ключ: <code>${cbSettings.cb_key||'—'}</code></div>`;}
       return;
     }
-    // 3. Успіх
-    if(dot) dot.style.background = 'var(--gr)';
-    if(txt) txt.textContent = '✅ Підключено';
-    const shiftInfo = sh?.status === 'OPENED' ? '✅ Зміна відкрита' : '⚠️ Зміна закрита';
-    const fCash = cbSettings.cb_fiscalize_cash !== 'false';
-    const fCard = cbSettings.cb_fiscalize_card !== 'false';
+
+    // Крок 3: Перевіряємо стан зміни
+    const sh=await cbCall('shift_status',{token:lr.access_token});
+    const shiftOpen=sh?.status==='OPENED';
+    const fCash=cbSettings.cb_fiscalize_cash!=='false';
+    const fCard=cbSettings.cb_fiscalize_card!=='false';
+
+    if(dot) dot.style.background='var(--gr)';
+    if(txt) txt.textContent='✅ Підключено';
     if(res){
-      res.style.display = 'block';
-      res.innerHTML = `<div style="color:var(--gr);font-weight:600;margin-bottom:6px">✅ З'єднання успішне</div>
+      res.style.display='block';
+      res.innerHTML=`<div style="color:var(--gr);font-weight:600;margin-bottom:6px">✅ З'єднання успішне</div>
         <div style="color:var(--m2)">Касир: <b style="color:var(--w)">${getCbLogin()}</b></div>
-        <div style="color:var(--m2);margin-top:4px">${shiftInfo}</div>
+        <div style="color:var(--m2);margin-top:4px">Ключ ліцензії: <b style="color:var(--gr)">✓ Валідний</b></div>
+        <div style="color:var(--m2);margin-top:4px">${shiftOpen?'✅ Зміна відкрита':'⚠️ Зміна закрита'}</div>
         <div style="color:var(--m2);margin-top:4px">Фіскалізація: ${fCash?'💵 Готівка ':''}${fCard?'💳 Картка':''}</div>`;
     }
   }catch(e){
-    if(dot) dot.style.background = 'var(--rd)';
-    if(txt) txt.textContent = '❌ Недоступний';
-    if(res){ res.style.display='block'; res.innerHTML=`<div style="color:var(--rd)">❌ ${e.message}</div>`; }
+    if(dot) dot.style.background='var(--rd)';
+    if(txt) txt.textContent='❌ Недоступний';
+    if(res){res.style.display='block';res.innerHTML=`<div style="color:var(--rd)">❌ ${e.message}</div>`;}
   }
 }
 async function openCbShiftManual(){
