@@ -37,11 +37,18 @@ CREAGYM CRM — Система управління фітнес-клубом з
 - #app-admin (адмін, касир) — каса, продажі, повернення, клієнти
 Перемикач setupOwnerApp / setupAdminApp при логіні.
 
-📊 БАЗА ДАНИХ (database_v9.sql):
+📊 БАЗА ДАНИХ (database_v9.sql + migration_v10.sql):
 Таблиці: users, clients, subscription_types, subscriptions, visits, products,
 product_movements, sales (з fiscal_receipt_id, is_return, return_reason, original_sale_id),
-shifts, expenses, settings.
+shifts, expenses, settings, categories, suppliers.
 RLS включено з "allow all" політиками.
+
+📦 ТОВАРИ (Owner панель):
+- categories: окрема таблиця з name(unique). Можна додавати/видаляти (видалити можна тільки якщо в категорії немає товарів)
+- suppliers: окрема таблиця з name(unique). Можна додавати/видаляти (на товарах ON DELETE SET NULL — товари залишаються)
+- products.supplier_id → suppliers.id ON DELETE SET NULL
+- В формі "Новий товар": селект категорії з 🗑️, поле "+нова категорія", те саме для постачальника
+- Функції: loadCategoriesAndSuppliers, refreshCategoriesUI, refreshSuppliersUI, addCategoryBtn, deleteCategoryBtn, addSupplierBtn, deleteSupplierBtn
 
 🔌 EDGE FUNCTION ACTIONS (checkbox-proxy):
 - login — авторизація касира → {access_token}
@@ -124,10 +131,8 @@ RLS включено з "allow all" політиками.
 - database_v9.sql — schema (вже застосована до Supabase)
 
 🚧 ВИДАЛЕНІ/СКАСОВАНІ ФУНКЦІЇ:
-- Categories management with deletion safety (зламало фіскалізацію — скасовано)
-- Suppliers management with ON DELETE SET NULL (так само)
-- Auto-order feature
-- showLocalShiftReport — локальна зведена сводка зі свого Z-звіту (юзер хоче ТІЛЬКИ фіскальний)
+- Auto-order feature (ще не реалізовано)
+- showLocalShiftReport — локальна зведена сводка (юзер хоче ТІЛЬКИ фіскальні Z/X)
 
 🌐 GITHUB:
 Repo: https://github.com/kvaranestor-star/creagym
@@ -979,25 +984,33 @@ tr:hover td{background:#ffffff03;cursor:pointer}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="ff">
           <label>Категорія *</label>
-          <select class="fi2" id="prod-cat">
-            <option value="">Виберіть категорію</option>
-            <option>Спорт. харчування</option>
-            <option>Напої</option>
-            <option>Мерч</option>
-            <option>Обладнання</option>
-            <option>Аксесуари</option>
-            <option>БАД</option>
-            <option>BCAA</option>
-            <option>Протеїни</option>
-            <option>Інше</option>
-          </select>
-          <div style="margin-top:4px;display:flex;gap:6px;align-items:center">
-            <input id="prod-cat-new" placeholder="або нова категорія..." class="fi2" style="font-size:11px;padding:5px 8px">
+          <div style="display:flex;gap:4px;align-items:stretch">
+            <select class="fi2" id="prod-cat" style="flex:1">
+              <option value="">Виберіть категорію</option>
+            </select>
+            <button type="button" onclick="deleteCategoryBtn()" title="Видалити обрану категорію" style="background:#EF444420;border:1px solid #EF444440;color:#EF4444;border-radius:8px;padding:0 10px;cursor:pointer;font-size:14px">🗑</button>
+          </div>
+          <div style="margin-top:4px;display:flex;gap:4px;align-items:stretch">
+            <input id="prod-cat-new" placeholder="або нова категорія..." class="fi2" style="font-size:11px;padding:5px 8px;flex:1">
+            <button type="button" onclick="addCategoryBtn()" title="Створити категорію" style="background:var(--y);border:none;color:var(--bg);border-radius:8px;padding:0 12px;cursor:pointer;font-size:14px;font-weight:700">+</button>
           </div>
         </div>
         <div class="ff">
           <label>Емодзі</label>
           <input class="fi2" type="text" id="prod-emoji" placeholder="📦" maxlength="2">
+        </div>
+      </div>
+      <div class="ff">
+        <label>Постачальник</label>
+        <div style="display:flex;gap:4px;align-items:stretch">
+          <select class="fi2" id="prod-supplier" style="flex:1">
+            <option value="">Без постачальника</option>
+          </select>
+          <button type="button" onclick="deleteSupplierBtn()" title="Видалити обраного постачальника" style="background:#EF444420;border:1px solid #EF444440;color:#EF4444;border-radius:8px;padding:0 10px;cursor:pointer;font-size:14px">🗑</button>
+        </div>
+        <div style="margin-top:4px;display:flex;gap:4px;align-items:stretch">
+          <input id="prod-supplier-new" placeholder="або новий постачальник..." class="fi2" style="font-size:11px;padding:5px 8px;flex:1">
+          <button type="button" onclick="addSupplierBtn()" title="Створити постачальника" style="background:var(--y);border:none;color:var(--bg);border-radius:8px;padding:0 12px;cursor:pointer;font-size:14px;font-weight:700">+</button>
         </div>
       </div>
       <div class="ff">
@@ -2655,17 +2668,133 @@ let _editProductId=null;
 
 function editProduct(id){ _editProductId=id; openAddProduct(); }
 
-function openAddProduct(){
+// ===== КАТЕГОРІЇ ТА ПОСТАЧАЛЬНИКИ =====
+let _categories=[];
+let _suppliers=[];
+
+async function loadCategoriesAndSuppliers(){
+  try{
+    [_categories,_suppliers]=await Promise.all([
+      sb.get('categories','?order=name.asc'),
+      sb.get('suppliers','?order=name.asc')
+    ]);
+  }catch(e){console.warn('loadCategoriesAndSuppliers:',e); _categories=_categories||[]; _suppliers=_suppliers||[];}
+}
+
+function refreshCategoriesUI(currentValue){
+  const sel=document.getElementById('prod-cat');
+  if(!sel) return;
+  const v=currentValue!==undefined?currentValue:sel.value;
+  sel.innerHTML='<option value="">Виберіть категорію</option>'+
+    _categories.map(c=>`<option value="${c.name.replace(/"/g,'&quot;')}">${c.name}</option>`).join('');
+  if(v) sel.value=v;
+}
+
+function refreshSuppliersUI(currentValue){
+  const sel=document.getElementById('prod-supplier');
+  if(!sel) return;
+  const v=currentValue!==undefined?currentValue:sel.value;
+  sel.innerHTML='<option value="">Без постачальника</option>'+
+    _suppliers.map(s=>`<option value="${s.id}">${s.name.replace(/"/g,'&quot;')}</option>`).join('');
+  if(v) sel.value=v;
+}
+
+async function addCategoryBtn(){
+  const inp=document.getElementById('prod-cat-new');
+  const name=(inp?.value||'').trim();
+  if(!name){alert('Введіть назву категорії');return;}
+  if(_categories.some(c=>c.name.toLowerCase()===name.toLowerCase())){
+    alert('Така категорія вже існує');
+    document.getElementById('prod-cat').value=_categories.find(c=>c.name.toLowerCase()===name.toLowerCase()).name;
+    inp.value='';
+    return;
+  }
+  try{
+    const r=await sb.post('categories',{name});
+    const created=Array.isArray(r)?r[0]:r;
+    if(created?.name){
+      _categories.push(created);
+      _categories.sort((a,b)=>a.name.localeCompare(b.name));
+      refreshCategoriesUI(created.name);
+      inp.value='';
+    }
+  }catch(e){alert('❌ '+(e.message||'Не вдалося створити категорію'));}
+}
+
+async function deleteCategoryBtn(){
+  const sel=document.getElementById('prod-cat');
+  const name=sel?.value;
+  if(!name){alert('Спочатку оберіть категорію для видалення');return;}
+  // Перевіряємо чи є товари в цій категорії
+  const inUse=gProducts.filter(p=>p.category===name && p.is_active!==false);
+  if(inUse.length>0){
+    alert(`Не можна видалити: в цій категорії ${inUse.length} ${inUse.length===1?'товар':'товарів'}.\nСпочатку перенесіть або видаліть товари.`);
+    return;
+  }
+  if(!confirm(`Видалити категорію "${name}"?`))return;
+  try{
+    const cat=_categories.find(c=>c.name===name);
+    if(!cat){alert('Категорія не знайдена в БД');return;}
+    const resp=await fetch(`${SB_URL}/rest/v1/categories?id=eq.${cat.id}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    if(!resp.ok){throw new Error('HTTP '+resp.status);}
+    _categories=_categories.filter(c=>c.id!==cat.id);
+    refreshCategoriesUI('');
+  }catch(e){alert('❌ '+(e.message||'Не вдалося видалити'));}
+}
+
+async function addSupplierBtn(){
+  const inp=document.getElementById('prod-supplier-new');
+  const name=(inp?.value||'').trim();
+  if(!name){alert('Введіть назву постачальника');return;}
+  if(_suppliers.some(s=>s.name.toLowerCase()===name.toLowerCase())){
+    alert('Такий постачальник вже існує');
+    document.getElementById('prod-supplier').value=_suppliers.find(s=>s.name.toLowerCase()===name.toLowerCase()).id;
+    inp.value='';
+    return;
+  }
+  try{
+    const r=await sb.post('suppliers',{name});
+    const created=Array.isArray(r)?r[0]:r;
+    if(created?.id){
+      _suppliers.push(created);
+      _suppliers.sort((a,b)=>a.name.localeCompare(b.name));
+      refreshSuppliersUI(created.id);
+      inp.value='';
+    }
+  }catch(e){alert('❌ '+(e.message||'Не вдалося створити постачальника'));}
+}
+
+async function deleteSupplierBtn(){
+  const sel=document.getElementById('prod-supplier');
+  const id=sel?.value;
+  if(!id){alert('Спочатку оберіть постачальника для видалення');return;}
+  const sup=_suppliers.find(s=>s.id===id);
+  if(!sup)return;
+  // Скільки товарів буде втратить постачальника
+  const inUse=gProducts.filter(p=>p.supplier_id===id);
+  const msg=inUse.length>0
+    ? `Видалити постачальника "${sup.name}"?\n${inUse.length} ${inUse.length===1?'товар':'товарів'} втратять прив'язку (товари залишаться).`
+    : `Видалити постачальника "${sup.name}"?`;
+  if(!confirm(msg))return;
+  try{
+    const resp=await fetch(`${SB_URL}/rest/v1/suppliers?id=eq.${id}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    if(!resp.ok){throw new Error('HTTP '+resp.status);}
+    _suppliers=_suppliers.filter(s=>s.id!==id);
+    // Очищаємо supplier_id у локальних товарах
+    gProducts.forEach(p=>{if(p.supplier_id===id)p.supplier_id=null;});
+    refreshSuppliersUI('');
+  }catch(e){alert('❌ '+(e.message||'Не вдалося видалити'));}
+}
+
+async function openAddProduct(){
   const p=_editProductId?gProducts.find(x=>x.id===_editProductId):null;
   document.getElementById('mo-prod-title').textContent=p?'Редагувати товар':'Новий товар';
   document.getElementById('prod-save-btn').textContent=p?'Зберегти зміни':'Додати товар';
-  const cats=[...new Set(gProducts.map(x=>x.category))];
-  const defaults=['Спорт. харчування','Напої','Мерч','Обладнання','Аксесуари','БАД','BCAA','Протеїни','Інше'];
-  const allCats=[...new Set([...defaults,...cats])];
-  const sel=document.getElementById('prod-cat');
-  sel.innerHTML='<option value="">Виберіть категорію</option>'+allCats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  // Завантажуємо актуальні категорії та постачальників з БД
+  await loadCategoriesAndSuppliers();
+  refreshCategoriesUI(p?.category||'');
+  refreshSuppliersUI(p?.supplier_id||'');
   if(p){
-    sel.value=p.category||'';
     document.getElementById('prod-name').value=p.name||'';
     document.getElementById('prod-price').value=p.price||'';
     document.getElementById('prod-cost').value=p.cost||'';
@@ -2684,8 +2813,9 @@ function closeMoProd(e){if(e.target===document.getElementById('mo-prod'))closeMo
 function closeMoProdD(){
   document.getElementById('mo-prod').classList.remove('sh');
   _editProductId=null;
-  ['prod-name','prod-price','prod-cost','prod-stock','prod-min','prod-barcode','prod-sku','prod-desc','prod-emoji','prod-cat-new'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['prod-name','prod-price','prod-cost','prod-stock','prod-min','prod-barcode','prod-sku','prod-desc','prod-emoji','prod-cat-new','prod-supplier-new'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const cat=document.getElementById('prod-cat');if(cat)cat.value='';
+  const sup=document.getElementById('prod-supplier');if(sup)sup.value='';
   const unit=document.getElementById('prod-unit');if(unit)unit.value='шт';
 }
 
@@ -2693,6 +2823,7 @@ async function saveProduct(){
   const catSel=document.getElementById('prod-cat').value;
   const catNew=(document.getElementById('prod-cat-new')?.value||'').trim();
   const cat=catNew||catSel;
+  const supplier_id=document.getElementById('prod-supplier').value||null;
   const name=(document.getElementById('prod-name')?.value||'').trim();
   const price=parseInt(document.getElementById('prod-price')?.value)||0;
   const cost=parseInt(document.getElementById('prod-cost')?.value)||0;
@@ -2706,15 +2837,24 @@ async function saveProduct(){
   if(!cat){alert('Оберіть або введіть категорію');return;}
   if(!name){alert('Введіть назву товару');return;}
   if(!price){alert('Введіть ціну');return;}
+  // Якщо введена нова категорія яка ще не в БД - додаємо
+  if(catNew && !_categories.some(c=>c.name.toLowerCase()===catNew.toLowerCase())){
+    try{
+      const r=await sb.post('categories',{name:catNew});
+      const created=Array.isArray(r)?r[0]:r;
+      if(created?.name) _categories.push(created);
+    }catch(e){console.warn('auto-create category:',e);}
+  }
   const btn=document.getElementById('prod-save-btn');
   btn.textContent='Збереження...';btn.disabled=true;
   try{
+    const data={name,category:cat,price,cost,stock,min_stock,emoji,unit,barcode,sku,description,supplier_id};
     if(_editProductId){
-      await sb.patch('products',`id=eq.${_editProductId}`,{name,category:cat,price,cost,stock,min_stock,emoji,unit,barcode,sku,description});
+      await sb.patch('products',`id=eq.${_editProductId}`,data);
       const p=gProducts.find(x=>x.id===_editProductId);
-      if(p) Object.assign(p,{name,category:cat,price,cost,stock,min_stock,emoji,unit,barcode,sku,description});
+      if(p) Object.assign(p,data);
     } else {
-      const result=await sb.post('products',{name,category:cat,price,cost,stock,min_stock,emoji,unit,barcode,sku,description,is_active:true});
+      const result=await sb.post('products',{...data,is_active:true});
       const newP=Array.isArray(result)?result[0]:result;
       if(newP?.id) gProducts.push(newP);
     }
