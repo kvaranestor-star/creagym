@@ -1538,11 +1538,10 @@ async function syncClientStatuses(){
 }
 
 function renderClients(){
-  const today=new Date().toISOString().split('T')[0];
   const list=allClients.filter(c=>{
     const q=filterTxt.toLowerCase();
     return(!q||[c.first_name,c.last_name,c.phone,c.id].some(f=>(f||'').toLowerCase().includes(q)))
-      &&(!filterSt||c.status===filterSt||( filterSt==='active'&&c.status==='pending'))
+      &&(!filterSt||c.status===filterSt||(filterSt==='active'&&(c.status==='pending'||c.status==='new')))
       &&(!filterGn||c.gender===filterGn);
   });
   document.getElementById('cl-cnt').textContent=list.length+' клієнт'+(list.length===1?'':'ів');
@@ -1551,10 +1550,12 @@ function renderClients(){
     return;
   }
   const rows=list.map(c=>{
-    const st=stMap[c.status]||stMap.trial;
-    const av=c.photo_url?`<img src="${c.photo_url}" alt="">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:7px;background:#FFD30020;color:var(--y);font-size:10px;font-weight:700">${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}</div>`;
+    const st=stMap[c.status]||{cls:'s-exp',l:'Невідомий'};
+    const av=c.photo_url
+      ?`<img src="${c.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:7px">`
+      :`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:7px;background:#FFD30020;color:var(--y);font-size:10px;font-weight:700">${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}</div>`;
     return `<tr onclick="openDos('${c.id}')">
-      <td><div class="cf"><div class="av">${av}</div><div><div class="cn">${c.last_name} ${c.first_name}</div><div class="cp">${c.phone||''}</div></div></div></td>
+      <td><div class="cf"><div class="av" style="overflow:hidden">${av}</div><div><div class="cn">${c.last_name} ${c.first_name}</div><div class="cp">${c.phone||''}</div></div></div></td>
       <td><span class="ab-b">—</span></td>
       <td style="color:var(--m3)">${c.visits||0}</td>
       <td style="color:var(--m2)">${c.gender||'—'}</td>
@@ -3114,15 +3115,29 @@ function admRenderClients(){
   const q=admClFilterTxt.toLowerCase();
   const list=admClients.filter(c=>!q||((c.last_name||'')+' '+(c.first_name||'')+' '+(c.phone||'')).toLowerCase().includes(q));
   document.getElementById('adm-cl-cnt').textContent=list.length+' клієнт'+(list.length===1?'':'ів');
-  const stBg={active:'#22C55E14',expired:'#EF444414',trial:'#F9731614',frozen:'#3B82F614'};
-  const stC={active:'var(--gr)',expired:'var(--rd)',trial:'var(--or)',frozen:'var(--bl)'};
-  const stL={active:'Активний',expired:'Прострочений',trial:'Пробний',frozen:'Заморожений'};
+  const stMap2={
+    active:  {bg:'#22C55E14',c:'var(--gr)',  l:'Активний'},
+    frozen:  {bg:'#3B82F614',c:'var(--bl)',  l:'Заморожений'},
+    expired: {bg:'#EF444414',c:'var(--rd)',  l:'Прострочений'},
+    trial:   {bg:'#F9731614',c:'var(--or)',  l:'Пробний'},
+    new:     {bg:'#A855F714',c:'#A855F7',    l:'Новий'},
+    inactive:{bg:'#EF444414',c:'var(--rd)',  l:'Неактивний'},
+    pending: {bg:'#F9731614',c:'var(--or)',  l:'Не стартований'},
+  };
   if(!list.length){document.getElementById('adm-cl-table').innerHTML='<div class="loading" style="color:var(--m2)">Клієнтів не знайдено</div>';return}
   const rows=list.map(c=>{
-    const av=c.photo_url?`<img src="${c.photo_url}" alt="" style="width:30px;height:30px;object-fit:cover;border-radius:7px">`:`<div style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;background:var(--yd);color:var(--y);border-radius:7px">${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}</div>`;
-    return `<tr style="cursor:pointer" onclick="admGoClient('${c.id}')"><td><div style="display:flex;align-items:center;gap:8px">${av}<div><div style="font-size:12px;font-weight:600">${c.last_name} ${c.first_name}</div><div style="font-size:10px;color:var(--m2)">${c.phone||''}</div></div></div></td><td style="font-size:11px;color:var(--m3)">${c.visits||0}</td><td><span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;background:${stBg[c.status]||'var(--p3)'};color:${stC[c.status]||'var(--m2)'}">${stL[c.status]||'—'}</span></td><td><button style="padding:4px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer" onclick="event.stopPropagation();admOpenSell('${c.id}')">🎫 Абонемент</button></td></tr>`;
+    const st=stMap2[c.status]||{bg:'var(--p3)',c:'var(--m2)',l:'—'};
+    const av=c.photo_url
+      ?`<img src="${c.photo_url}" style="width:34px;height:34px;object-fit:cover;border-radius:8px;flex-shrink:0">`
+      :`<div style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:var(--yd);color:var(--y);border-radius:8px;flex-shrink:0">${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}</div>`;
+    return `<tr style="cursor:pointer;border-top:1px solid var(--bd)" onclick="admGoClient('${c.id}')">
+      <td style="padding:8px 13px"><div style="display:flex;align-items:center;gap:9px">${av}<div><div style="font-size:12px;font-weight:600">${c.last_name} ${c.first_name}</div><div style="font-size:10px;color:var(--m2)">${c.phone||''}</div></div></div></td>
+      <td style="padding:8px 13px;font-size:11px;color:var(--m3)">${c.visits||0}</td>
+      <td style="padding:8px 13px"><span style="font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;background:${st.bg};color:${st.c}">${st.l}</span></td>
+      <td style="padding:8px 13px"><button style="padding:4px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer" onclick="event.stopPropagation();admOpenSell('${c.id}')">🎫 Абонемент</button></td>
+    </tr>`;
   }).join('');
-  document.getElementById('adm-cl-table').innerHTML=`<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--p2)"><th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600;white-space:nowrap">Клієнт</th><th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600">Візити</th><th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600">Статус</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  document.getElementById('adm-cl-table').innerHTML=`<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--p2)"><th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600">Клієнт</th><th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600">Візити</th><th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600">Статус</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 function admClFilter(v){admClFilterTxt=v;admRenderClients()}
 function admGoClient(id){admTab('reg',document.querySelector('.adm-tab'));admSelectClient(id)}
