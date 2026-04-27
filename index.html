@@ -1263,21 +1263,16 @@ function gp(id,el){
   if(id==='fin'){okSyncShiftFromCheckbox();okUpdateShiftUI(!!okShift);okLoadTx();}
   if(id==='goods') loadGoods();
   if(id==='cfg'){
-    loadCbSettings();
-    setTimeout(async()=>{
+    // Тільки завантажуємо збережені налаштування і показуємо форму
+    // НЕ запускаємо автоматичну перевірку Checkbox - тільки коли юзер натисне кнопку
+    loadCbSettings().then(()=>{
       applyCbSettingsToForm();
-      // Перевіряємо стан зміни в Checkbox + синхронізуємо owner shift
-      try{
-        const lr=await cbCall('login');
-        if(lr.access_token){
-          const sh=await cbCall('shift_status',{token:lr.access_token});
-          const isOpen=sh?.status==='OPENED';
-          updateCfgShiftLock(isOpen);
-          // Якщо в Checkbox смена закрита, але локально у власника висить - скидаємо
-          if(!isOpen&&okShift){okShift=null;okUpdateShiftUI(false);}
-        }
-      }catch(e){ updateCfgShiftLock(false); }
-    },100);
+      // Скидаємо результат попередньої перевірки
+      const res=document.getElementById('cfg-cb-result');
+      if(res){res.style.display='none';res.innerHTML='';}
+      // Кнопки замикаємо/розмикаємо тільки коли юзер сам перевірить
+      updateCfgShiftLock(false);
+    });
   }
 }
 function handleTopAction(){
@@ -3985,10 +3980,14 @@ async function saveCbSettings(){
   showCbResult('⏳ Перевіряю дані через Checkbox перед збереженням...','info');
 
   try{
-    // 1. Перевіряємо логін/пароль/ключ через Checkbox
-    const r=await cbCall('verify_all',{_login:_login,_pass:_pass,_license_key:_license_key});
+    // 1. Перевіряємо логін/пароль/ключ + фіскальний номер через Checkbox
+    const _fiscal_number=get('cfg-prro-num');
+    const r=await cbCall('verify_all',{_login:_login,_pass:_pass,_license_key:_license_key,_fiscal_number:_fiscal_number});
     if(!r.ok){
-      const where=r.step==='login'?'логін або пароль':r.step==='license'?'ключ ліцензії':'параметри';
+      let where='параметри';
+      if(r.step==='login') where='логін або пароль';
+      else if(r.step==='license') where='ключ ліцензії';
+      else if(r.step==='fiscal_number') where='фіскальний номер';
       showCbResult('❌ Неможливо зберегти: невірний '+where+'<br><span style="font-size:11px;color:var(--m2)">'+(r.message||'')+'<br>Дані не збережено в БД.</span>','err');
       return;
     }
@@ -4029,20 +4028,26 @@ async function testCbConnection(){
   const _login=get('cfg-cb-login');
   const _pass=get('cfg-cb-pass');
   const _license_key=get('cfg-cb-key');
+  const _fiscal_number=get('cfg-prro-num');
   if(!_login||!_pass||!_license_key){
     showCbResult('❌ Заповніть логін, пароль і ключ ліцензії','err');
     return;
   }
   showCbResult('⏳ Перевіряю з\'єднання з Checkbox...','info');
   try{
-    const r=await cbCall('verify_all',{_login:_login,_pass:_pass,_license_key:_license_key});
+    const r=await cbCall('verify_all',{_login:_login,_pass:_pass,_license_key:_license_key,_fiscal_number:_fiscal_number});
     if(r.ok){
       const shStatus=r.shift_status||'?';
-      const shText=shStatus==='OPENED'?'✅ Відкрита':shStatus==='CLOSED'?'⚪ Закрита':shStatus;
-      showCbResult('✅ З\'єднання успішне<br><span style="font-size:11px;color:var(--m2)">Логін, пароль і ключ ліцензії правильні. Статус зміни: <b style="color:var(--w)">'+shText+'</b></span>','ok');
-      updateCfgShiftLock(shStatus==='OPENED');
+      const shText=shStatus==='OPENED'?'✅ Відкрита':shStatus==='CLOSED'?'⚪ Закрита':'⚪ Немає';
+      const fnInfo=r.fiscal_number?'<br>Фіскальний номер: <b style="color:var(--w)">'+r.fiscal_number+'</b>':'';
+      const titleInfo=r.cash_register_title?'<br>Каса: <b style="color:var(--w)">'+r.cash_register_title+'</b>':'';
+      showCbResult('✅ З\'єднання успішне<br><span style="font-size:11px;color:var(--m2)">Всі дані правильні. Статус зміни: <b style="color:var(--w)">'+shText+'</b>'+fnInfo+titleInfo+'</span>','ok');
+      // НЕ викликаємо updateCfgShiftLock — щоб не блокувати поля автоматично
     } else {
-      const where=r.step==='login'?'логін або пароль':r.step==='license'?'ключ ліцензії':'параметри';
+      let where='параметри';
+      if(r.step==='login') where='логін або пароль';
+      else if(r.step==='license') where='ключ ліцензії';
+      else if(r.step==='fiscal_number') where='фіскальний номер';
       showCbResult('❌ Невірний '+where+'<br><span style="font-size:11px;color:var(--m2)">'+(r.message||'')+'</span>','err');
     }
   }catch(e){
