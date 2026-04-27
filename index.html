@@ -1701,9 +1701,9 @@ async function ownerReturnProduct(saleId,amount,itemName,payMethod){
       is_return:true,
       created_by:curUser?.name||'owner'
     });
-    // Оновлюємо відповідний список
     okLoadTx();
-    alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴`);
+    // Фіскальний чек повернення
+    await cbReturnReceipt(itemName, amount, payMethod, reason.trim());
   }catch(e){alert('❌ '+e.message)}
 }
 
@@ -2316,7 +2316,31 @@ async function loadAdminData(){
       sb.get('subscription_types','?is_active=eq.true&order=price.asc')
     ]);
     admRenderICP();admRenderShop();admRenderClients();
+    // Перевіряємо чи є вже відкрита зміна в Checkbox (після оновлення сторінки)
+    cbCheckExistingShift();
   }catch(e){console.error(e)}
+}
+
+// Перевіряємо існуючу зміну при завантаженні — не питаємо якщо вже відкрита
+async function cbCheckExistingShift(){
+  try{
+    const lr = await cbCall('login');
+    if(!lr.access_token) return;
+    const sh = await cbCall('shift_status', {token: lr.access_token});
+    if(sh?.status === 'OPENED'){
+      // Зміна вже відкрита — показуємо в інтерфейсі
+      const badge = document.getElementById('kasa-status-badge');
+      if(badge){
+        badge.textContent = 'ВІДКРИТО';
+        badge.style.background = '#22C55E20';
+        badge.style.color = 'var(--gr)';
+      }
+      console.log('✅ Checkbox: зміна вже відкрита');
+    }
+  }catch(e){
+    // Тихо ігноруємо — не заважаємо роботі
+    console.warn('cbCheckExistingShift:', e.message);
+  }
 }
 
 function admTab(id,btn){
@@ -2679,7 +2703,8 @@ async function admReturnProduct(saleId, amount, itemName, payMethod){
       created_by:curUser?.name||'admin'
     });
     kasaLoadTx();
-    alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴`);
+    // Фіскальний чек повернення
+    await cbReturnReceipt(itemName, amount, payMethod, reason.trim());
   }catch(e){alert('❌ '+e.message)}
 }
 
@@ -3105,13 +3130,21 @@ async function cbCreateReceipt(items, total, payMethod, client) {
             if(st?.status === 'OPENED') { shiftOk = true; break; }
             if(st?.status === 'CLOSED') break;
           }
+        } else {
+          // Показуємо точну помилку від Checkbox
+          showCbLoading(false);
+          const errMsg = openRes?.message || openRes?.detail?.[0]?.msg || JSON.stringify(openRes);
+          showLocalReceipt(items, total, payMethod,
+            `❌ Checkbox помилка відкриття зміни:\n${errMsg}\n\nПеревірте налаштування в панелі власника → Налаштування`);
+          return;
         }
       } catch(e) {}
     }
 
     if(!shiftOk) {
       showCbLoading(false);
-      showLocalReceipt(items, total, payMethod, 'Checkbox: не вдалось відкрити зміну. Перевірте КЕП касира в my.checkbox.ua');
+      showLocalReceipt(items, total, payMethod,
+        `❌ Не вдалось відкрити зміну в Checkbox.\n\nПричина: ключ ліцензії або КЕП касира.\nЗайдіть: Панель власника → Налаштування → Перевірити з'єднання`);
       return;
     }
 
@@ -3236,6 +3269,125 @@ async function cbCloseShift() {
       console.log('Checkbox зміну закрито');
     }
   } catch(e) { console.warn('cbCloseShift:', e); }
+}
+
+// Фіскальний чек повернення
+async function cbReturnReceipt(itemName, amount, payMethod, reason) {
+  // Перевіряємо чи треба фіскалізувати цей тип оплати
+  if(!shouldFiscalize(payMethod)) {
+    alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴`);
+    return;
+  }
+  showCbLoading(true, 'Фіскалізація повернення...');
+  try {
+    // 1. Логін
+    const loginRes = await cbCall('login');
+    if(!loginRes.access_token) {
+      showCbLoading(false);
+      alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴\n\n⚠️ Фіскальний чек повернення не створено (помилка авторизації Checkbox)`);
+      return;
+    }
+    const token = loginRes.access_token;
+
+    // 2. Перевіряємо зміну
+    const sh = await cbCall('shift_status', { token });
+    if(sh?.status !== 'OPENED') {
+      showCbLoading(false);
+      alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴\n\n⚠️ Фіскальний чек повернення не створено (зміна закрита)`);
+      return;
+    }
+
+    // 3. Чек повернення через Checkbox API
+    const returnRes = await fetch(`https://api.checkbox.ua/api/v1/receipts/return`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'X-License-Key': cbSettings.cb_key || '',
+        'X-Client-Name': 'CREAGYM-CRM',
+      },
+      body: JSON.stringify({
+        goods: [{
+          good: {
+            code: '001',
+            name: itemName.substring(0, 50),
+            price: Math.round(amount * 100),
+          },
+          quantity: 1000,
+          is_return: true,
+        }],
+        payments: [{
+          type: payMethod === 'card' ? 'CASHLESS' : 'CASH',
+          value: Math.round(amount * 100),
+          label: payMethod === 'card' ? 'Картка' : 'Готівка',
+        }],
+        header: `CREAGYM FITNESS\nПОВЕРНЕННЯ`,
+        footer: `Причина: ${reason}`,
+      }),
+    });
+
+    const result = await returnRes.json();
+    showCbLoading(false);
+
+    if(result.id) {
+      // Чекаємо фіскалізацію
+      let receipt = result;
+      showCbLoading(true, 'Очікування підтвердження ДПС...');
+      for(let i=0; i<8; i++) {
+        await new Promise(r=>setTimeout(r,1000));
+        try {
+          const upd = await cbCall('get_receipt', { token, receipt_id: result.id });
+          if(upd.status === 'DONE' || upd.status === 'ERROR') { receipt = upd; break; }
+        } catch(e) { break; }
+      }
+      showCbLoading(false);
+
+      // Показуємо чек повернення
+      const fiscal = receipt.fiscal_code || receipt.id?.slice(0,8).toUpperCase() || '—';
+      const checkUrl = receipt.public_url || `https://check.checkbox.ua/${receipt.id}`;
+      const isDone = receipt.status === 'DONE';
+      const el = document.getElementById('receipt-content');
+      if(el) {
+        el.innerHTML = `
+          <div style="font-family:'Courier New',monospace;font-size:12px;line-height:1.8;color:#000;text-align:center">
+            <div style="font-weight:800;font-size:15px">CREAGYM FITNESS</div>
+            <div style="font-size:11px;color:#777">ПРРО Checkbox</div>
+            <div style="border-top:1px dashed #ccc;margin:8px 0"></div>
+            <div style="font-weight:700;color:#EF4444;font-size:13px">ЧЕК ПОВЕРНЕННЯ</div>
+            <div style="border-top:1px dashed #ccc;margin:8px 0"></div>
+            <div style="text-align:left">
+              <div style="font-weight:600">${itemName}</div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:#555">
+                <span>1 × ${amount.toLocaleString('uk-UA')} ₴</span>
+                <span>${amount.toLocaleString('uk-UA')} ₴</span>
+              </div>
+            </div>
+            <div style="border-top:1px dashed #ccc;margin:8px 0"></div>
+            <div style="display:flex;justify-content:space-between;font-weight:800;font-size:14px">
+              <span>ПОВЕРНЕНО:</span><span>${amount.toLocaleString('uk-UA')} ₴</span>
+            </div>
+            <div style="font-size:11px;color:#555">Причина: ${reason}</div>
+            <div style="border-top:1px dashed #ccc;margin:8px 0"></div>
+            <div style="margin:8px 0">
+              <span style="background:${isDone?'#22C55E':'#F97316'};color:#fff;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:700">
+                ${isDone?'✅ ФІСКАЛЬНИЙ ЧЕК ПОВЕРНЕННЯ':'⏳ Фіскалізується...'}
+              </span>
+            </div>
+            <div style="font-size:11px">Фіскальний №: <b>${fiscal}</b></div>
+            ${isDone?`<div style="margin:10px 0">
+              <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(checkUrl)}" style="width:120px;height:120px;border:1px solid #eee;border-radius:4px">
+              <div style="font-size:10px;margin-top:4px;word-break:break-all"><a href="${checkUrl}" target="_blank" style="color:#3B82F6">${checkUrl}</a></div>
+            </div>`:''}
+          </div>`;
+        admOpenMo('receipt-mo');
+      }
+    } else {
+      alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴\n\n⚠️ Checkbox: ${result.message||'помилка створення чека повернення'}`);
+    }
+  } catch(e) {
+    showCbLoading(false);
+    alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴\n\n⚠️ Помилка фіскалізації: ${e.message}`);
+  }
 }
 
 </script>
