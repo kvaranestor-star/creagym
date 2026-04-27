@@ -3306,7 +3306,10 @@ async function kasaOpenShift(){
       return;
     }
     const sh=await cbCall('shift_status',{token:lr.access_token});
-    if(sh&&sh.status!=='OPENED'){
+    // sh === null означає що зміни взагалі немає — треба відкрити
+    // sh.status === 'CLOSED' — попередня закрита, треба відкрити нову
+    // sh.status === 'OPENED' — вже відкрита, нічого не робимо
+    if(!sh||sh.status!=='OPENED'){
       const r=await cbCall('open_shift',{token:lr.access_token});
       if(!r||(!r.id&&!r.serial)){
         alert('❌ Не вдалося відкрити зміну в Checkbox:\n'+((r&&(r.message||r.error))||'Невідома помилка')+'\n\nЗміну не відкрито.');
