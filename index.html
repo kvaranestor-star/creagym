@@ -1082,7 +1082,7 @@ function gp(id,el){
   if(id==='stats') loadStats();
   if(id==='subs') loadSubs();
   if(id==='fin'){okUpdateShiftUI(!!okShift);okLoadTx();}
-  if(id==='cfg') loadCbSettings();
+  if(id==='cfg'){ loadCbSettings(); setTimeout(applyCbSettingsToForm, 100); }
 }
 function handleTopAction(){
   if(curPage==='clients') openMo('mo-cl');
@@ -3385,30 +3385,35 @@ async function testCbConnection(){
   if(dot) dot.style.background = 'var(--or)';
   if(txt) txt.textContent = 'Перевірка...';
   try{
+    // 1. Логін
     const r = await cbCall('login');
-    if(r.access_token){
-      if(dot) dot.style.background = 'var(--gr)';
-      if(txt) txt.textContent = '✅ Підключено';
-      const sh = await cbCall('shift_status', {token: r.access_token});
-      const shStatus = sh?.status || 'UNKNOWN';
-      const shiftInfo = shStatus === 'OPENED'
-        ? `✅ Зміна відкрита`
-        : `⚠️ Зміна закрита — натисніть "Відкрити зміну"`;
-      if(res){
-        res.style.display = 'block';
-        res.innerHTML = `<div style="color:var(--gr);font-weight:600;margin-bottom:6px">✅ З'єднання успішне</div>
-          <div style="color:var(--m2)">Касир: <b style="color:var(--w)">${getCbLogin()}</b></div>
-          <div style="color:var(--m2);margin-top:4px">${shiftInfo}</div>
-          <div style="color:var(--m2);margin-top:4px">Фіскалізація: ${cbSettings.cb_fiscalize_cash!=='false'?'💵 Готівка ':''}${cbSettings.cb_fiscalize_card!=='false'?'💳 Картка':''}</div>`;
-      }
-    } else {
+    if(!r.access_token){
       if(dot) dot.style.background = 'var(--rd)';
-      if(txt) txt.textContent = '❌ Помилка';
-      if(res){
-        res.style.display = 'block';
-        res.innerHTML = `<div style="color:var(--rd);font-weight:600">❌ Помилка авторизації</div>
-          <div style="color:var(--m2);margin-top:4px">${r.message || JSON.stringify(r)}</div>`;
-      }
+      if(txt) txt.textContent = '❌ Невірний логін/пароль';
+      if(res){ res.style.display='block'; res.innerHTML=`<div style="color:var(--rd);font-weight:600">❌ Невірний логін або пароль касира</div><div style="color:var(--m2);margin-top:4px">${r.message||''}</div>`; }
+      return;
+    }
+    // 2. Перевіряємо ключ ліцензії — він перевіряється при shift_status
+    const sh = await cbCall('shift_status', {token: r.access_token});
+    // Якщо є помилка ключа
+    if(sh?.code === 'cash_register.invalid_license_key'){
+      if(dot) dot.style.background = 'var(--rd)';
+      if(txt) txt.textContent = '❌ Невірний ключ ліцензії';
+      if(res){ res.style.display='block'; res.innerHTML=`<div style="color:var(--rd);font-weight:600">❌ Невірний ключ ліцензії каси</div><div style="color:var(--m2);margin-top:4px">Перевірте ключ в my.checkbox.ua → Каси → "Ключ ліцензії"</div>`; }
+      return;
+    }
+    // 3. Успіх
+    if(dot) dot.style.background = 'var(--gr)';
+    if(txt) txt.textContent = '✅ Підключено';
+    const shiftInfo = sh?.status === 'OPENED' ? '✅ Зміна відкрита' : '⚠️ Зміна закрита';
+    const fCash = cbSettings.cb_fiscalize_cash !== 'false';
+    const fCard = cbSettings.cb_fiscalize_card !== 'false';
+    if(res){
+      res.style.display = 'block';
+      res.innerHTML = `<div style="color:var(--gr);font-weight:600;margin-bottom:6px">✅ З'єднання успішне</div>
+        <div style="color:var(--m2)">Касир: <b style="color:var(--w)">${getCbLogin()}</b></div>
+        <div style="color:var(--m2);margin-top:4px">${shiftInfo}</div>
+        <div style="color:var(--m2);margin-top:4px">Фіскалізація: ${fCash?'💵 Готівка ':''}${fCard?'💳 Картка':''}</div>`;
     }
   }catch(e){
     if(dot) dot.style.background = 'var(--rd)';
@@ -3416,7 +3421,6 @@ async function testCbConnection(){
     if(res){ res.style.display='block'; res.innerHTML=`<div style="color:var(--rd)">❌ ${e.message}</div>`; }
   }
 }
-
 async function openCbShiftManual(){
   try{
     const lr = await cbCall('login');
