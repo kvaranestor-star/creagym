@@ -1732,7 +1732,8 @@ async function openDos(id){
     const pct=Math.max(0,Math.min(100,Math.round((e2-new Date())/(e2-s)*100)));
     const dl=Math.max(0,Math.round((e2-new Date())/86400000));
     const today=new Date().toISOString().split('T')[0];
-    const notStarted=activeSub.start_date>today;
+    const isActivatedSub=activeSub.started_at||(activeSub.start_type==='з дати продажу');
+    const notStarted=!isActivatedSub;
     subBlock=`
     <div class="dos-sec">
       <div class="dos-st">Активний абонемент</div>
@@ -2400,21 +2401,27 @@ async function admSelectClient(id){
     const s=new Date(activeSub.start_date),e2=new Date(activeSub.end_date);
     const pct=Math.max(0,Math.min(100,Math.round((e2-new Date())/(e2-s)*100)));
     const dl=Math.max(0,Math.round((e2-new Date())/86400000));
-    const notStarted=activeSub.start_date>today;
+    // Активований = started_at заповнено АБО тип "з дати продажу"
+    // Активований тільки якщо started_at заповнено, АБО тип 'з дати продажу'
+    const isActivated=activeSub.started_at||(activeSub.start_type==='з дати продажу');
+    const notStarted=!isActivated;
     const returnBtn=notStarted
       ?`<button class="ca rd" style="font-size:10px" onclick="returnSubscription('${activeSub.id}','${id}','${activeSub.type_name}',${activeSub.price},'${activeSub.start_date}','${activeSub.payment_method||'cash'}')">🔁 Повернення</button>`
       :`<span style="font-size:10px;color:var(--m);padding:4px 8px">Повернення недоступне (активований)</span>`;
+    const activateBtn=notStarted
+      ?`<button class="ca gr" style="font-size:10px;margin-left:4px" onclick="activateSubscription('${activeSub.id}','${id}')">▶ Активувати</button>`
+      :'';
     subBlock=`<div class="cl-sub2">
       <div class="cl-sub-hd2">
         <div class="cl-sub-nm2">${activeSub.type_name}</div>
-        <span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;background:#22C55E14;color:var(--gr)">${notStarted?'Не стартований':'Активний'}</span>
+        <span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;background:${notStarted?'#F9731614':'#22C55E14'};color:${notStarted?'var(--or)':'var(--gr)'}">${notStarted?'Не активований':'Активний'}</span>
       </div>
       <div class="sub-pr"><div class="sub-pr-f" style="width:${pct}%"></div></div>
       <div class="sub-dt">
-        <span>${notStarted?'Старт: '+activeSub.start_date:dl+' днів залишилось'}</span>
+        <span>${notStarted?'⏳ Чекає активації':dl+' днів залишилось'}</span>
         <span>${activeSub.price} ₴</span>
       </div>
-      <div style="margin-top:8px">${returnBtn}</div>
+      <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">${returnBtn}${activateBtn}</div>
     </div>`;
   } else {
     subBlock=`<div class="cl-sub2"><div class="cl-sub-hd2"><div class="cl-sub-nm2" style="color:var(--m2)">Немає активного абонементу</div><span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;background:var(--p3);color:var(--m2)">Відсутній</span></div></div>`;
@@ -2449,14 +2456,56 @@ async function admSelectClient(id){
     </div>`;
 }
 
-function admCheckIn(id){
+async function admCheckIn(id){
   const c=admClients.find(x=>x.id===id);if(!c)return;
   const key=Math.floor(Math.random()*99)+1;
   admInClub.push({...c,key});
   document.getElementById('adm-cnt').textContent=admInClub.length;
-  admRenderICP();admSelectClient(id);
-  alert(`✅ ${c.last_name} ${c.first_name} зареєстрований\n🔑 Виданий ключ №${key}`);
+  admRenderICP();
+
+  // Перевіряємо чи є неактивований абонемент
+  try{
+    const subs=await sb.get('subscriptions',`?client_id=eq.${id}&status=eq.active&limit=1`);
+    const sub=subs&&subs.length?subs[0]:null;
+    const today=new Date().toISOString().split('T')[0];
+    const isActivated=sub&&(sub.started_at||(sub.start_type==='з дати продажу'));
+    if(sub&&!isActivated){
+      // Є неактивований абонемент — питаємо
+      const activate=confirm(`✅ ${c.last_name} ${c.first_name} зареєстрований\n🔑 Виданий ключ №${key}\n\n📋 Абонемент "${sub.type_name}" ще не активований.\nЦе перший вхід — активувати абонемент?`);
+      if(activate){
+        await activateSubscription(sub.id,id,true);
+      }
+    } else {
+      alert(`✅ ${c.last_name} ${c.first_name} зареєстрований\n🔑 Виданий ключ №${key}`);
+    }
+  }catch(e){
+    alert(`✅ ${c.last_name} ${c.first_name} зареєстрований\n🔑 Виданий ключ №${key}`);
+  }
+  admSelectClient(id);
 }
+// Активація абонементу — встановлює started_at і перераховує end_date
+async function activateSubscription(subId, clientId, silent=false){
+  try{
+    const subs=await sb.get('subscriptions',`?id=eq.${subId}&select=*`);
+    if(!subs||!subs.length)return;
+    const sub=subs[0];
+    const today=new Date().toISOString().split('T')[0];
+    // Перераховуємо end_date від сьогодні
+    const endDate=new Date();
+    endDate.setDate(endDate.getDate()+sub.days||30);
+    const endDateStr=endDate.toISOString().split('T')[0];
+    await sb.patch('subscriptions',`id=eq.${subId}`,{
+      started_at:today,
+      start_date:today,
+      end_date:endDateStr,
+    });
+    if(!silent) alert(`✅ Абонемент "${sub.type_name}" активовано!\nДіє до: ${endDateStr}`);
+    admSelectClient(clientId);
+  }catch(e){
+    alert('❌ Помилка активації: '+e.message);
+  }
+}
+
 function admCheckOut(id){
   const c=admInClub.find(x=>x.id===id);if(!c)return;
   admInClub=admInClub.filter(x=>x.id!==id);
