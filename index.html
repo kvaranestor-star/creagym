@@ -348,7 +348,7 @@ tr:hover td{background:#ffffff03;cursor:pointer}
 .g-tab{padding:7px 14px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
 .g-tab.on{background:var(--y);color:var(--bg);border-color:var(--y)}
 .g-page{display:none}.g-page.on{display:block}
-.g-prod-row{display:grid;grid-template-columns:36px 1fr auto auto auto auto;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--bd);border-radius:8px;cursor:pointer;transition:background .15s}
+.g-prod-row{display:grid;grid-template-columns:36px minmax(160px,2fr) minmax(120px,1fr) 90px 80px 70px 80px;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--bd);border-radius:8px;cursor:pointer;transition:background .15s}
 .g-prod-row:hover{background:var(--p2)}
 .g-prod-emoji{font-size:22px;text-align:center}
 .g-prod-name{font-size:13px;font-weight:600}
@@ -2495,6 +2495,8 @@ async function loadGoods(){
   try{
     gProducts=await sb.get('products','?order=category.asc,name.asc')||[];
     gMovements=await sb.get('product_movements','?order=created_at.desc&limit=200')||[];
+    // Категорії та постачальники - щоб показати в таблиці
+    await loadCategoriesAndSuppliers();
     // Категорії для фільтра
     const cats=[...new Set(gProducts.map(p=>p.category))];
     const catSel=document.getElementById('g-cat-filter');
@@ -2517,24 +2519,30 @@ function renderAssortment(){
   const el=document.getElementById('g-assortment-list');
   if(!el)return;
   if(!list.length){el.innerHTML='<div style="padding:30px;text-align:center;color:var(--m2);font-size:12px">Товарів не знайдено</div>';return;}
+  // Карта постачальників id → name (для відображення в рядках)
+  const supMap=Object.fromEntries((_suppliers||[]).map(s=>[s.id,s.name]));
   el.innerHTML=`<div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;overflow:hidden">
     <div class="g-prod-row" style="background:var(--p2);cursor:default">
-      <div></div><div style="font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">Товар</div>
-      <div style="font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">Ціна</div>
-      <div style="font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">Залишок</div>
-      <div style="font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">Статус</div>
+      <div></div>
+      <div style="font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">Товар</div>
+      <div style="font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">Постачальник</div>
+      <div style="font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em;text-align:right">Ціна</div>
+      <div style="font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em;text-align:center">Залишок</div>
+      <div style="font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em;text-align:center">Статус</div>
       <div></div>
     </div>
     ${list.map(p=>{
       const stockCls=p.stock<=0?'g-stock-out':p.stock<=p.min_stock?'g-stock-low':'g-stock-ok';
       const stockLbl=p.stock<=0?'Немає':p.stock<=p.min_stock?'Мало':'OK';
+      const supName=p.supplier_id?(supMap[p.supplier_id]||'—'):'—';
       return `<div class="g-prod-row">
         <div class="g-prod-emoji">${p.emoji||'📦'}</div>
-        <div><div class="g-prod-name">${p.name}</div><div class="g-prod-cat">${p.category}</div></div>
-        <div style="font-size:13px;font-weight:700;color:var(--y)">${p.price} ₴</div>
-        <div style="font-size:13px;font-weight:600">${p.stock} шт.</div>
-        <div><span class="g-stock-badge ${stockCls}">${stockLbl}</span></div>
-        <div style="display:flex;gap:6px">
+        <div style="min-width:0"><div class="g-prod-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div><div class="g-prod-cat">${p.category}</div></div>
+        <div style="font-size:11px;color:${p.supplier_id?'var(--m)':'var(--m2)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${supName}">${supName}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--y);text-align:right;white-space:nowrap">${p.price} ₴</div>
+        <div style="font-size:13px;font-weight:600;text-align:center;white-space:nowrap">${p.stock} шт.</div>
+        <div style="text-align:center"><span class="g-stock-badge ${stockCls}">${stockLbl}</span></div>
+        <div style="display:flex;gap:6px;justify-content:flex-end">
           <button onclick="editProduct('${p.id}')" style="padding:4px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-size:11px;cursor:pointer">✏️</button>
           <button onclick="deleteProduct('${p.id}','${p.name}')" style="padding:4px 10px;border-radius:6px;border:1px solid #EF444430;background:#EF444410;color:var(--rd);font-size:11px;cursor:pointer">🗑</button>
         </div>
