@@ -653,12 +653,14 @@ tr:hover td{background:#ffffff03;cursor:pointer}
                   <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--m2);margin-bottom:10px">ПРРО / Каса</div>
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
                     <div>
-                      <div style="font-size:10px;color:var(--m2);margin-bottom:4px">Назва ПРРО</div>
-                      <div style="font-size:13px;font-weight:600" id="cfg-prro-name">ПРРО2</div>
+                      <label style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--m2);display:block;margin-bottom:5px">Назва ПРРО</label>
+                      <input class="fi2" type="text" id="cfg-prro-name" placeholder="ПРРО2" style="width:100%">
+                      <div style="font-size:10px;color:var(--m);margin-top:3px">Довільна назва для вашої каси</div>
                     </div>
                     <div>
-                      <div style="font-size:10px;color:var(--m2);margin-bottom:4px">Фіскальний номер</div>
-                      <div style="font-size:13px;font-weight:600" id="cfg-prro-num">4001020534</div>
+                      <label style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--m2);display:block;margin-bottom:5px">Фіскальний номер ПРРО</label>
+                      <input class="fi2" type="text" id="cfg-prro-num" placeholder="4001020534" style="width:100%">
+                      <div style="font-size:10px;color:var(--m);margin-top:3px">З кабінету Checkbox → Каси</div>
                     </div>
                   </div>
                 </div>
@@ -2881,23 +2883,32 @@ function getCbLogin(){ return localStorage.getItem('cb_login') || 'sportzal'; }
 function getCbPass(){ return localStorage.getItem('cb_pass') || 'creagym02'; }
 
 function loadCbSettings(){
-  const l=document.getElementById('cfg-cb-login');
-  const p=document.getElementById('cfg-cb-pass');
-  const k=document.getElementById('cfg-cb-key');
-  if(l) l.value=getCbLogin();
-  if(p) p.value=getCbPass();
-  if(k) k.value=localStorage.getItem('cb_key')||'';
+  const fields = {
+    'cfg-cb-login': localStorage.getItem('cb_login') || 'sportzal',
+    'cfg-cb-pass':  localStorage.getItem('cb_pass')  || 'creagym02',
+    'cfg-cb-key':   localStorage.getItem('cb_key')   || '',
+    'cfg-prro-name':localStorage.getItem('cb_prro_name') || 'ПРРО2',
+    'cfg-prro-num': localStorage.getItem('cb_prro_num')  || '4001020534',
+  };
+  Object.entries(fields).forEach(([id,val])=>{
+    const el=document.getElementById(id);
+    if(el) el.value=val;
+  });
 }
 
 function saveCbSettings(){
   const login=document.getElementById('cfg-cb-login')?.value.trim();
   const pass=document.getElementById('cfg-cb-pass')?.value.trim();
-  const key=document.getElementById('cfg-cb-key')?.value.trim();
+  const key=document.getElementById('cfg-cb-key')?.value.trim()||'';
+  const prroName=document.getElementById('cfg-prro-name')?.value.trim()||'ПРРО';
+  const prroNum=document.getElementById('cfg-prro-num')?.value.trim()||'';
   if(!login||!pass){alert('Введіть логін і пароль касира');return}
-  localStorage.setItem('cb_login',login);
-  localStorage.setItem('cb_pass',pass);
-  if(key) localStorage.setItem('cb_key',key);
-  alert('✅ Налаштування збережено!\nЛогін: '+login);
+  localStorage.setItem('cb_login', login);
+  localStorage.setItem('cb_pass',  pass);
+  localStorage.setItem('cb_key',   key);
+  localStorage.setItem('cb_prro_name', prroName);
+  localStorage.setItem('cb_prro_num',  prroNum);
+  alert(`✅ Налаштування збережено!\nПРРО: ${prroName} (${prroNum})\nКасир: ${login}`);
 }
 
 function toggleCfgPass(){
@@ -2923,7 +2934,10 @@ async function testCbConnection(){
       if(txt) txt.textContent='✅ Підключено';
       // Перевіряємо зміну
       const sh=await cbCall('shift_status',{token:r.access_token});
-      const shiftInfo=sh.status==='OPENED'?`✅ Зміна відкрита (з ${new Date(sh.opened_at||'').toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})})`:`⚠️ Зміна закрита (${sh.status||'невідомо'})`;
+      const shStatus=sh?.status||'UNKNOWN';
+      const shiftInfo=shStatus==='OPENED'
+        ?`✅ Зміна відкрита (з ${new Date(sh.opened_at||'').toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})})`
+        :`⚠️ Зміна закрита — натисніть "Відкрити зміну вручну" перед роботою`;
       if(res){
         res.style.display='block';
         res.innerHTML=`<div style="color:var(--gr);font-weight:600;margin-bottom:6px">✅ З'єднання успішне</div>
@@ -3006,7 +3020,7 @@ async function cbCreateReceipt(items, total, payMethod, client) {
     let shiftOk = false;
     try {
       const st = await cbCall('shift_status', { token });
-      if(st.status === 'OPENED') shiftOk = true;
+      if(st?.status === 'OPENED') shiftOk = true;
     } catch(e) {}
 
     // 3. Відкриваємо зміну якщо не відкрита
@@ -3014,12 +3028,12 @@ async function cbCreateReceipt(items, total, payMethod, client) {
       showCbLoading(true, 'Відкриття зміни в Checkbox...');
       try {
         const openRes = await cbCall('open_shift', { token });
-        if(openRes.id) {
+        if(openRes?.id) {
           for(let i=0; i<8; i++) {
             await new Promise(r=>setTimeout(r,1500));
             const st = await cbCall('shift_status', { token });
-            if(st.status === 'OPENED') { shiftOk = true; break; }
-            if(st.status === 'CLOSED') break;
+            if(st?.status === 'OPENED') { shiftOk = true; break; }
+            if(st?.status === 'CLOSED') break;
           }
         }
       } catch(e) {}
@@ -3076,11 +3090,13 @@ function showCbReceipt(receipt, items, total, payMethod, client) {
   const dt = receipt.created_at ? new Date(receipt.created_at).toLocaleString('uk-UA') : new Date().toLocaleString('uk-UA');
   const checkUrl = receipt.public_url || 'https://check.checkbox.ua/'+receipt.id;
   const isDone = receipt.status === 'DONE';
+  const prroName = localStorage.getItem('cb_prro_name') || 'ПРРО';
+  const prroNum = localStorage.getItem('cb_prro_num') || '';
   const el = document.getElementById('receipt-content');
   el.innerHTML = `
     <div style="font-family:'Courier New',monospace;font-size:12px;line-height:1.8;color:#000;text-align:center">
       <div style="font-weight:800;font-size:15px">CREAGYM FITNESS</div>
-      <div style="font-size:10px;color:#777">ПРРО Checkbox</div>
+      <div style="font-size:10px;color:#777">ПРРО Checkbox · ${prroName}${prroNum?' · №'+prroNum:''}</div>
       <div style="border-top:1px dashed #ccc;margin:8px 0"></div>
       <div style="text-align:left">
         ${items.map(i=>`<div style="font-weight:600">${i.name||'Послуга'}</div>
