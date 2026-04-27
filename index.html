@@ -1873,12 +1873,29 @@ async function createClient(){
   const first=document.getElementById('f-first').value.trim();
   const phone=document.getElementById('f-phone').value.trim();
   const gender=document.getElementById('f-gender').value;
-  const hasPhoto=document.getElementById('ph-prev').style.display!=='none';
+  const prevImg=document.getElementById('ph-prev');
+  const hasPhoto=prevImg.style.display!=='none';
   if(!last){alert('Введіть прізвище');return}
   if(!first){alert('Введіть ім\'я');return}
   if(!phone){alert('Введіть телефон');return}
   if(!gender){alert('Оберіть стать');return}
   if(!hasPhoto){alert('⚠️ Фото обов\'язкове!\nБез фото клієнт не може бути зареєстрований.');return}
+
+  // Конвертуємо фото в base64 для збереження
+  let photoUrl='';
+  try{
+    // Стискаємо фото до 200x200px перед збереженням
+    const canvas=document.createElement('canvas');
+    canvas.width=200;canvas.height=200;
+    const ctx=canvas.getContext('2d');
+    const img=prevImg;
+    // Crop to square
+    const size=Math.min(img.naturalWidth||200,img.naturalHeight||200);
+    const ox=((img.naturalWidth||200)-size)/2;
+    const oy=((img.naturalHeight||200)-size)/2;
+    ctx.drawImage(img,ox,oy,size,size,0,0,200,200);
+    photoUrl=canvas.toDataURL('image/jpeg',0.7);
+  }catch(e){ photoUrl=prevImg.src||''; }
 
   const id='CG-'+(Date.now().toString().slice(-6));
   try {
@@ -1887,6 +1904,7 @@ async function createClient(){
       birth_date:document.getElementById('f-bday').value||null,
       city:document.getElementById('f-city').value.trim()||'Вінниця',
       note:document.getElementById('f-note').value.trim()||'',
+      photo_url:photoUrl,
       status:'trial',visits:0
     });
     closeMoD('mo-cl');
@@ -2521,27 +2539,35 @@ async function admSelectClient(id){
 
 async function admCheckIn(id){
   const c=admClients.find(x=>x.id===id);if(!c)return;
+
+  // Перевіряємо чи є активний або не активований абонемент
+  let hasSub=false;
+  let subForActivation=null;
+  try{
+    const subs=await sb.get('subscriptions',`?client_id=eq.${id}&status=eq.active&limit=1`);
+    if(subs&&subs.length){
+      hasSub=true;
+      subForActivation=subs[0];
+    }
+  }catch(e){}
+
+  if(!hasSub){
+    alert(`⛔ Вхід заборонено!\n\n${c.last_name} ${c.first_name} не має активного абонементу.\nСпочатку продайте абонемент.`);
+    return;
+  }
+
   const key=Math.floor(Math.random()*99)+1;
   admInClub.push({...c,key});
   document.getElementById('adm-cnt').textContent=admInClub.length;
   admRenderICP();
 
-  // Перевіряємо чи є неактивований абонемент
-  try{
-    const subs=await sb.get('subscriptions',`?client_id=eq.${id}&status=eq.active&limit=1`);
-    const sub=subs&&subs.length?subs[0]:null;
-    const today=new Date().toISOString().split('T')[0];
-    const isActivated=sub&&(sub.started_at||(sub.start_type==='з дати продажу'));
-    if(sub&&!isActivated){
-      // Є неактивований абонемент — питаємо
-      const activate=confirm(`✅ ${c.last_name} ${c.first_name} зареєстрований\n🔑 Виданий ключ №${key}\n\n📋 Абонемент "${sub.type_name}" ще не активований.\nЦе перший вхід — активувати абонемент?`);
-      if(activate){
-        await activateSubscription(sub.id,id,true);
-      }
-    } else {
-      alert(`✅ ${c.last_name} ${c.first_name} зареєстрований\n🔑 Виданий ключ №${key}`);
-    }
-  }catch(e){
+  // Якщо абонемент не активований — питаємо
+  const today=new Date().toISOString().split('T')[0];
+  const isActivated=subForActivation&&(subForActivation.started_at||(subForActivation.start_type==='з дати продажу'));
+  if(subForActivation&&!isActivated){
+    const activate=confirm(`✅ ${c.last_name} ${c.first_name} зареєстрований\n🔑 Виданий ключ №${key}\n\n📋 Абонемент "${subForActivation.type_name}" ще не активований.\nЦе перший вхід — активувати абонемент?`);
+    if(activate) await activateSubscription(subForActivation.id,id,true);
+  } else {
     alert(`✅ ${c.last_name} ${c.first_name} зареєстрований\n🔑 Виданий ключ №${key}`);
   }
   admSelectClient(id);
