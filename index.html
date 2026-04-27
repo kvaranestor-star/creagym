@@ -1700,8 +1700,8 @@ async function ownerReturnProduct(saleId,amount,itemName,payMethod){
       created_by:curUser?.name||'owner'
     });
     okLoadTx();
-    // Фіскальний чек повернення
-    await cbReturnReceipt(itemName, amount, payMethod, reason.trim());
+    // Передаємо ID оригінального продажу
+    await cbReturnReceipt(itemName, amount, payMethod, reason.trim(), saleId);
   }catch(e){alert('❌ '+e.message)}
 }
 
@@ -2780,8 +2780,8 @@ async function admReturnProduct(saleId, amount, itemName, payMethod){
       created_by:curUser?.name||'admin'
     });
     kasaLoadTx();
-    // Фіскальний чек повернення
-    await cbReturnReceipt(itemName, amount, payMethod, reason.trim());
+    // Передаємо ID оригінального продажу — щоб перевірити чи він був фіскальним
+    await cbReturnReceipt(itemName, amount, payMethod, reason.trim(), saleId);
   }catch(e){alert('❌ '+e.message)}
 }
 
@@ -2829,6 +2829,18 @@ async function returnSubscription(subId, clientId, typeName, price, startDate, p
       created_by:curUser?.name||'admin'
     });
     if(kasaShift)kasaLoadTx();
+
+    // Шукаємо оригінальну транзакцію продажу абонементу для фіскального повернення
+    let origSaleId = null;
+    let origPayMethod = payMethod || 'cash';
+    try{
+      const origSales = await sb.get('sales',
+        `?client_id=eq.${clientId}&type=eq.subscription&order=created_at.desc&limit=5`);
+      const origSale = origSales&&origSales.find(s=>s.item_name===typeName||s.amount===price);
+      if(origSale){ origSaleId=origSale.id; origPayMethod=origSale.payment_method||payMethod; }
+    }catch(e){}
+
+    await cbReturnReceipt('Абонемент: '+typeName, price, origPayMethod, 'Повернення абонементу', origSaleId);
     alert('✅ Абонемент скасовано!\n'+price+' ₴ повернуто клієнту');
     admSelectClient(clientId);
   }catch(e){alert('❌ '+e.message)}
@@ -3249,6 +3261,15 @@ async function cbCreateReceipt(items, total, payMethod, client) {
       } catch(e) { break; }
     }
     showCbLoading(false);
+    // Зберігаємо fiscal_receipt_id в останній транзакції продажу
+    if(receipt.status === 'DONE' && receipt.id){
+      try{
+        const lastSales = await sb.get('sales','?order=created_at.desc&limit=1&type=neq.return');
+        if(lastSales&&lastSales.length){
+          await sb.patch('sales',`id=eq.${lastSales[0].id}`,{fiscal_receipt_id:receipt.id});
+        }
+      }catch(e){}
+    }
     showCbReceipt(receipt, items, total, payMethod, client);
 
   } catch(e) {
@@ -3341,10 +3362,28 @@ async function cbCloseShift() {
 }
 
 // Фіскальний чек повернення
-async function cbReturnReceipt(itemName, amount, payMethod, reason) {
-  // Перевіряємо чи треба фіскалізувати цей тип оплати
-  if(!shouldFiscalize(payMethod)) {
-    alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴`);
+async function cbReturnReceipt(itemName, amount, payMethod, reason, originalSaleId=null) {
+  // Перевіряємо чи оригінальний продаж був фіскалізований
+  // Логіка: шукаємо оригінальну транзакцію і перевіряємо її payment_method
+  let wasФіскалізований = false;
+  if(originalSaleId){
+    try{
+      const origSales = await sb.get('sales',`?id=eq.${originalSaleId}&select=payment_method,fiscal_receipt_id`);
+      const orig = origSales&&origSales.length?origSales[0]:null;
+      if(orig){
+        // Якщо є fiscal_receipt_id — точно фіскалізований
+        if(orig.fiscal_receipt_id) wasФіскалізований = true;
+        // Інакше перевіряємо чи метод оплати підпадав під фіскалізацію
+        else wasФіскалізований = shouldFiscalize(orig.payment_method||payMethod);
+      }
+    }catch(e){ wasФіскалізований = shouldFiscalize(payMethod); }
+  } else {
+    // Немає ID оригіналу — перевіряємо поточний метод оплати
+    wasФіскалізований = shouldFiscalize(payMethod);
+  }
+
+  if(!wasФіскалізований) {
+    alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴\n(нефіскальний продаж — чек не потрібен)`);
     return;
   }
   showCbLoading(true, 'Фіскалізація повернення...');
