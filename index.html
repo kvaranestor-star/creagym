@@ -2016,17 +2016,41 @@ async function okCloseShift(){
   if(!okShift||!confirm('Закрити зміну? Буде сформовано Z-звіт.'))return;
   const cashIn=okTxAll.filter(x=>x.payment_method==='cash'&&x.type!=='outcome'&&x.type!=='return').reduce((s,x)=>s+x.amount,0);
   const cashOut=okTxAll.filter(x=>x.payment_method==='cash'&&(x.type==='outcome'||x.type==='return')).reduce((s,x)=>s+x.amount,0);
-  const cardIn=okTxAll.filter(x=>x.payment_method==='card').reduce((s,x)=>s+x.amount,0);
-  const cashEnd=(okShift.cash_start||0)+cashIn-cashOut;
-  try{if(!okShift.id.startsWith('demo-ok'))await sb.patch('shifts',`id=eq.${okShift.id}`,{status:'closed',closed_at:new Date().toISOString(),cash_end:cashEnd,total_cash:cashIn-cashOut,total_card:cardIn});}catch(e){}
-  showShiftReport('zreport',cashIn-cashOut,cardIn,okShift.cash_start||0,okTxAll);
+  const cashTurn=cashIn-cashOut;
+  const cardTurn=okTxAll.filter(x=>x.payment_method==='card'&&x.type!=='return').reduce((s,x)=>s+x.amount,0);
+  const cashEnd=(okShift.cash_start||0)+cashTurn;
+
+  // 1. Закриваємо зміну в Checkbox і отримуємо Z-звіт
+  let cbZReportId=null;
+  try{
+    await loadCbSettings();
+    const lr=await cbCall('login');
+    if(lr.access_token){
+      const closeRes=await cbCall("close_shift", {token:lr.access_token, _license_key:_cbSettings.cb_key});
+      if(closeRes && closeRes.z_report && closeRes.z_report.id){
+        cbZReportId=closeRes.z_report.id;
+      } else if(closeRes && closeRes.id && closeRes.z_report){
+        cbZReportId=closeRes.z_report.id||null;
+      }
+    }
+  }catch(e){ console.warn('cbCloseShift owner:', e.message); }
+
+  // 2. Записуємо локально як закриту
+  try{if(!okShift.id.startsWith('demo-ok'))await sb.patch('shifts',`id=eq.${okShift.id}`,{status:'closed',closed_at:new Date().toISOString(),cash_end:cashEnd,total_cash:cashTurn,total_card:cardTurn});}catch(e){}
+
+  const closedShift=okShift;
+  const closedTx=[...okTxAll];
   okShift=null;okTxAll=[];
   okUpdateShiftUI(false);
-  // Закриваємо зміну в Checkbox автоматично
-  try{
-    const lr=await cbCall('login');
-    if(lr.access_token){ await cbCall("close_shift", {token:lr.access_token, _license_key:_cbSettings.cb_key}); }
-  }catch(e){ console.warn('cbCloseShift owner:', e.message); }
+
+  // 3. Показуємо звіт
+  if(cbZReportId){
+    await showFiscalReceipt(cbZReportId);
+    setTimeout(()=>{ showLocalShiftReport(closedShift,closedTx,cashTurn,cardTurn); },500);
+  } else {
+    showLocalShiftReport(closedShift,closedTx,cashTurn,cardTurn);
+  }
+
   const el=document.getElementById('ok-tx-body');
   if(el)el.innerHTML='<tr><td colspan="6" style="padding:30px;text-align:center;font-size:12px;color:var(--m2)">Зміну закрито</td></tr>';
   ['ok-cash-total','ok-card-total','ok-total'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent='0 ₴';});
@@ -3774,26 +3798,157 @@ async function kasaCloseShift(){
   const cashTurn=cashIn-cashOut;
   const cardTurn=kasaTxAll.filter(x=>x.payment_method==='card').reduce((s,x)=>s+x.amount,0);
   const cashEnd=(kasaShift.cash_start||0)+cashTurn;
+
+  // 1. Закриваємо зміну в Checkbox і отримуємо Z-звіт
+  let cbZReportId=null;
+  try{
+    await loadCbSettings();
+    const lr=await cbCall('login');
+    if(lr.access_token){
+      const closeRes=await cbCall("close_shift", {token:lr.access_token, _license_key:_cbSettings.cb_key});
+      // close_shift повертає об'єкт зміни з z_report.id
+      if(closeRes && closeRes.z_report && closeRes.z_report.id){
+        cbZReportId=closeRes.z_report.id;
+        console.log('✅ Checkbox Z-звіт:',cbZReportId);
+      } else if(closeRes && closeRes.id){
+        // Якщо повернулось саму зміну - дістаємо z_report
+        cbZReportId=closeRes.z_report?.id||null;
+      }
+    }
+  }catch(e){ console.warn('cbCloseShift auto:', e.message); }
+
+  // 2. Записуємо локальну зміну як закриту
   try{
     if(!kasaShift.id.startsWith('demo')) await sb.patch('shifts',`id=eq.${kasaShift.id}`,{status:'closed',closed_at:new Date().toISOString(),cash_end:cashEnd,total_cash:cashTurn,total_card:cardTurn});
   }catch(e){}
-  showShiftReport('zreport',cashTurn,cardTurn,kasaShift.cash_start||0,kasaTxAll);
+
+  const closedShift=kasaShift; // зберігаємо для звіту
+  const closedTx=[...kasaTxAll];
   kasaShift=null;kasaTxAll=[];
   kasaSaveShift();
   kasaUpdateShiftUI(false);
-  // Закриваємо зміну в Checkbox автоматично
-  try{
-    const lr=await cbCall('login');
-    if(lr.access_token){
-      await cbCall("close_shift", {token:lr.access_token, _license_key:_cbSettings.cb_key});
-      console.log('✅ Checkbox зміну закрито автоматично');
-    }
-  }catch(e){ console.warn('cbCloseShift auto:', e.message); }
+
+  // 3. Показуємо звіт - спочатку фіскальний Z-чек з Checkbox, потім локальний зведений
+  if(cbZReportId){
+    await showFiscalReceipt(cbZReportId);
+    // Після закриття фіскального чека юзером - показуємо локальний зведений
+    setTimeout(()=>{ showLocalShiftReport(closedShift,closedTx,cashTurn,cardTurn); },500);
+  } else {
+    // Фіскалізації немає - тільки локальний зведений
+    showLocalShiftReport(closedShift,closedTx,cashTurn,cardTurn);
+  }
+
   document.getElementById('kasa-tx-body').innerHTML='<tr><td colspan="6" style="padding:30px;text-align:center;font-size:12px;color:var(--m2)">Зміну закрито</td></tr>';
   ['k-cash-total','k-card-total','k-total'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='0 ₴'});
   document.getElementById('k-tx-cnt').textContent='0';
   document.getElementById('k-cash-turn').textContent='0 ₴';
   document.getElementById('k-card-turn').textContent='0 ₴';
+}
+
+// Локальний зведений Z-звіт - всі операції смены, фіскальні + нефіскальні + повернення
+function showLocalShiftReport(shift,txList,cashTurn,cardTurn){
+  if(!shift)return;
+  const fiskCash=_cbSettings?.cb_fiscalize_cash==='true';
+  const fiskCard=_cbSettings?.cb_fiscalize_card==='true';
+
+  // Розкладаємо транзакції
+  const sales=txList.filter(t=>t.type==='subscription'||t.type==='product'||t.type==='service');
+  const returns=txList.filter(t=>t.type==='return');
+  const inputs=txList.filter(t=>t.type==='income');
+  const outputs=txList.filter(t=>t.type==='outcome');
+
+  const fiscalSales=sales.filter(t=>t.fiscal_receipt_id);
+  const nonFiscalSales=sales.filter(t=>!t.fiscal_receipt_id);
+  const fiscalReturns=returns.filter(t=>t.fiscal_receipt_id);
+  const nonFiscalReturns=returns.filter(t=>!t.fiscal_receipt_id);
+
+  const sum=arr=>arr.reduce((s,x)=>s+(x.amount||0),0);
+
+  const cashStart=shift.cash_start||0;
+  const cashEnd=cashStart+cashTurn;
+  const opened=new Date(shift.opened_at);
+  const closed=new Date();
+
+  const html=`
+    <div style="font-family:'Courier New',monospace;font-size:11px;line-height:1.6;color:#000;background:#fff;padding:18px">
+      <div style="text-align:center;font-weight:700;font-size:13px;margin-bottom:4px">CREAGYM FITNESS</div>
+      <div style="text-align:center;font-size:10px;margin-bottom:8px">ЗВЕДЕНИЙ Z-ЗВІТ ЗМІНИ</div>
+      <div style="border-top:1px dashed #000;border-bottom:1px dashed #000;padding:6px 0;margin-bottom:8px">
+        <div>Касир: ${shift.opened_by||'—'}</div>
+        <div>Відкрито: ${opened.toLocaleString('uk-UA')}</div>
+        <div>Закрито: ${closed.toLocaleString('uk-UA')}</div>
+      </div>
+
+      <div style="font-weight:700;margin-top:8px;margin-bottom:4px">ПРОДАЖІ</div>
+      <div style="display:flex;justify-content:space-between"><span>Кількість продажів:</span><span>${sales.length}</span></div>
+      <div style="display:flex;justify-content:space-between"><span>  - фіскальних:</span><span>${fiscalSales.length} (${sum(fiscalSales).toLocaleString('uk-UA')} ₴)</span></div>
+      <div style="display:flex;justify-content:space-between"><span>  - не фіскальних:</span><span>${nonFiscalSales.length} (${sum(nonFiscalSales).toLocaleString('uk-UA')} ₴)</span></div>
+      <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px dotted #000;padding-top:3px;margin-top:3px"><span>Всього продажів:</span><span>${sum(sales).toLocaleString('uk-UA')} ₴</span></div>
+
+      ${returns.length?`
+      <div style="font-weight:700;margin-top:10px;margin-bottom:4px">ПОВЕРНЕННЯ</div>
+      <div style="display:flex;justify-content:space-between"><span>Кількість повернень:</span><span>${returns.length}</span></div>
+      <div style="display:flex;justify-content:space-between"><span>  - фіскальних:</span><span>${fiscalReturns.length} (${sum(fiscalReturns).toLocaleString('uk-UA')} ₴)</span></div>
+      <div style="display:flex;justify-content:space-between"><span>  - не фіскальних:</span><span>${nonFiscalReturns.length} (${sum(nonFiscalReturns).toLocaleString('uk-UA')} ₴)</span></div>
+      <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px dotted #000;padding-top:3px;margin-top:3px"><span>Всього повернень:</span><span>− ${sum(returns).toLocaleString('uk-UA')} ₴</span></div>
+      `:''}
+
+      <div style="font-weight:700;margin-top:10px;margin-bottom:4px">ВИДИ ОПЛАТИ</div>
+      <div style="display:flex;justify-content:space-between"><span>💵 Готівка (оборот):</span><span>${cashTurn.toLocaleString('uk-UA')} ₴</span></div>
+      <div style="display:flex;justify-content:space-between"><span>💳 Картка (оборот):</span><span>${cardTurn.toLocaleString('uk-UA')} ₴</span></div>
+
+      ${(inputs.length||outputs.length)?`
+      <div style="font-weight:700;margin-top:10px;margin-bottom:4px">КАСОВІ ОПЕРАЦІЇ</div>
+      ${inputs.length?`<div style="display:flex;justify-content:space-between"><span>⬇ Внесення (${inputs.length}):</span><span>+ ${sum(inputs).toLocaleString('uk-UA')} ₴</span></div>`:''}
+      ${outputs.length?`<div style="display:flex;justify-content:space-between"><span>⬆ Винесення (${outputs.length}):</span><span>− ${sum(outputs).toLocaleString('uk-UA')} ₴</span></div>`:''}
+      `:''}
+
+      <div style="font-weight:700;margin-top:10px;margin-bottom:4px">ГОТІВКА В КАСІ</div>
+      <div style="display:flex;justify-content:space-between"><span>На початок:</span><span>${cashStart.toLocaleString('uk-UA')} ₴</span></div>
+      <div style="display:flex;justify-content:space-between"><span>Оборот:</span><span>${cashTurn>=0?'+':'−'} ${Math.abs(cashTurn).toLocaleString('uk-UA')} ₴</span></div>
+      <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #000;padding-top:3px;margin-top:3px"><span>На кінець:</span><span>${cashEnd.toLocaleString('uk-UA')} ₴</span></div>
+
+      <div style="font-weight:700;margin-top:10px;border-top:2px solid #000;padding-top:6px">
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span>ЗАГАЛЬНА СУМА:</span><span>${(sum(sales)-sum(returns)).toLocaleString('uk-UA')} ₴</span></div>
+      </div>
+
+      <div style="text-align:center;font-size:9px;color:#666;margin-top:14px;border-top:1px dashed #000;padding-top:6px">
+        Фіскалізація: ${fiskCash?'💵':''} ${fiskCard?'💳':''}${(!fiskCash&&!fiskCard)?'вимкнена':''}<br>
+        ${fiscalSales.length+fiscalReturns.length} операцій передано в Checkbox
+      </div>
+    </div>`;
+
+  // Створюємо/перевикористовуємо модалку
+  let mo=document.getElementById('local-zreport-mo');
+  if(!mo){
+    mo=document.createElement('div');
+    mo.id='local-zreport-mo';
+    mo.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:5001;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)';
+    mo.onclick=function(e){if(e.target===mo)mo.remove();};
+    document.body.appendChild(mo);
+  }
+  mo.innerHTML=`
+    <div style="background:#fff;border-radius:12px;width:100%;max-width:400px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #eee;background:#fafafa;flex-shrink:0">
+        <div style="font-size:13px;font-weight:700;color:#000">📊 Зведений Z-звіт зміни</div>
+        <button onclick="document.getElementById('local-zreport-mo').remove()" style="width:26px;height:26px;background:#f0f0f0;border:none;border-radius:6px;cursor:pointer;color:#666;font-size:14px">✕</button>
+      </div>
+      <div id="local-zreport-content" style="flex:1;overflow-y:auto;background:#fff">${html}</div>
+      <div style="display:flex;gap:8px;padding:10px 16px;border-top:1px solid #eee;background:#fafafa;flex-shrink:0">
+        <button onclick="document.getElementById('local-zreport-mo').remove()" style="flex:1;padding:10px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#666;font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">Закрити</button>
+        <button onclick="printLocalZReport()" style="flex:1;padding:10px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">🖨️ Друкувати</button>
+      </div>
+    </div>`;
+}
+
+function printLocalZReport(){
+  const content=document.getElementById('local-zreport-content');
+  if(!content)return;
+  const w=window.open('','_blank','width=420,height=600');
+  if(!w){alert('Дозвольте спливаючі вікна');return;}
+  w.document.write(`<html><head><title>Z-звіт CREAGYM</title></head><body>${content.innerHTML}</body></html>`);
+  w.document.close();
+  setTimeout(()=>w.print(),300);
 }
 
 function admRenderShop(){
