@@ -3920,6 +3920,24 @@ async function admReturnProduct(saleId, amount, itemName, payMethod){
       is_return:true,
       created_by:curUser?.name||'admin'
     });
+    // Повертаємо товар на склад - шукаємо за назвою
+    try{
+      // itemName може містити кілька товарів через ", " - беремо перший
+      const firstItem=itemName.split(',')[0].trim().replace(/\s+×\d+$/,'');
+      const prod=admProducts.find(p=>p.name===firstItem||(p.emoji+' '+p.name)===firstItem);
+      if(prod){
+        const newStock=(prod.stock||0)+1;
+        await sb.patch('products',`id=eq.${prod.id}`,{stock:newStock});
+        prod.stock=newStock;
+        await sb.post('product_movements',{
+          product_id:prod.id,
+          type:'return',
+          quantity:1,
+          note:`Повернення: ${reason.trim()}`,
+          created_by:curUser?.name||'admin'
+        });
+      }
+    }catch(e){console.warn('return stock:',e);}
     kasaLoadTx();
     // Передаємо ID оригінального продажу — щоб перевірити чи він був фіскальним
     const fiscalReturnId=await cbReturnReceipt(itemName, amount, payMethod, reason.trim(), saleId);
@@ -4279,16 +4297,34 @@ async function admCheckout(m){
   try{
     const itemsDesc=admCart.map(i=>`${i.name}${i.qty>1?' ×'+i.qty:''}`).join(', ');
     await sb.post('sales',{type:'product',item_name:itemsDesc,amount:tot,payment_method:m,created_by:curUser?.name||'admin'});
+    // Списуємо зі складу + рух товару (дозволяємо мінус)
+    for(const it of admCart){
+      const prod=admProducts.find(p=>p.id===it.id);
+      if(!prod) continue;
+      const newStock=(prod.stock||0)-it.qty;
+      try{
+        await sb.patch('products',`id=eq.${prod.id}`,{stock:newStock});
+        prod.stock=newStock;
+      }catch(e){console.warn('stock update:',e);}
+      try{
+        await sb.post('product_movements',{
+          product_id:prod.id,
+          type:'sale',
+          quantity:-it.qty,
+          note:`Продаж: ${it.name}${it.qty>1?' ×'+it.qty:''}`,
+          created_by:curUser?.name||'admin'
+        });
+      }catch(e){console.warn('movement:',e);}
+    }
     const receiptItems=admCart.map(i=>({name:i.emoji+' '+i.name,qty:i.qty,price:i.price,total:i.price*i.qty,code:'GOOD'+i.id.slice(-3)}));
     admCart=[];admRenderCart();
+    admRenderShop(); // оновити сітку щоб новий залишок було видно
     if(kasaShift)kasaLoadTx();
     // Фіскальний чек
     const fiscalId=await cbCreateReceipt(receiptItems,tot,m,null);
     if(fiscalId){
-      // Показуємо справжній фіскальний чек з Checkbox (з QR-кодом)
       await showFiscalReceipt(fiscalId);
     } else {
-      // Фіскалізація вимкнена або не пройшла — показуємо локальний чек
       const text=buildReceiptText(receiptItems,tot,m,curUser?.name||'admin');
       document.getElementById('receipt-content').textContent=text;
       admOpenMo('receipt-mo');
