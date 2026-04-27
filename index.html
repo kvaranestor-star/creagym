@@ -3384,51 +3384,58 @@ async function testCbConnection(){
   const res=document.getElementById('cfg-cb-result');
   if(dot) dot.style.background='var(--or)';
   if(txt) txt.textContent='Перевірка...';
-  if(res) res.style.display='none';
-
-  const showErr=(title,detail)=>{
-    if(dot) dot.style.background='var(--rd)';
-    if(txt) txt.textContent='❌ Помилка';
-    if(res){res.style.display='block';res.innerHTML=`<div style="color:var(--rd);font-weight:600">${title}</div><div style="color:var(--m2);margin-top:6px;font-size:11px">${detail}</div>`;}
-  };
+  if(res){res.style.display='block';res.innerHTML='<div style="color:var(--m2)">⏳ Перевіряємо логін і пароль...</div>';}
 
   try{
-    // Крок 1: Логін
+    // КРОК 1: Перевіряємо логін/пароль
     const lr=await cbCall('login');
-    if(!lr.access_token){ showErr('❌ Невірний логін або пароль',lr.message||'Перевірте дані в my.checkbox.ua → Касири'); return; }
+    if(!lr.access_token){
+      if(dot) dot.style.background='var(--rd)';
+      if(txt) txt.textContent='❌ Помилка';
+      res.innerHTML=`
+        <div style="color:var(--rd);font-size:13px;font-weight:700;margin-bottom:8px">❌ Невірний логін або пароль</div>
+        <div style="color:var(--m2);font-size:12px">Перевірте логін і пароль касира в my.checkbox.ua → Касири</div>
+        <div style="color:var(--m);font-size:11px;margin-top:4px">Відповідь: ${lr.message||JSON.stringify(lr)}</div>`;
+      return;
+    }
 
-    // Крок 2: Перевіряємо ключ ліцензії через відкриття зміни
-    // Якщо зміна вже відкрита — закриємо і спробуємо знову (або просто перевіримо статус)
+    // КРОК 2: Перевіряємо ключ ліцензії через open_shift
+    if(res) res.innerHTML='<div style="color:var(--m2)">✅ Логін/пароль вірні...<br>⏳ Перевіряємо ключ ліцензії...</div>';
     const sh=await cbCall('shift_status',{token:lr.access_token});
     
+    // Пробуємо відкрити зміну — це єдиний спосіб перевірити ключ
     if(sh?.status!=='OPENED'){
-      // Зміна не відкрита — пробуємо відкрити для перевірки ключа
-      const openR=await cbCall('open_shift',{token:lr.access_token});
-      if(openR?.code==='cash_register.invalid_license_key'||openR?.message?.includes('ліцензі')||openR?.message?.includes('license_key')||openR?.detail){
-        const errDetail=openR?.detail?.[0]?.msg||openR?.message||JSON.stringify(openR);
-        showErr('❌ Невірний ключ ліцензії каси',`${errDetail}<br><br>Введений ключ: <code style="color:var(--y)">${cbSettings.cb_key||'—'}</code><br>Перевірте в my.checkbox.ua → Каси → "Ключ ліцензії"`);
+      const op=await cbCall('open_shift',{token:lr.access_token});
+      if(op?.code==='cash_register.invalid_license_key'||op?.detail||op?.message?.includes('ліцензі')||op?.message?.includes('license')){
+        if(dot) dot.style.background='var(--rd)';
+        if(txt) txt.textContent='❌ Помилка';
+        res.innerHTML=`
+          <div style="color:var(--or);font-size:12px;margin-bottom:6px">✅ Логін і пароль — вірні</div>
+          <div style="color:var(--rd);font-size:13px;font-weight:700;margin-bottom:8px">❌ Невірний ключ ліцензії каси</div>
+          <div style="color:var(--m2);font-size:12px">Перевірте ключ в my.checkbox.ua → Каси → колонка "Ключ ліцензії"</div>
+          <div style="color:var(--m);font-size:11px;margin-top:4px">Введений ключ: <code style="background:var(--p3);padding:2px 6px;border-radius:4px">${cbSettings.cb_key||'—'}</code></div>`;
         return;
       }
     }
 
-    // Крок 3: Все ОК
+    // КРОК 3: Все правильно
     const shiftOpen=sh?.status==='OPENED';
     const fCash=cbSettings.cb_fiscalize_cash!=='false';
     const fCard=cbSettings.cb_fiscalize_card!=='false';
     if(dot) dot.style.background='var(--gr)';
     if(txt) txt.textContent='✅ Підключено';
-    if(res){
-      res.style.display='block';
-      res.innerHTML=`<div style="color:var(--gr);font-weight:600;margin-bottom:8px">✅ З'єднання успішне</div>
-        <div style="color:var(--m2)">Касир: <b style="color:var(--w)">${getCbLogin()}</b></div>
-        <div style="color:var(--m2);margin-top:4px">Ключ ліцензії: <b style="color:var(--gr)">✓ Валідний</b></div>
-        <div style="color:var(--m2);margin-top:4px">${shiftOpen?'✅ Зміна відкрита':'⚠️ Зміна закрита — відкрийте перед роботою'}</div>
-        <div style="color:var(--m2);margin-top:4px">Фіскалізація: ${fCash?'💵 Готівка ':''}${fCard?'💳 Картка':''}</div>`;
-    }
+    res.innerHTML=`
+      <div style="color:var(--gr);font-size:13px;font-weight:700;margin-bottom:10px">✅ Всі дані правильні</div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <div style="font-size:12px">✅ Логін і пароль: <b style="color:var(--w)">${getCbLogin()}</b></div>
+        <div style="font-size:12px">✅ Ключ ліцензії: <b style="color:var(--gr)">Валідний</b></div>
+        <div style="font-size:12px">${shiftOpen?'✅':'⚠️'} Зміна: <b style="color:${shiftOpen?'var(--gr)':'var(--or)'}">${shiftOpen?'Відкрита':'Закрита'}</b></div>
+        <div style="font-size:12px">💳 Фіскалізація: <b style="color:var(--w)">${fCash?'Готівка ':''}${fCard?'Картка':''}</b></div>
+      </div>`;
   }catch(e){
     if(dot) dot.style.background='var(--rd)';
     if(txt) txt.textContent='❌ Недоступний';
-    if(res){res.style.display='block';res.innerHTML=`<div style="color:var(--rd)">❌ ${e.message}</div>`;}
+    res.innerHTML=`<div style="color:var(--rd)">❌ Помилка з'єднання: ${e.message}</div>`;
   }
 }
 async function openCbShiftManual(){
