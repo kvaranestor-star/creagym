@@ -2168,6 +2168,297 @@ async function createClient(){
     alert('❌ Помилка збереження. Спробуйте ще раз.');
   }
 }
+
+// ===== ТОВАРИ =====
+let gProducts=[], gMovements=[];
+
+function gTab(id,btn){
+  document.querySelectorAll('.g-tab').forEach(t=>t.classList.remove('on'));
+  btn.classList.add('on');
+  document.querySelectorAll('.g-page').forEach(p=>p.classList.remove('on'));
+  document.getElementById('g-'+id).classList.add('on');
+  if(id==='assortment') renderAssortment();
+  if(id==='stock') renderStock();
+  if(id==='income') renderMovements('income');
+  if(id==='writeoff') renderMovements('writeoff');
+  if(id==='inventory') renderInventory();
+}
+
+async function loadGoods(){
+  try{
+    gProducts=await sb.get('products','?order=category.asc,name.asc')||[];
+    gMovements=await sb.get('product_movements','?order=created_at.desc&limit=200')||[];
+    // Категорії для фільтра
+    const cats=[...new Set(gProducts.map(p=>p.category))];
+    const catSel=document.getElementById('g-cat-filter');
+    if(catSel){ catSel.innerHTML='<option value="">Всі категорії</option>'+cats.map(c=>`<option value="${c}">${c}</option>`).join(''); }
+    renderAssortment();
+    // Бейдж — товари з низьким залишком
+    const low=gProducts.filter(p=>p.stock<=p.min_stock).length;
+    const badge=document.getElementById('goods-badge');
+    if(badge) badge.textContent=low||'';
+  }catch(e){ console.warn('loadGoods:',e); }
+}
+
+function renderAssortment(){
+  const q=(document.getElementById('g-search')?.value||'').toLowerCase();
+  const cat=document.getElementById('g-cat-filter')?.value||'';
+  const list=gProducts.filter(p=>
+    (!q||(p.name||'').toLowerCase().includes(q)||(p.category||'').toLowerCase().includes(q))&&
+    (!cat||p.category===cat)
+  );
+  const el=document.getElementById('g-assortment-list');
+  if(!el)return;
+  if(!list.length){el.innerHTML='<div style="padding:30px;text-align:center;color:var(--m2);font-size:12px">Товарів не знайдено</div>';return;}
+  el.innerHTML=`<div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;overflow:hidden">
+    <div class="g-prod-row" style="background:var(--p2);cursor:default">
+      <div></div><div style="font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">Товар</div>
+      <div style="font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">Ціна</div>
+      <div style="font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">Залишок</div>
+      <div style="font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">Статус</div>
+      <div></div>
+    </div>
+    ${list.map(p=>{
+      const stockCls=p.stock<=0?'g-stock-out':p.stock<=p.min_stock?'g-stock-low':'g-stock-ok';
+      const stockLbl=p.stock<=0?'Немає':p.stock<=p.min_stock?'Мало':'OK';
+      return `<div class="g-prod-row">
+        <div class="g-prod-emoji">${p.emoji||'📦'}</div>
+        <div><div class="g-prod-name">${p.name}</div><div class="g-prod-cat">${p.category}</div></div>
+        <div style="font-size:13px;font-weight:700;color:var(--y)">${p.price} ₴</div>
+        <div style="font-size:13px;font-weight:600">${p.stock} шт.</div>
+        <div><span class="g-stock-badge ${stockCls}">${stockLbl}</span></div>
+        <div style="display:flex;gap:6px">
+          <button onclick="editProduct('${p.id}')" style="padding:4px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-size:11px;cursor:pointer">✏️</button>
+          <button onclick="deleteProduct('${p.id}','${p.name}')" style="padding:4px 10px;border-radius:6px;border:1px solid #EF444430;background:#EF444410;color:var(--rd);font-size:11px;cursor:pointer">🗑</button>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function renderStock(){
+  const el=document.getElementById('g-stock-list');
+  if(!el)return;
+  const sorted=[...gProducts].sort((a,b)=>a.stock-b.stock);
+  el.innerHTML=`<div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;overflow:hidden">
+    ${sorted.map(p=>{
+      const pct=Math.min(100,Math.round(p.stock/(p.min_stock*3||30)*100));
+      const color=p.stock<=0?'var(--rd)':p.stock<=p.min_stock?'var(--or)':'var(--gr)';
+      return `<div style="padding:12px 16px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:36px 1fr 80px 60px;align-items:center;gap:12px">
+        <div style="font-size:22px;text-align:center">${p.emoji||'📦'}</div>
+        <div>
+          <div style="font-size:12px;font-weight:600">${p.name}</div>
+          <div style="margin-top:5px;height:5px;background:var(--p3);border-radius:3px">
+            <div style="width:${pct}%;height:100%;background:${color};border-radius:3px;transition:width .3s"></div>
+          </div>
+          <div style="font-size:10px;color:var(--m2);margin-top:2px">Мін: ${p.min_stock} шт.</div>
+        </div>
+        <div style="text-align:right;font-size:14px;font-weight:700;color:${color}">${p.stock} шт.</div>
+        <div style="display:flex;gap:4px;justify-content:flex-end">
+          <button onclick="quickStock('${p.id}','${p.name}',${p.stock},1)" style="width:26px;height:26px;border-radius:6px;border:1px solid #22C55E40;background:#22C55E14;color:var(--gr);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
+          <button onclick="quickStock('${p.id}','${p.name}',${p.stock},-1)" style="width:26px;height:26px;border-radius:6px;border:1px solid #EF444430;background:#EF444410;color:var(--rd);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center">−</button>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+async function quickStock(id,name,current,dir){
+  const val=prompt(`${dir>0?'Додати':'Зменшити'} кількість "${name}" (зараз: ${current} шт.):`,Math.abs(dir).toString());
+  if(!val)return;
+  const qty=parseInt(val);
+  if(isNaN(qty)||qty<=0){alert('Введіть правильну кількість');return;}
+  const newStock=current+(dir>0?qty:-qty);
+  if(newStock<0){alert('Недостатньо товару на складі');return;}
+  await sb.patch('products',`id=eq.${id}`,{stock:newStock});
+  await sb.post('product_movements',{product_id:id,product_name:name,type:dir>0?'income':'writeoff',qty:dir>0?qty:-qty,reason:dir>0?'Ручне коригування':'Ручне списання',created_by:curUser?.name||'owner'});
+  const p=gProducts.find(x=>x.id===id);if(p){p.stock=newStock;}
+  renderStock();
+}
+
+function renderMovements(type){
+  const elId=type==='income'?'g-income-list':'g-writeoff-list';
+  const el=document.getElementById(elId);
+  if(!el)return;
+  const list=gMovements.filter(m=>m.type===type);
+  if(!list.length){el.innerHTML='<div style="padding:30px;text-align:center;color:var(--m2);font-size:12px">Записів немає</div>';return;}
+  el.innerHTML=`<div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;overflow:hidden">
+    ${list.map(m=>`<div class="g-log-row">
+      <div style="font-size:18px">${type==='income'?'📥':'🗑'}</div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:12px">${m.product_name||'—'}</div>
+        <div style="font-size:10px;color:var(--m2)">${m.reason||'—'} · ${m.created_by||'—'}</div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:${type==='income'?'var(--gr)':'var(--rd)'}">${type==='income'?'+':''}${m.qty} шт.</div>
+      <div style="font-size:10px;color:var(--m2)">${new Date(m.created_at).toLocaleDateString('uk-UA')}</div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function renderInventory(){
+  const el=document.getElementById('g-inventory-list');
+  if(!el)return;
+  el.innerHTML=`<div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;overflow:hidden">
+    <div style="padding:12px 16px;background:var(--p2);border-bottom:1px solid var(--bd);display:grid;grid-template-columns:36px 1fr 100px 100px 100px;gap:12px;font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">
+      <div></div><div>Товар</div><div style="text-align:center">В системі</div><div style="text-align:center">Фактично</div><div style="text-align:center">Різниця</div>
+    </div>
+    ${gProducts.map(p=>`<div style="padding:10px 16px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:36px 1fr 100px 100px 100px;align-items:center;gap:12px">
+      <div style="font-size:20px;text-align:center">${p.emoji||'📦'}</div>
+      <div><div style="font-size:12px;font-weight:600">${p.name}</div><div style="font-size:10px;color:var(--m2)">${p.category}</div></div>
+      <div style="text-align:center;font-size:13px;font-weight:600">${p.stock}</div>
+      <div style="text-align:center"><input type="number" id="inv-${p.id}" placeholder="${p.stock}" min="0" style="width:70px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd2);background:var(--p3);color:var(--w);font-family:var(--f);font-size:12px;text-align:center"></div>
+      <div id="inv-diff-${p.id}" style="text-align:center;font-size:13px;font-weight:700;color:var(--m2)">—</div>
+    </div>`).join('')}
+    <div style="padding:14px 16px;display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="calcInventory()" style="padding:8px 16px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">🔢 Порахувати різницю</button>
+      <button onclick="saveInventory()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">✅ Зберегти інвентаризацію</button>
+    </div>
+  </div>`;
+}
+
+function calcInventory(){
+  gProducts.forEach(p=>{
+    const inp=document.getElementById('inv-'+p.id);
+    const diff_el=document.getElementById('inv-diff-'+p.id);
+    if(!inp||!diff_el)return;
+    const val=parseInt(inp.value);
+    if(isNaN(val)){diff_el.textContent='—';diff_el.style.color='var(--m2)';return;}
+    const diff=val-p.stock;
+    diff_el.textContent=(diff>0?'+':'')+diff;
+    diff_el.style.color=diff>0?'var(--gr)':diff<0?'var(--rd)':'var(--m2)';
+  });
+}
+
+async function saveInventory(){
+  const changes=[];
+  for(const p of gProducts){
+    const inp=document.getElementById('inv-'+p.id);
+    if(!inp||inp.value==='')continue;
+    const actual=parseInt(inp.value);
+    if(isNaN(actual)||actual===p.stock)continue;
+    changes.push({product:p,actual,diff:actual-p.stock});
+  }
+  if(!changes.length){alert('Немає змін для збереження');return;}
+  if(!confirm(`Зберегти інвентаризацію?\n${changes.map(c=>`${c.product.name}: ${c.product.stock}→${c.actual} (${c.diff>0?'+':''}${c.diff})`).join('\n')}`))return;
+  for(const c of changes){
+    await sb.patch('products',`id=eq.${c.product.id}`,{stock:c.actual});
+    await sb.post('product_movements',{product_id:c.product.id,product_name:c.product.name,type:'inventory',qty:c.diff,reason:'Інвентаризація',created_by:curUser?.name||'owner'});
+    c.product.stock=c.actual;
+  }
+  alert(`✅ Інвентаризацію збережено!\nЗмінено: ${changes.length} товарів`);
+  renderInventory();
+  renderStock();
+}
+
+async function openAddIncome(){
+  const prod=gProducts.find(p=>p.name===prompt('Назва товару:\n'+gProducts.map(p=>p.name).join('\n')));
+  if(!prod)return;
+  const qty=parseInt(prompt(`Кількість приходу "${prod.name}" (зараз: ${prod.stock} шт.):`)||'0');
+  if(!qty||qty<=0)return;
+  const reason=prompt('Причина/постачальник:')||'Прихід';
+  await sb.patch('products',`id=eq.${prod.id}`,{stock:prod.stock+qty});
+  await sb.post('product_movements',{product_id:prod.id,product_name:prod.name,type:'income',qty,reason,created_by:curUser?.name||'owner'});
+  prod.stock+=qty;
+  gMovements.unshift({product_id:prod.id,product_name:prod.name,type:'income',qty,reason,created_by:curUser?.name||'owner',created_at:new Date().toISOString()});
+  renderMovements('income');
+  alert(`✅ Прихід ${qty} шт. "${prod.name}" збережено`);
+}
+
+async function openAddWriteoff(){
+  const prod=gProducts.find(p=>p.name===prompt('Назва товару:\n'+gProducts.map(p=>p.name).join('\n')));
+  if(!prod)return;
+  const qty=parseInt(prompt(`Кількість списання "${prod.name}" (є: ${prod.stock} шт.):`)||'0');
+  if(!qty||qty<=0)return;
+  if(qty>prod.stock){alert('Недостатньо товару');return;}
+  const reason=prompt('Причина списання:')||'Списання';
+  await sb.patch('products',`id=eq.${prod.id}`,{stock:prod.stock-qty});
+  await sb.post('product_movements',{product_id:prod.id,product_name:prod.name,type:'writeoff',qty:-qty,reason,created_by:curUser?.name||'owner'});
+  prod.stock-=qty;
+  gMovements.unshift({product_id:prod.id,product_name:prod.name,type:'writeoff',qty:-qty,reason,created_by:curUser?.name||'owner',created_at:new Date().toISOString()});
+  renderMovements('writeoff');
+  alert(`✅ Списання ${qty} шт. "${prod.name}" збережено`);
+}
+
+async function deleteProduct(id,name){
+  if(!confirm(`Видалити товар "${name}"?`))return;
+  await sb.del('products',`id=eq.${id}`);
+  gProducts=gProducts.filter(p=>p.id!==id);
+  renderAssortment();
+  alert('✅ Товар видалено');
+}
+
+let _editProductId=null;
+
+function editProduct(id){ _editProductId=id; openAddProduct(); }
+
+function openAddProduct(){
+  const p=_editProductId?gProducts.find(x=>x.id===_editProductId):null;
+  document.getElementById('mo-prod-title').textContent=p?'Редагувати товар':'Новий товар';
+  document.getElementById('prod-save-btn').textContent=p?'Зберегти зміни':'Додати товар';
+  const cats=[...new Set(gProducts.map(x=>x.category))];
+  const defaults=['Спорт. харчування','Напої','Мерч','Обладнання','Аксесуари','БАД','BCAA','Протеїни','Інше'];
+  const allCats=[...new Set([...defaults,...cats])];
+  const sel=document.getElementById('prod-cat');
+  sel.innerHTML='<option value="">Виберіть категорію</option>'+allCats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  if(p){
+    sel.value=p.category||'';
+    document.getElementById('prod-name').value=p.name||'';
+    document.getElementById('prod-price').value=p.price||'';
+    document.getElementById('prod-cost').value=p.cost||'';
+    document.getElementById('prod-stock').value=p.stock||0;
+    document.getElementById('prod-min').value=p.min_stock||5;
+    document.getElementById('prod-emoji').value=p.emoji||'📦';
+    document.getElementById('prod-unit').value=p.unit||'шт';
+    document.getElementById('prod-barcode').value=p.barcode||'';
+    document.getElementById('prod-sku').value=p.sku||'';
+    document.getElementById('prod-desc').value=p.description||'';
+  }
+  document.getElementById('mo-prod').classList.add('sh');
+}
+
+function closeMoProd(e){if(e.target===document.getElementById('mo-prod'))closeMoProdD();}
+function closeMoProdD(){
+  document.getElementById('mo-prod').classList.remove('sh');
+  _editProductId=null;
+  ['prod-name','prod-price','prod-cost','prod-stock','prod-min','prod-barcode','prod-sku','prod-desc','prod-emoji','prod-cat-new'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const cat=document.getElementById('prod-cat');if(cat)cat.value='';
+  const unit=document.getElementById('prod-unit');if(unit)unit.value='шт';
+}
+
+async function saveProduct(){
+  const catSel=document.getElementById('prod-cat').value;
+  const catNew=(document.getElementById('prod-cat-new')?.value||'').trim();
+  const cat=catNew||catSel;
+  const name=(document.getElementById('prod-name')?.value||'').trim();
+  const price=parseInt(document.getElementById('prod-price')?.value)||0;
+  const cost=parseInt(document.getElementById('prod-cost')?.value)||0;
+  const stock=parseInt(document.getElementById('prod-stock')?.value)||0;
+  const min_stock=parseInt(document.getElementById('prod-min')?.value)||5;
+  const emoji=(document.getElementById('prod-emoji')?.value||'📦').trim()||'📦';
+  const unit=document.getElementById('prod-unit')?.value||'шт';
+  const barcode=(document.getElementById('prod-barcode')?.value||'').trim();
+  const sku=(document.getElementById('prod-sku')?.value||'').trim();
+  const description=(document.getElementById('prod-desc')?.value||'').trim();
+  if(!cat){alert('Оберіть або введіть категорію');return;}
+  if(!name){alert('Введіть назву товару');return;}
+  if(!price){alert('Введіть ціну');return;}
+  const btn=document.getElementById('prod-save-btn');
+  btn.textContent='Збереження...';btn.disabled=true;
+  try{
+    if(_editProductId){
+      await sb.patch('products',`id=eq.${_editProductId}`,{name,category:cat,price,cost,stock,min_stock,emoji,unit,barcode,sku,description});
+      const p=gProducts.find(x=>x.id===_editProductId);
+      if(p) Object.assign(p,{name,category:cat,price,cost,stock,min_stock,emoji,unit,barcode,sku,description});
+    } else {
+      const result=await sb.post('products',{name,category:cat,price,cost,stock,min_stock,emoji,unit,barcode,sku,description,is_active:true});
+      const newP=Array.isArray(result)?result[0]:result;
+      if(newP?.id) gProducts.push(newP);
+    }
+    closeMoProdD();
+    renderAssortment();
+  }catch(e){alert('❌ '+e.message);}
+  finally{btn.textContent=_editProductId?'Зберегти зміни':'Додати товар';btn.disabled=false;}
+}
 </script>
 
 <!-- ============================================================ -->
@@ -3492,293 +3783,4 @@ function admCloseMoD(id){
   }
 }
 
-// ===== ТОВАРИ =====
-let gProducts=[], gMovements=[];
 
-function gTab(id,btn){
-  document.querySelectorAll('.g-tab').forEach(t=>t.classList.remove('on'));
-  btn.classList.add('on');
-  document.querySelectorAll('.g-page').forEach(p=>p.classList.remove('on'));
-  document.getElementById('g-'+id).classList.add('on');
-  if(id==='assortment') renderAssortment();
-  if(id==='stock') renderStock();
-  if(id==='income') renderMovements('income');
-  if(id==='writeoff') renderMovements('writeoff');
-  if(id==='inventory') renderInventory();
-}
-
-async function loadGoods(){
-  try{
-    gProducts=await sb.get('products','?order=category.asc,name.asc')||[];
-    gMovements=await sb.get('product_movements','?order=created_at.desc&limit=200')||[];
-    // Категорії для фільтра
-    const cats=[...new Set(gProducts.map(p=>p.category))];
-    const catSel=document.getElementById('g-cat-filter');
-    if(catSel){ catSel.innerHTML='<option value="">Всі категорії</option>'+cats.map(c=>`<option value="${c}">${c}</option>`).join(''); }
-    renderAssortment();
-    // Бейдж — товари з низьким залишком
-    const low=gProducts.filter(p=>p.stock<=p.min_stock).length;
-    const badge=document.getElementById('goods-badge');
-    if(badge) badge.textContent=low||'';
-  }catch(e){ console.warn('loadGoods:',e); }
-}
-
-function renderAssortment(){
-  const q=(document.getElementById('g-search')?.value||'').toLowerCase();
-  const cat=document.getElementById('g-cat-filter')?.value||'';
-  const list=gProducts.filter(p=>
-    (!q||(p.name||'').toLowerCase().includes(q)||(p.category||'').toLowerCase().includes(q))&&
-    (!cat||p.category===cat)
-  );
-  const el=document.getElementById('g-assortment-list');
-  if(!el)return;
-  if(!list.length){el.innerHTML='<div style="padding:30px;text-align:center;color:var(--m2);font-size:12px">Товарів не знайдено</div>';return;}
-  el.innerHTML=`<div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;overflow:hidden">
-    <div class="g-prod-row" style="background:var(--p2);cursor:default">
-      <div></div><div style="font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">Товар</div>
-      <div style="font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">Ціна</div>
-      <div style="font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">Залишок</div>
-      <div style="font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">Статус</div>
-      <div></div>
-    </div>
-    ${list.map(p=>{
-      const stockCls=p.stock<=0?'g-stock-out':p.stock<=p.min_stock?'g-stock-low':'g-stock-ok';
-      const stockLbl=p.stock<=0?'Немає':p.stock<=p.min_stock?'Мало':'OK';
-      return `<div class="g-prod-row">
-        <div class="g-prod-emoji">${p.emoji||'📦'}</div>
-        <div><div class="g-prod-name">${p.name}</div><div class="g-prod-cat">${p.category}</div></div>
-        <div style="font-size:13px;font-weight:700;color:var(--y)">${p.price} ₴</div>
-        <div style="font-size:13px;font-weight:600">${p.stock} шт.</div>
-        <div><span class="g-stock-badge ${stockCls}">${stockLbl}</span></div>
-        <div style="display:flex;gap:6px">
-          <button onclick="editProduct('${p.id}')" style="padding:4px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-size:11px;cursor:pointer">✏️</button>
-          <button onclick="deleteProduct('${p.id}','${p.name}')" style="padding:4px 10px;border-radius:6px;border:1px solid #EF444430;background:#EF444410;color:var(--rd);font-size:11px;cursor:pointer">🗑</button>
-        </div>
-      </div>`;
-    }).join('')}
-  </div>`;
-}
-
-function renderStock(){
-  const el=document.getElementById('g-stock-list');
-  if(!el)return;
-  const sorted=[...gProducts].sort((a,b)=>a.stock-b.stock);
-  el.innerHTML=`<div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;overflow:hidden">
-    ${sorted.map(p=>{
-      const pct=Math.min(100,Math.round(p.stock/(p.min_stock*3||30)*100));
-      const color=p.stock<=0?'var(--rd)':p.stock<=p.min_stock?'var(--or)':'var(--gr)';
-      return `<div style="padding:12px 16px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:36px 1fr 80px 60px;align-items:center;gap:12px">
-        <div style="font-size:22px;text-align:center">${p.emoji||'📦'}</div>
-        <div>
-          <div style="font-size:12px;font-weight:600">${p.name}</div>
-          <div style="margin-top:5px;height:5px;background:var(--p3);border-radius:3px">
-            <div style="width:${pct}%;height:100%;background:${color};border-radius:3px;transition:width .3s"></div>
-          </div>
-          <div style="font-size:10px;color:var(--m2);margin-top:2px">Мін: ${p.min_stock} шт.</div>
-        </div>
-        <div style="text-align:right;font-size:14px;font-weight:700;color:${color}">${p.stock} шт.</div>
-        <div style="display:flex;gap:4px;justify-content:flex-end">
-          <button onclick="quickStock('${p.id}','${p.name}',${p.stock},1)" style="width:26px;height:26px;border-radius:6px;border:1px solid #22C55E40;background:#22C55E14;color:var(--gr);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
-          <button onclick="quickStock('${p.id}','${p.name}',${p.stock},-1)" style="width:26px;height:26px;border-radius:6px;border:1px solid #EF444430;background:#EF444410;color:var(--rd);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center">−</button>
-        </div>
-      </div>`;
-    }).join('')}
-  </div>`;
-}
-
-async function quickStock(id,name,current,dir){
-  const val=prompt(`${dir>0?'Додати':'Зменшити'} кількість "${name}" (зараз: ${current} шт.):`,Math.abs(dir).toString());
-  if(!val)return;
-  const qty=parseInt(val);
-  if(isNaN(qty)||qty<=0){alert('Введіть правильну кількість');return;}
-  const newStock=current+(dir>0?qty:-qty);
-  if(newStock<0){alert('Недостатньо товару на складі');return;}
-  await sb.patch('products',`id=eq.${id}`,{stock:newStock});
-  await sb.post('product_movements',{product_id:id,product_name:name,type:dir>0?'income':'writeoff',qty:dir>0?qty:-qty,reason:dir>0?'Ручне коригування':'Ручне списання',created_by:curUser?.name||'owner'});
-  const p=gProducts.find(x=>x.id===id);if(p){p.stock=newStock;}
-  renderStock();
-}
-
-function renderMovements(type){
-  const elId=type==='income'?'g-income-list':'g-writeoff-list';
-  const el=document.getElementById(elId);
-  if(!el)return;
-  const list=gMovements.filter(m=>m.type===type);
-  if(!list.length){el.innerHTML='<div style="padding:30px;text-align:center;color:var(--m2);font-size:12px">Записів немає</div>';return;}
-  el.innerHTML=`<div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;overflow:hidden">
-    ${list.map(m=>`<div class="g-log-row">
-      <div style="font-size:18px">${type==='income'?'📥':'🗑'}</div>
-      <div style="flex:1">
-        <div style="font-weight:600;font-size:12px">${m.product_name||'—'}</div>
-        <div style="font-size:10px;color:var(--m2)">${m.reason||'—'} · ${m.created_by||'—'}</div>
-      </div>
-      <div style="font-size:13px;font-weight:700;color:${type==='income'?'var(--gr)':'var(--rd)'}">${type==='income'?'+':''}${m.qty} шт.</div>
-      <div style="font-size:10px;color:var(--m2)">${new Date(m.created_at).toLocaleDateString('uk-UA')}</div>
-    </div>`).join('')}
-  </div>`;
-}
-
-function renderInventory(){
-  const el=document.getElementById('g-inventory-list');
-  if(!el)return;
-  el.innerHTML=`<div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;overflow:hidden">
-    <div style="padding:12px 16px;background:var(--p2);border-bottom:1px solid var(--bd);display:grid;grid-template-columns:36px 1fr 100px 100px 100px;gap:12px;font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">
-      <div></div><div>Товар</div><div style="text-align:center">В системі</div><div style="text-align:center">Фактично</div><div style="text-align:center">Різниця</div>
-    </div>
-    ${gProducts.map(p=>`<div style="padding:10px 16px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:36px 1fr 100px 100px 100px;align-items:center;gap:12px">
-      <div style="font-size:20px;text-align:center">${p.emoji||'📦'}</div>
-      <div><div style="font-size:12px;font-weight:600">${p.name}</div><div style="font-size:10px;color:var(--m2)">${p.category}</div></div>
-      <div style="text-align:center;font-size:13px;font-weight:600">${p.stock}</div>
-      <div style="text-align:center"><input type="number" id="inv-${p.id}" placeholder="${p.stock}" min="0" style="width:70px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd2);background:var(--p3);color:var(--w);font-family:var(--f);font-size:12px;text-align:center"></div>
-      <div id="inv-diff-${p.id}" style="text-align:center;font-size:13px;font-weight:700;color:var(--m2)">—</div>
-    </div>`).join('')}
-    <div style="padding:14px 16px;display:flex;gap:8px;justify-content:flex-end">
-      <button onclick="calcInventory()" style="padding:8px 16px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">🔢 Порахувати різницю</button>
-      <button onclick="saveInventory()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">✅ Зберегти інвентаризацію</button>
-    </div>
-  </div>`;
-}
-
-function calcInventory(){
-  gProducts.forEach(p=>{
-    const inp=document.getElementById('inv-'+p.id);
-    const diff_el=document.getElementById('inv-diff-'+p.id);
-    if(!inp||!diff_el)return;
-    const val=parseInt(inp.value);
-    if(isNaN(val)){diff_el.textContent='—';diff_el.style.color='var(--m2)';return;}
-    const diff=val-p.stock;
-    diff_el.textContent=(diff>0?'+':'')+diff;
-    diff_el.style.color=diff>0?'var(--gr)':diff<0?'var(--rd)':'var(--m2)';
-  });
-}
-
-async function saveInventory(){
-  const changes=[];
-  for(const p of gProducts){
-    const inp=document.getElementById('inv-'+p.id);
-    if(!inp||inp.value==='')continue;
-    const actual=parseInt(inp.value);
-    if(isNaN(actual)||actual===p.stock)continue;
-    changes.push({product:p,actual,diff:actual-p.stock});
-  }
-  if(!changes.length){alert('Немає змін для збереження');return;}
-  if(!confirm(`Зберегти інвентаризацію?\n${changes.map(c=>`${c.product.name}: ${c.product.stock}→${c.actual} (${c.diff>0?'+':''}${c.diff})`).join('\n')}`))return;
-  for(const c of changes){
-    await sb.patch('products',`id=eq.${c.product.id}`,{stock:c.actual});
-    await sb.post('product_movements',{product_id:c.product.id,product_name:c.product.name,type:'inventory',qty:c.diff,reason:'Інвентаризація',created_by:curUser?.name||'owner'});
-    c.product.stock=c.actual;
-  }
-  alert(`✅ Інвентаризацію збережено!\nЗмінено: ${changes.length} товарів`);
-  renderInventory();
-  renderStock();
-}
-
-async function openAddIncome(){
-  const prod=gProducts.find(p=>p.name===prompt('Назва товару:\n'+gProducts.map(p=>p.name).join('\n')));
-  if(!prod)return;
-  const qty=parseInt(prompt(`Кількість приходу "${prod.name}" (зараз: ${prod.stock} шт.):`)||'0');
-  if(!qty||qty<=0)return;
-  const reason=prompt('Причина/постачальник:')||'Прихід';
-  await sb.patch('products',`id=eq.${prod.id}`,{stock:prod.stock+qty});
-  await sb.post('product_movements',{product_id:prod.id,product_name:prod.name,type:'income',qty,reason,created_by:curUser?.name||'owner'});
-  prod.stock+=qty;
-  gMovements.unshift({product_id:prod.id,product_name:prod.name,type:'income',qty,reason,created_by:curUser?.name||'owner',created_at:new Date().toISOString()});
-  renderMovements('income');
-  alert(`✅ Прихід ${qty} шт. "${prod.name}" збережено`);
-}
-
-async function openAddWriteoff(){
-  const prod=gProducts.find(p=>p.name===prompt('Назва товару:\n'+gProducts.map(p=>p.name).join('\n')));
-  if(!prod)return;
-  const qty=parseInt(prompt(`Кількість списання "${prod.name}" (є: ${prod.stock} шт.):`)||'0');
-  if(!qty||qty<=0)return;
-  if(qty>prod.stock){alert('Недостатньо товару');return;}
-  const reason=prompt('Причина списання:')||'Списання';
-  await sb.patch('products',`id=eq.${prod.id}`,{stock:prod.stock-qty});
-  await sb.post('product_movements',{product_id:prod.id,product_name:prod.name,type:'writeoff',qty:-qty,reason,created_by:curUser?.name||'owner'});
-  prod.stock-=qty;
-  gMovements.unshift({product_id:prod.id,product_name:prod.name,type:'writeoff',qty:-qty,reason,created_by:curUser?.name||'owner',created_at:new Date().toISOString()});
-  renderMovements('writeoff');
-  alert(`✅ Списання ${qty} шт. "${prod.name}" збережено`);
-}
-
-async function deleteProduct(id,name){
-  if(!confirm(`Видалити товар "${name}"?`))return;
-  await sb.del('products',`id=eq.${id}`);
-  gProducts=gProducts.filter(p=>p.id!==id);
-  renderAssortment();
-  alert('✅ Товар видалено');
-}
-
-let _editProductId=null;
-
-function editProduct(id){ _editProductId=id; openAddProduct(); }
-
-function openAddProduct(){
-  const p=_editProductId?gProducts.find(x=>x.id===_editProductId):null;
-  document.getElementById('mo-prod-title').textContent=p?'Редагувати товар':'Новий товар';
-  document.getElementById('prod-save-btn').textContent=p?'Зберегти зміни':'Додати товар';
-  const cats=[...new Set(gProducts.map(x=>x.category))];
-  const defaults=['Спорт. харчування','Напої','Мерч','Обладнання','Аксесуари','БАД','BCAA','Протеїни','Інше'];
-  const allCats=[...new Set([...defaults,...cats])];
-  const sel=document.getElementById('prod-cat');
-  sel.innerHTML='<option value="">Виберіть категорію</option>'+allCats.map(c=>`<option value="${c}">${c}</option>`).join('');
-  if(p){
-    sel.value=p.category||'';
-    document.getElementById('prod-name').value=p.name||'';
-    document.getElementById('prod-price').value=p.price||'';
-    document.getElementById('prod-cost').value=p.cost||'';
-    document.getElementById('prod-stock').value=p.stock||0;
-    document.getElementById('prod-min').value=p.min_stock||5;
-    document.getElementById('prod-emoji').value=p.emoji||'📦';
-    document.getElementById('prod-unit').value=p.unit||'шт';
-    document.getElementById('prod-barcode').value=p.barcode||'';
-    document.getElementById('prod-sku').value=p.sku||'';
-    document.getElementById('prod-desc').value=p.description||'';
-  }
-  document.getElementById('mo-prod').classList.add('sh');
-}
-
-function closeMoProd(e){if(e.target===document.getElementById('mo-prod'))closeMoProdD();}
-function closeMoProdD(){
-  document.getElementById('mo-prod').classList.remove('sh');
-  _editProductId=null;
-  ['prod-name','prod-price','prod-cost','prod-stock','prod-min','prod-barcode','prod-sku','prod-desc','prod-emoji','prod-cat-new'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  const cat=document.getElementById('prod-cat');if(cat)cat.value='';
-  const unit=document.getElementById('prod-unit');if(unit)unit.value='шт';
-}
-
-async function saveProduct(){
-  const catSel=document.getElementById('prod-cat').value;
-  const catNew=(document.getElementById('prod-cat-new')?.value||'').trim();
-  const cat=catNew||catSel;
-  const name=(document.getElementById('prod-name')?.value||'').trim();
-  const price=parseInt(document.getElementById('prod-price')?.value)||0;
-  const cost=parseInt(document.getElementById('prod-cost')?.value)||0;
-  const stock=parseInt(document.getElementById('prod-stock')?.value)||0;
-  const min_stock=parseInt(document.getElementById('prod-min')?.value)||5;
-  const emoji=(document.getElementById('prod-emoji')?.value||'📦').trim()||'📦';
-  const unit=document.getElementById('prod-unit')?.value||'шт';
-  const barcode=(document.getElementById('prod-barcode')?.value||'').trim();
-  const sku=(document.getElementById('prod-sku')?.value||'').trim();
-  const description=(document.getElementById('prod-desc')?.value||'').trim();
-  if(!cat){alert('Оберіть або введіть категорію');return;}
-  if(!name){alert('Введіть назву товару');return;}
-  if(!price){alert('Введіть ціну');return;}
-  const btn=document.getElementById('prod-save-btn');
-  btn.textContent='Збереження...';btn.disabled=true;
-  try{
-    if(_editProductId){
-      await sb.patch('products',`id=eq.${_editProductId}`,{name,category:cat,price,cost,stock,min_stock,emoji,unit,barcode,sku,description});
-      const p=gProducts.find(x=>x.id===_editProductId);
-      if(p) Object.assign(p,{name,category:cat,price,cost,stock,min_stock,emoji,unit,barcode,sku,description});
-    } else {
-      const result=await sb.post('products',{name,category:cat,price,cost,stock,min_stock,emoji,unit,barcode,sku,description,is_active:true});
-      const newP=Array.isArray(result)?result[0]:result;
-      if(newP?.id) gProducts.push(newP);
-    }
-    closeMoProdD();
-    renderAssortment();
-  }catch(e){alert('❌ '+e.message);}
-  finally{btn.textContent=_editProductId?'Зберегти зміни':'Додати товар';btn.disabled=false;}
-}
