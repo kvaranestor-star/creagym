@@ -2327,7 +2327,19 @@ async function cbCheckExistingShift(){
     if(!lr.access_token) return;
     const sh = await cbCall('shift_status', {token: lr.access_token});
     if(sh?.status === 'OPENED'){
-      // Зміна вже відкрита — показуємо в інтерфейсі
+      // Якщо зміна в Checkbox відкрита але kasaShift порожній — відновлюємо з БД
+      if(!kasaShift){
+        try{
+          const shifts = await sb.get('shifts','?status=eq.open&order=opened_at.desc&limit=1');
+          if(shifts && shifts.length > 0){
+            kasaShift = shifts[0];
+            kasaSaveShift();
+            kasaUpdateShiftUI(true);
+            kasaLoadTx();
+          }
+        }catch(e2){}
+      }
+      // Оновлюємо бейдж в навбарі
       const badge = document.getElementById('kasa-status-badge');
       if(badge){
         badge.textContent = 'ВІДКРИТО';
@@ -2337,7 +2349,6 @@ async function cbCheckExistingShift(){
       console.log('✅ Checkbox: зміна вже відкрита');
     }
   }catch(e){
-    // Тихо ігноруємо — не заважаємо роботі
     console.warn('cbCheckExistingShift:', e.message);
   }
 }
