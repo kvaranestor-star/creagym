@@ -1945,7 +1945,7 @@ async function createClient(){
 .reg-panel{width:255px;flex-shrink:0;display:flex;flex-direction:column;gap:10px}
 .cl-card2{background:var(--p1);border:1px solid var(--bd2);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:11px}
 .cl-prof2{display:flex;align-items:center;gap:11px}
-.cl-ph2{width:52px;height:52px;border-radius:10px;flex-shrink:0;overflow:hidden;background:var(--p3);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;border:2px solid var(--bd2);color:var(--y)}
+.cl-ph2{width:80px;height:80px;border-radius:12px;flex-shrink:0;overflow:hidden;background:var(--p3);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;border:2px solid var(--bd2);color:var(--y)}
 .cl-ph2 img{width:100%;height:100%;object-fit:cover}
 .cl-nm2{font-size:14px;font-weight:700}
 .cl-sub2{background:var(--p2);border:1px solid var(--bd2);border-radius:8px;padding:10px 12px}
@@ -1969,7 +1969,7 @@ async function createClient(){
 .icp2-i{display:flex;align-items:center;gap:8px;padding:8px 13px;border-top:1px solid var(--bd);cursor:pointer;transition:background .12s}
 .icp2-i:first-child{border-top:none}
 .icp2-i:hover{background:var(--p2)}
-.icp2-av{width:24px;height:24px;border-radius:6px;flex-shrink:0;background:var(--yd);color:var(--y);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700}
+.icp2-av{width:36px;height:36px;border-radius:8px;flex-shrink:0;background:var(--yd);color:var(--y);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;overflow:hidden}
 .icp2-nm{flex:1;font-size:11px;font-weight:600}
 .icp2-key{font-size:11px;font-weight:700;color:var(--y);flex-shrink:0}
 .icp2-back{padding:3px 7px;border-radius:5px;background:#22C55E14;color:var(--gr);border:none;font-family:var(--f);font-size:9px;font-weight:700;cursor:pointer}
@@ -2580,11 +2580,26 @@ function admRenderICP(){
   document.getElementById('icp2-cnt').textContent=admInClub.length;
   const el=document.getElementById('icp2-list');
   if(!admInClub.length){el.innerHTML='<div style="padding:12px;font-size:11px;color:var(--m2);text-align:center">Нікого немає</div>';return}
-  el.innerHTML=admInClub.map(c=>`<div class="icp2-i" onclick="admSelectClient('${c.id}')"><div class="icp2-av">${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}</div><span class="icp2-nm">${c.last_name} ${c.first_name}</span><span class="icp2-key">🔑${c.key}</span><button class="icp2-back" onclick="event.stopPropagation();admCheckOut('${c.id}')">Здати</button></div>`).join('');
+  el.innerHTML=admInClub.map(c=>{
+    const av=c.photo_url
+      ?`<img src="${c.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:6px">`
+      :`${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}`;
+    return `<div class="icp2-i" onclick="admSelectClient('${c.id}')"><div class="icp2-av">${av}</div><span class="icp2-nm">${c.last_name} ${c.first_name}</span><span class="icp2-key">🔑${c.key}</span><button class="icp2-back" onclick="event.stopPropagation();admCheckOut('${c.id}')">Здати</button></div>`;
+  }).join('');
 }
 function admOpenInClub(){
   const el=document.getElementById('adm-inclub-list');
-  el.innerHTML=admInClub.length?admInClub.map(c=>`<div style="display:flex;align-items:center;gap:11px;padding:10px 17px;border-top:1px solid var(--bd)"><div style="width:32px;height:32px;border-radius:8px;background:var(--yd);color:var(--y);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}</div><div style="flex:1"><div style="font-size:13px;font-weight:600">${c.last_name} ${c.first_name}</div><div style="font-size:10px;color:var(--m2)">${c.phone||''}</div></div><span style="font-size:15px;font-weight:800;color:var(--y);margin:0 8px">🔑 ${c.key}</span><button class="icp2-back" onclick="admCheckOut('${c.id}');admCloseMoD('adm-inclub-mo')">Здати ключ</button></div>`).join(''):'<div style="padding:20px;text-align:center;font-size:12px;color:var(--m2)">В клубі нікого немає</div>';
+  el.innerHTML=admInClub.length?admInClub.map(c=>{
+    const av=c.photo_url
+      ?`<img src="${c.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`
+      :`<span style="font-size:11px;font-weight:700">${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}</span>`;
+    return `<div style="display:flex;align-items:center;gap:11px;padding:10px 17px;border-top:1px solid var(--bd)">
+      <div style="width:40px;height:40px;border-radius:8px;background:var(--yd);color:var(--y);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden">${av}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:600">${c.last_name} ${c.first_name}</div><div style="font-size:10px;color:var(--m2)">${c.phone||''}</div></div>
+      <span style="font-size:15px;font-weight:800;color:var(--y);margin:0 8px">🔑 ${c.key}</span>
+      <button class="icp2-back" onclick="admCheckOut('${c.id}');admCloseMoD('adm-inclub-mo')">Здати ключ</button>
+    </div>`;
+  }).join(''):'<div style="padding:20px;text-align:center;font-size:12px;color:var(--m2)">В клубі нікого немає</div>';
   admOpenMo('adm-inclub-mo');
 }
 
@@ -3426,27 +3441,25 @@ async function cbCloseShift() {
 
 // Фіскальний чек повернення
 async function cbReturnReceipt(itemName, amount, payMethod, reason, originalSaleId=null) {
-  // Перевіряємо чи оригінальний продаж був фіскалізований
-  // Логіка: шукаємо оригінальну транзакцію і перевіряємо її payment_method
+  // Фіскалізуємо повернення ТІЛЬКИ якщо оригінальний продаж мав fiscal_receipt_id
+  // Тобто якщо він реально пройшов через Checkbox
   let wasФіскалізований = false;
+
   if(originalSaleId){
     try{
       const origSales = await sb.get('sales',`?id=eq.${originalSaleId}&select=payment_method,fiscal_receipt_id`);
       const orig = origSales&&origSales.length?origSales[0]:null;
-      if(orig){
-        // Якщо є fiscal_receipt_id — точно фіскалізований
-        if(orig.fiscal_receipt_id) wasФіскалізований = true;
-        // Інакше перевіряємо чи метод оплати підпадав під фіскалізацію
-        else wasФіскалізований = shouldFiscalize(orig.payment_method||payMethod);
+      if(orig && orig.fiscal_receipt_id){
+        // Є ID чека в Checkbox — точно фіскалізований
+        wasФіскалізований = true;
       }
-    }catch(e){ wasФіскалізований = shouldFiscalize(payMethod); }
-  } else {
-    // Немає ID оригіналу — перевіряємо поточний метод оплати
-    wasФіскалізований = shouldFiscalize(payMethod);
+      // Якщо fiscal_receipt_id немає — продаж НЕ фіскалізований, не чіпаємо
+    }catch(e){ wasФіскалізований = false; }
   }
+  // Якщо немає originalSaleId — не фіскалізуємо (не знаємо чи був фіскальним)
 
   if(!wasФіскалізований) {
-    alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴\n(нефіскальний продаж — чек не потрібен)`);
+    alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴\n(нефіскальний продаж — чек повернення не потрібен)`);
     return;
   }
   showCbLoading(true, 'Фіскалізація повернення...');
