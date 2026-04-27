@@ -1749,8 +1749,6 @@ async function createClient(){
   }
 }
 </script>
-</body>
-</html>
 
 <!-- ============================================================ -->
 <!-- ADMIN APP -->
@@ -2798,203 +2796,185 @@ function admOpenMo(id){document.getElementById(id).classList.add('sh')}
 function admCloseMo(id,e){if(e.target===document.getElementById(id))admCloseMoD(id)}
 function admCloseMoD(id){document.getElementById(id).classList.remove('sh')}
 
-// ===== CHECKBOX ПРРО ІНТЕГРАЦІЯ =====
-const CB_PROXY = 'https://rkknbltiylsvmycbbyde.supabase.co/functions/v1/checkbox-proxy';
-let cbToken = null;
-let cbShiftId = null;
+// ===== CHECKBOX ПРРО ІНТЕГРАЦІЯ (ВИПРАВЛЕНА ВЕРСІЯ) =====
+// Замініть весь блок від "// ===== CHECKBOX ПРРО ІНТЕГРАЦІЯ =====" до кінця </script>
 
-// Виклик Edge Function
+const CB_PROXY = 'https://rkknbltiylsvmycbbyde.supabase.co/functions/v1/checkbox-proxy';
+const CB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJra25ibHRpeWxzdm15Y2JieWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNzkyMTksImV4cCI6MjA5Mjc1NTIxOX0.SrXSluAh8TMcXoCqVZLk_mylTSwzBu8tJDuUSudD-mA';
+
 async function cbCall(action, data={}) {
   const r = await fetch(CB_PROXY, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJra25ibHRpeWxzdm15Y2JieWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNzkyMTksImV4cCI6MjA5Mjc1NTIxOX0.SrXSluAh8TMcXoCqVZLk_mylTSwzBu8tJDuUSudD-mA'
-    },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+CB_ANON },
     body: JSON.stringify({ action, data })
   });
   return r.json();
 }
 
-// Авторизація в Checkbox (отримуємо токен)
-async function cbLogin() {
-  if(cbToken) return cbToken;
-  try {
-    const res = await cbCall('login');
-    if(res.access_token) {
-      cbToken = res.access_token;
-      console.log('✅ Checkbox авторизовано');
-      return cbToken;
-    } else {
-      console.warn('Checkbox login failed:', res);
-      return null;
-    }
-  } catch(e) {
-    console.warn('Checkbox недоступний:', e.message);
-    return null;
-  }
-}
-
-// Відкрити зміну в Checkbox (викликається разом з відкриттям зміни в CRM)
-async function cbOpenShift() {
-  const token = await cbLogin();
-  if(!token) return null;
-  try {
-    const res = await cbCall('open_shift', { token });
-    if(res.id) {
-      cbShiftId = res.id;
-      // Чекаємо поки зміна відкриється (статус OPENED)
-      for(let i=0; i<10; i++) {
-        await new Promise(r=>setTimeout(r,1500));
-        const status = await cbCall('shift_status', { token });
-        if(status.status === 'OPENED') {
-          console.log('✅ Checkbox зміну відкрито:', res.id);
-          return res.id;
-        }
-        if(status.status === 'CLOSED') break;
-      }
-    }
-    return null;
-  } catch(e) {
-    console.warn('Checkbox open shift error:', e.message);
-    return null;
-  }
-}
-
-// Закрити зміну в Checkbox
-async function cbCloseShift() {
-  const token = await cbLogin();
-  if(!token || !cbShiftId) return;
-  try {
-    await cbCall('close_shift', { token });
-    cbShiftId = null;
-    console.log('✅ Checkbox зміну закрито');
-  } catch(e) {
-    console.warn('Checkbox close shift error:', e.message);
-  }
-}
-
-// Створити фіскальний чек
+// Головна функція — щоразу логіниться, перевіряє/відкриває зміну, пробиває чек
 async function cbCreateReceipt(items, total, payMethod, client) {
-  const token = await cbLogin();
-  if(!token) {
-    // Якщо Checkbox недоступний — показуємо звичайний чек
-    const receiptItems = items.map(i => ({name:i.name,qty:i.qty||1,price:i.price,total:i.price*(i.qty||1)}));
-    const text = buildReceiptText(receiptItems, total, payMethod, curUser?.name||'admin');
-    document.getElementById('receipt-content').textContent = text;
-    admOpenMo('receipt-mo');
-    return;
-  }
-
-  // Показуємо індикатор
-  showCbLoading(true);
-
+  showCbLoading(true, 'Підключення до Checkbox...');
   try {
-    const res = await cbCall('create_receipt', {
+    // 1. Логін
+    const loginRes = await cbCall('login');
+    if(!loginRes.access_token) {
+      showCbLoading(false);
+      showLocalReceipt(items, total, payMethod, 'Checkbox: помилка авторизації');
+      return;
+    }
+    const token = loginRes.access_token;
+
+    // 2. Перевіряємо зміну
+    showCbLoading(true, 'Перевірка зміни...');
+    let shiftOk = false;
+    try {
+      const st = await cbCall('shift_status', { token });
+      if(st.status === 'OPENED') shiftOk = true;
+    } catch(e) {}
+
+    // 3. Відкриваємо зміну якщо не відкрита
+    if(!shiftOk) {
+      showCbLoading(true, 'Відкриття зміни в Checkbox...');
+      try {
+        const openRes = await cbCall('open_shift', { token });
+        if(openRes.id) {
+          for(let i=0; i<8; i++) {
+            await new Promise(r=>setTimeout(r,1500));
+            const st = await cbCall('shift_status', { token });
+            if(st.status === 'OPENED') { shiftOk = true; break; }
+            if(st.status === 'CLOSED') break;
+          }
+        }
+      } catch(e) {}
+    }
+
+    if(!shiftOk) {
+      showCbLoading(false);
+      showLocalReceipt(items, total, payMethod, 'Checkbox: не вдалось відкрити зміну. Перевірте КЕП касира в my.checkbox.ua');
+      return;
+    }
+
+    // 4. Створюємо чек
+    showCbLoading(true, 'Фіскалізація чека...');
+    const receiptRes = await cbCall('create_receipt', {
       token,
       items: items.map(i => ({
-        name: i.name.replace(/[^\w\s\u0400-\u04FF]/g, '').trim() || 'Послуга',
+        name: (i.name||'Послуга').replace(/[^\w\s\u0400-\u04FF\-]/g,'').trim().substring(0,50) || 'Posluga',
         price: i.price,
         qty: i.qty || 1,
         code: i.code || '001',
       })),
       total,
       payment_method: payMethod,
-      client_email: client?.email || null,
       client_phone: client?.phone || null,
     });
 
-    showCbLoading(false);
-
-    if(res.id) {
-      // Чекаємо фіскалізацію
-      let receipt = res;
-      for(let i=0; i<8; i++) {
-        await new Promise(r=>setTimeout(r,1000));
-        const updated = await cbCall('get_receipt', { token, receipt_id: res.id });
-        if(updated.status === 'DONE') { receipt = updated; break; }
-      }
-      // Показуємо фіскальний чек
-      showCbReceipt(receipt, total, payMethod, client);
-    } else {
-      // Fallback — звичайний чек
-      const receiptItems = items.map(i => ({name:i.name,qty:i.qty||1,price:i.price,total:i.price*(i.qty||1)}));
-      const text = buildReceiptText(receiptItems, total, payMethod, curUser?.name||'admin');
-      document.getElementById('receipt-content').textContent = text + '\n\n⚠️ Фіскалізація: ' + (res.message||'помилка');
-      admOpenMo('receipt-mo');
+    if(!receiptRes.id) {
+      showCbLoading(false);
+      showLocalReceipt(items, total, payMethod, 'Checkbox помилка: '+(receiptRes.message||JSON.stringify(receiptRes)));
+      return;
     }
+
+    // 5. Чекаємо підтвердження
+    showCbLoading(true, 'Очікування підтвердження ДПС...');
+    let receipt = receiptRes;
+    for(let i=0; i<10; i++) {
+      await new Promise(r=>setTimeout(r,1000));
+      try {
+        const upd = await cbCall('get_receipt', { token, receipt_id: receiptRes.id });
+        if(upd.status === 'DONE' || upd.status === 'ERROR') { receipt = upd; break; }
+      } catch(e) { break; }
+    }
+    showCbLoading(false);
+    showCbReceipt(receipt, items, total, payMethod, client);
+
   } catch(e) {
     showCbLoading(false);
-    console.warn('Checkbox receipt error:', e);
-    const receiptItems = items.map(i => ({name:i.name,qty:i.qty||1,price:i.price,total:i.price*(i.qty||1)}));
-    const text = buildReceiptText(receiptItems, total, payMethod, curUser?.name||'admin');
-    document.getElementById('receipt-content').textContent = text;
-    admOpenMo('receipt-mo');
+    showLocalReceipt(items, total, payMethod, 'Помилка: '+e.message);
   }
 }
 
-// Показати фіскальний чек з QR
-function showCbReceipt(receipt, total, payMethod, client) {
-  const mo = document.getElementById('receipt-mo');
-  const content = document.getElementById('receipt-content');
-
-  // Фіскальні дані
-  const fiscalNum = receipt.fiscal_code || receipt.id?.slice(0,8).toUpperCase() || '—';
-  const fiscalDate = receipt.created_at ? new Date(receipt.created_at).toLocaleString('uk-UA') : new Date().toLocaleString('uk-UA');
-  const checkUrl = receipt.public_url || `https://check.checkbox.ua/${receipt.id}`;
-
-  content.innerHTML = `
-    <div style="font-family:'Courier New',monospace;font-size:12px;line-height:1.7;color:#000;text-align:center">
-      <div style="font-weight:700;font-size:14px">CREAGYM FITNESS</div>
-      <div style="font-size:11px">ФОП / ПРРО Checkbox</div>
-      <div>─────────────────────────────</div>
+function showCbReceipt(receipt, items, total, payMethod, client) {
+  const fiscal = receipt.fiscal_code || receipt.id?.slice(0,8).toUpperCase() || 'PENDING';
+  const dt = receipt.created_at ? new Date(receipt.created_at).toLocaleString('uk-UA') : new Date().toLocaleString('uk-UA');
+  const checkUrl = receipt.public_url || 'https://check.checkbox.ua/'+receipt.id;
+  const isDone = receipt.status === 'DONE';
+  const el = document.getElementById('receipt-content');
+  el.innerHTML = `
+    <div style="font-family:'Courier New',monospace;font-size:12px;line-height:1.8;color:#000;text-align:center">
+      <div style="font-weight:800;font-size:15px">CREAGYM FITNESS</div>
+      <div style="font-size:10px;color:#777">ПРРО Checkbox</div>
+      <div style="border-top:1px dashed #ccc;margin:8px 0"></div>
       <div style="text-align:left">
-        ${(receipt.goods||[]).map(g=>`
-          <div>${g.good?.name||'Послуга'}</div>
-          <div style="display:flex;justify-content:space-between">
-            <span>${g.quantity/1000} × ${(g.good?.price/100).toFixed(2)} ₴</span>
-            <span style="font-weight:700">${((g.quantity/1000)*(g.good?.price/100)).toFixed(2)} ₴</span>
+        ${items.map(i=>`<div style="font-weight:600">${i.name||'Послуга'}</div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#555">
+            <span>${i.qty||1} × ${(i.price||0).toLocaleString('uk-UA')} ₴</span>
+            <span>${((i.qty||1)*(i.price||0)).toLocaleString('uk-UA')} ₴</span>
           </div>`).join('')}
       </div>
-      <div>─────────────────────────────</div>
-      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px">
+      <div style="border-top:1px dashed #ccc;margin:8px 0"></div>
+      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:14px">
         <span>РАЗОМ:</span><span>${total.toLocaleString('uk-UA')} ₴</span>
       </div>
-      <div style="display:flex;justify-content:space-between">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#777">
         <span>Оплата:</span><span>${payMethod==='card'?'Картка':'Готівка'}</span>
       </div>
-      <div>─────────────────────────────</div>
-      <div style="font-size:11px">Касир: ${curUser?.name||'—'}</div>
-      <div style="font-size:11px">${fiscalDate}</div>
-      <div style="font-weight:700;color:#22C55E">✅ ФІСКАЛЬНИЙ ЧЕК</div>
-      <div style="font-size:11px">Фіскальний №: <b>${fiscalNum}</b></div>
-      <div>─────────────────────────────</div>
-      <div style="margin:10px 0">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(checkUrl)}"
-          style="width:120px;height:120px;border:1px solid #ddd;border-radius:4px"
-          onerror="this.style.display='none'">
-        <div style="font-size:10px;margin-top:4px;word-break:break-all">
-          <a href="${checkUrl}" target="_blank" style="color:#3B82F6">${checkUrl}</a>
-        </div>
+      <div style="border-top:1px dashed #ccc;margin:8px 0"></div>
+      <div style="font-size:11px;color:#777">Касир: ${curUser?.name||'—'} | ${dt}</div>
+      <div style="margin:8px 0">
+        <span style="background:${isDone?'#22C55E':'#F97316'};color:#fff;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:700">
+          ${isDone?'✅ ФІСКАЛЬНИЙ ЧЕК':'⏳ Фіскалізується...'}
+        </span>
       </div>
+      <div style="font-size:11px">Фіскальний №: <b>${fiscal}</b></div>
+      ${isDone?`<div style="margin:10px 0">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(checkUrl)}" style="width:130px;height:130px;border:1px solid #eee;border-radius:4px" onerror="this.style.display='none'">
+        <div style="font-size:10px;margin-top:4px;word-break:break-all"><a href="${checkUrl}" target="_blank" style="color:#3B82F6">${checkUrl}</a></div>
+      </div>`:''}
+      <div style="border-top:1px dashed #ccc;margin:8px 0"></div>
       <div style="font-size:11px">Дякуємо за відвідування!</div>
     </div>`;
-
   admOpenMo('receipt-mo');
 }
 
-// Індикатор завантаження
-function showCbLoading(show) {
+function showLocalReceipt(items, total, payMethod, note='') {
+  const receiptItems = items.map(i=>({name:i.name,qty:i.qty||1,price:i.price,total:i.price*(i.qty||1)}));
+  let text = buildReceiptText(receiptItems, total, payMethod, curUser?.name||'—');
+  if(note) text += '\n\n'+note;
+  document.getElementById('receipt-content').textContent = text;
+  admOpenMo('receipt-mo');
+}
+
+function showCbLoading(show, msg='Фіскалізація...') {
   let el = document.getElementById('cb-loading');
-  if(!el) {
+  if(!el && show) {
     el = document.createElement('div');
     el.id = 'cb-loading';
-    el.style.cssText = 'position:fixed;inset:0;background:#00000080;z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#fff;font-family:var(--f);font-size:13px;font-weight:600';
-    el.innerHTML = '<div style="width:36px;height:36px;border:3px solid #FFD30030;border-top-color:#FFD300;border-radius:50%;animation:spin .7s linear infinite"></div>Фіскалізація чека в Checkbox...';
+    el.style.cssText = 'position:fixed;inset:0;background:#00000085;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#fff;font-family:Montserrat,sans-serif;font-size:13px;font-weight:600';
+    el.innerHTML = '<div style="width:40px;height:40px;border:3px solid #FFD30040;border-top-color:#FFD300;border-radius:50%;animation:spin .7s linear infinite"></div><div id="cb-loading-msg" style="color:#FFD300"></div><div style="font-size:11px;color:#ffffff80">Checkbox ПРРО</div>';
     document.body.appendChild(el);
   }
-  el.style.display = show ? 'flex' : 'none';
+  if(el) {
+    el.style.display = show ? 'flex' : 'none';
+    const m = document.getElementById('cb-loading-msg');
+    if(m) m.textContent = msg;
+  }
 }
+
+async function cbOpenShift() {
+  console.log('Checkbox: зміна відкриється автоматично при першому чеку');
+}
+
+async function cbCloseShift() {
+  try {
+    const r = await cbCall('login');
+    if(r.access_token) {
+      await cbCall('close_shift', { token: r.access_token });
+      console.log('Checkbox зміну закрито');
+    }
+  } catch(e) { console.warn('cbCloseShift:', e); }
+}
+
 </script>
 </body>
 </html>
