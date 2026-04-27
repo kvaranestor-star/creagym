@@ -3399,7 +3399,9 @@ async function testCbConnection(){
         <div style="color:var(--m2);font-size:12px">
           ${isLogin?'Перевірте дані в my.checkbox.ua → Касири':'Перевірте ключ в my.checkbox.ua → Каси → "Ключ ліцензії"'}
         </div>
-        ${!isLogin?`<div style="color:var(--m);font-size:11px;margin-top:4px">Введений ключ: <code style="background:var(--p3);padding:2px 6px;border-radius:4px">${cbSettings.cb_key||'—'}</code></div>`:''}`;
+        ${!isLogin?`<div style="color:var(--m);font-size:11px;margin-top:4px">Введений ключ: <code style="background:var(--p3);padding:2px 6px;border-radius:4px">${cbSettings.cb_key||'—'}</code></div>
+        ${r.available?`<div style="color:var(--m);font-size:11px;margin-top:4px">Доступні ключі касира: <b style="color:var(--w)">${r.available}</b></div>`:''}
+        `:''}`;
       return;
     }
     const shiftOpen=r.shift_status==='OPENED';
