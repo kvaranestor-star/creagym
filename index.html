@@ -1260,18 +1260,21 @@ function gp(id,el){
   if(id==='clients') loadClients();
   if(id==='stats') loadStats();
   if(id==='subs') loadSubs();
-  if(id==='fin'){okUpdateShiftUI(!!okShift);okLoadTx();}
+  if(id==='fin'){okSyncShiftFromCheckbox();okUpdateShiftUI(!!okShift);okLoadTx();}
   if(id==='goods') loadGoods();
   if(id==='cfg'){
     loadCbSettings();
     setTimeout(async()=>{
       applyCbSettingsToForm();
-      // Перевіряємо стан зміни в Checkbox
+      // Перевіряємо стан зміни в Checkbox + синхронізуємо owner shift
       try{
         const lr=await cbCall('login');
         if(lr.access_token){
           const sh=await cbCall('shift_status',{token:lr.access_token});
-          updateCfgShiftLock(sh?.status==='OPENED');
+          const isOpen=sh?.status==='OPENED';
+          updateCfgShiftLock(isOpen);
+          // Якщо в Checkbox смена закрита, але локально у власника висить - скидаємо
+          if(!isOpen&&okShift){okShift=null;okUpdateShiftUI(false);}
         }
       }catch(e){ updateCfgShiftLock(false); }
     },100);
@@ -1792,8 +1795,63 @@ function okUpdateShiftUI(open){
   }
 }
 
+// Синхронізація owner shift з Checkbox - перевіряємо реальний стан касси
+async function okSyncShiftFromCheckbox(){
+  try{
+    const lr=await cbCall('login');
+    if(!lr||!lr.access_token)return;
+    const sh=await cbCall('shift_status',{token:lr.access_token});
+    const isOpenInCb=sh?.status==='OPENED';
+
+    if(isOpenInCb){
+      // Checkbox каже що відкрита - відновлюємо локально якщо немає
+      if(!okShift){
+        try{
+          const shifts=await sb.get('shifts','?status=eq.open&order=opened_at.desc&limit=1');
+          if(shifts&&shifts.length>0) okShift=shifts[0];
+        }catch(e){}
+      }
+    } else {
+      // Checkbox каже що закрита - скидаємо локально
+      if(okShift){
+        console.log('⚠️ Checkbox: змiна закрита - скидаємо owner shift');
+        okShift=null;
+      }
+    }
+  }catch(e){
+    console.warn('okSyncShiftFromCheckbox:',e.message);
+  }
+}
+
 async function okOpenShift(){
   if(!confirm('Відкрити нову зміну?\nГотівка на початок буде скопійована автоматично з кінця попередньої зміни.'))return;
+
+  // Перевіряємо налаштування фіскалізації
+  await loadCbSettings();
+  const fiskCash=_cbSettings.cb_fiscalize_cash==='true';
+  const fiskCard=_cbSettings.cb_fiscalize_card==='true';
+  const needCheckbox=fiskCash||fiskCard;
+
+  if(needCheckbox){
+    if(!_cbSettings.cb_login||!_cbSettings.cb_pass||!_cbSettings.cb_key){
+      alert('❌ Включена фіскалізація, але немає налаштувань Checkbox.\nЗаповніть Налаштування → Інтеграція Checkbox.');
+      return;
+    }
+    const lr=await cbCall('login');
+    if(!lr||!lr.access_token){
+      alert('❌ Не вдалося авторизуватися в Checkbox:\n'+(lr&&lr.message?lr.message:'Перевірте логін, пароль і ключ ліцензії.')+'\n\nЗміну не відкрито.');
+      return;
+    }
+    const sh=await cbCall('shift_status',{token:lr.access_token});
+    if(!sh||sh.status!=='OPENED'){
+      const r=await cbCall('open_shift',{token:lr.access_token});
+      if(!r||(!r.id&&!r.serial)){
+        alert('❌ Не вдалося відкрити зміну в Checkbox:\n'+((r&&(r.message||r.error))||'Невідома помилка')+'\n\nЗміну не відкрито.');
+        return;
+      }
+    }
+  }
+
   let prevCashEnd=0;
   try{const ps=await sb.get('shifts','?status=eq.closed&order=closed_at.desc&limit=1');if(ps&&ps.length)prevCashEnd=ps[0].cash_end||0;}catch(e){}
   const amt=prevCashEnd;
