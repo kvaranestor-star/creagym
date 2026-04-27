@@ -2050,7 +2050,10 @@ async function ownerReturnProduct(saleId,amount,itemName,payMethod){
     });
     okLoadTx();
     // Передаємо ID оригінального продажу
-    await cbReturnReceipt(itemName, amount, payMethod, reason.trim(), saleId);
+    const fiscalReturnId=await cbReturnReceipt(itemName, amount, payMethod, reason.trim(), saleId);
+    if(fiscalReturnId){
+      await showFiscalReceipt(fiscalReturnId);
+    }
   }catch(e){alert('❌ '+e.message)}
 }
 
@@ -3612,7 +3615,10 @@ async function admReturnProduct(saleId, amount, itemName, payMethod){
     });
     kasaLoadTx();
     // Передаємо ID оригінального продажу — щоб перевірити чи він був фіскальним
-    await cbReturnReceipt(itemName, amount, payMethod, reason.trim(), saleId);
+    const fiscalReturnId=await cbReturnReceipt(itemName, amount, payMethod, reason.trim(), saleId);
+    if(fiscalReturnId){
+      await showFiscalReceipt(fiscalReturnId);
+    }
   }catch(e){alert('❌ '+e.message)}
 }
 
@@ -3625,10 +3631,17 @@ async function returnProduct(saleId, amount, itemName, payMethod){
       item_name:'Повернення: '+itemName,
       amount:amount,
       payment_method:payMethod||'cash',
+      original_sale_id:saleId,
+      is_return:true,
       created_by:curUser?.name||'admin'
     });
     if(kasaShift)kasaLoadTx();
+    // Фіскальне повернення
+    const fiscalReturnId=await cbReturnReceipt(itemName, amount, payMethod||'cash', 'Повернення товару', saleId);
     alert('✅ Повернення оформлено!\n'+amount+' ₴ повернуто клієнту');
+    if(fiscalReturnId){
+      await showFiscalReceipt(fiscalReturnId);
+    }
   }catch(e){alert('❌ '+e.message)}
 }
 
@@ -3671,8 +3684,11 @@ async function returnSubscription(subId, clientId, typeName, price, startDate, p
       if(origSale){ origSaleId=origSale.id; origPayMethod=origSale.payment_method||payMethod; }
     }catch(e){}
 
-    await cbReturnReceipt('Абонемент: '+typeName, price, origPayMethod, 'Повернення абонементу', origSaleId);
+    const fiscalReturnId=await cbReturnReceipt('Абонемент: '+typeName, price, origPayMethod, 'Повернення абонементу', origSaleId);
     alert('✅ Абонемент скасовано!\n'+price+' ₴ повернуто клієнту');
+    if(fiscalReturnId){
+      await showFiscalReceipt(fiscalReturnId);
+    }
     admSelectClient(clientId);
   }catch(e){alert('❌ '+e.message)}
 }
@@ -4298,12 +4314,12 @@ async function cbReturnReceipt(itemName, amount, payMethod, reason, origSaleId){
 
   if(!shouldFiscalize){
     console.log('ℹ️ Фіскалізація повернення вимкнена для', payMethod);
-    return;
+    return null;
   }
 
   if(!_cbSettings.cb_login || !_cbSettings.cb_pass || !_cbSettings.cb_key){
     console.warn('⚠️ Немає налаштувань Checkbox — пропускаю фіскальне повернення');
-    return;
+    return null;
   }
 
   // Перевіряємо що оригінальний продаж був фіскальним
@@ -4312,7 +4328,7 @@ async function cbReturnReceipt(itemName, amount, payMethod, reason, origSaleId){
       const orig = await sb.get('sales', `?id=eq.${origSaleId}&select=fiscal_receipt_id`);
       if(orig && orig.length && !orig[0].fiscal_receipt_id){
         console.log('ℹ️ Оригінальний продаж не був фіскальним — пропускаю');
-        return;
+        return null;
       }
     }catch(e){}
   }
@@ -4321,7 +4337,7 @@ async function cbReturnReceipt(itemName, amount, payMethod, reason, origSaleId){
     const lr = await cbCall('login');
     if(!lr.access_token){
       alert('⚠️ Повернення не фіскалізовано: ' + (lr.message || 'помилка авторизації'));
-      return;
+      return null;
     }
 
     const items = [{name: itemName, qty: 1, price: amount, total: amount, code: 'RET'}];
@@ -4336,13 +4352,23 @@ async function cbReturnReceipt(itemName, amount, payMethod, reason, origSaleId){
 
     if(r && r.id){
       console.log('✅ Фіскальне повернення створено:', r.id);
+      // Зберігаємо ID фіскального повернення в останньому return-записі
+      try{
+        const recent = await sb.get('sales', '?type=eq.return&order=created_at.desc&limit=1');
+        if(recent && recent.length){
+          await sb.patch('sales', `id=eq.${recent[0].id}`, {fiscal_receipt_id: r.id});
+        }
+      }catch(e){ console.warn('save fiscal_id:', e); }
+      return r.id;
     } else {
       console.warn('Checkbox return:', r);
       alert('⚠️ Повернення не фіскалізовано: ' + (r.message || r.error || 'невідома помилка'));
+      return null;
     }
   }catch(e){
     console.warn('cbReturnReceipt:', e.message);
     alert('⚠️ Помилка фіскального повернення: ' + e.message);
+    return null;
   }
 }
 
