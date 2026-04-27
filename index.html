@@ -1867,17 +1867,43 @@ function closeMoD(id){
   const g=document.getElementById('f-gender');if(g)g.value='';
   const pp=document.getElementById('ph-prev');if(pp)pp.style.display='none';
   const php=document.getElementById('ph-ph');if(php)php.style.display='block';
+  _clientPhotoData=''; // Очищаємо фото при закритті форми
 }
+
+let _clientPhotoData = ''; // Зберігаємо base64 глобально
 
 function prevPhoto(inp){
   if(!inp.files||!inp.files[0])return;
+  const file=inp.files[0];
   const r=new FileReader();
   r.onload=e=>{
-    const img=document.getElementById('ph-prev');
-    img.src=e.target.result;img.style.display='block';
-    document.getElementById('ph-ph').style.display='none';
+    const originalSrc=e.target.result;
+    // Одразу стискаємо і зберігаємо
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');
+      canvas.width=150;canvas.height=150;
+      const ctx=canvas.getContext('2d');
+      const size=Math.min(img.width,img.height);
+      const ox=(img.width-size)/2;
+      const oy=(img.height-size)/2;
+      ctx.drawImage(img,ox,oy,size,size,0,0,150,150);
+      _clientPhotoData=canvas.toDataURL('image/jpeg',0.65);
+      // Показуємо превью
+      const prev=document.getElementById('ph-prev');
+      prev.src=_clientPhotoData;
+      prev.style.display='block';
+      document.getElementById('ph-ph').style.display='none';
+    };
+    img.onerror=()=>{
+      _clientPhotoData=originalSrc;
+      const prev=document.getElementById('ph-prev');
+      prev.src=originalSrc;prev.style.display='block';
+      document.getElementById('ph-ph').style.display='none';
+    };
+    img.src=originalSrc;
   };
-  r.readAsDataURL(inp.files[0]);
+  r.readAsDataURL(file);
 }
 
 async function createClient(){
@@ -1893,35 +1919,8 @@ async function createClient(){
   if(!gender){alert('Оберіть стать');return}
   if(!hasPhoto){alert('⚠️ Фото обов\'язкове!\nБез фото клієнт не може бути зареєстрований.');return}
 
-  // Читаємо фото напряму з FileReader result (вже є в ph-prev.src)
-  let photoUrl='';
-  try{
-    const fileInput=document.querySelector('#ph-zone input[type=file]');
-    if(fileInput && fileInput.files && fileInput.files[0]){
-      photoUrl=await new Promise((resolve)=>{
-        const reader=new FileReader();
-        reader.onload=async(ev)=>{
-          const originalData=ev.target.result;
-          // Стискаємо через canvas
-          const img=new Image();
-          img.onload=()=>{
-            const canvas=document.createElement('canvas');
-            canvas.width=150;canvas.height=150;
-            const ctx=canvas.getContext('2d');
-            const size=Math.min(img.width,img.height);
-            const ox=(img.width-size)/2;
-            const oy=(img.height-size)/2;
-            ctx.drawImage(img,ox,oy,size,size,0,0,150,150);
-            resolve(canvas.toDataURL('image/jpeg',0.65));
-          };
-          img.onerror=()=>resolve(originalData);
-          img.src=originalData;
-        };
-        reader.onerror=()=>resolve('');
-        reader.readAsDataURL(fileInput.files[0]);
-      });
-    }
-  }catch(e){ console.warn('photo error:',e); }
+  // Фото вже стиснуте і збережене в _clientPhotoData при виборі файлу
+  const photoUrl=_clientPhotoData||'';
 
   const id='CG-'+(Date.now().toString().slice(-6));
   try {
