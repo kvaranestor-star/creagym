@@ -3384,36 +3384,25 @@ async function testCbConnection(){
   const res=document.getElementById('cfg-cb-result');
   if(dot) dot.style.background='var(--or)';
   if(txt) txt.textContent='Перевірка...';
-  if(res){res.style.display='block';res.innerHTML='<div style="color:var(--m2)">⏳ Перевіряємо...</div>';}
-
+  if(res){res.style.display='block';res.innerHTML='<div style="color:var(--m2)">⏳ Перевіряємо підключення...</div>';}
   try{
-    // Крок 1: Логін — перевіряємо логін/пароль
-    const lr=await cbCall('login');
-    if(!lr.access_token){
+    const r=await cbCall('verify_all');
+    if(!r.ok){
       if(dot) dot.style.background='var(--rd)';
       if(txt) txt.textContent='❌ Помилка';
+      const isLogin=r.step==='login';
       res.innerHTML=`
-        <div style="color:var(--rd);font-size:13px;font-weight:700;margin-bottom:8px">❌ Невірний логін або пароль</div>
-        <div style="color:var(--m2);font-size:12px">Перевірте дані в my.checkbox.ua → Касири</div>`;
+        ${isLogin?'':' <div style="color:var(--or);font-size:12px;margin-bottom:6px">✅ Логін і пароль — вірні</div>'}
+        <div style="color:var(--rd);font-size:13px;font-weight:700;margin-bottom:8px">
+          ${isLogin?'❌ Невірний логін або пароль':'❌ Невірний ключ ліцензії каси'}
+        </div>
+        <div style="color:var(--m2);font-size:12px">
+          ${isLogin?'Перевірте дані в my.checkbox.ua → Касири':'Перевірте ключ в my.checkbox.ua → Каси → "Ключ ліцензії"'}
+        </div>
+        ${!isLogin?`<div style="color:var(--m);font-size:11px;margin-top:4px">Введений ключ: <code style="background:var(--p3);padding:2px 6px;border-radius:4px">${cbSettings.cb_key||'—'}</code></div>`:''}`;
       return;
     }
-
-    // Крок 2: shift_status з ключем — якщо ключ невірний, Checkbox поверне помилку
-    const sh=await cbCall('shift_status',{token:lr.access_token});
-
-    if(sh?.code==='cash_register.invalid_license_key'||sh?.message?.includes('ліцензі')||sh?.message?.includes('license')){
-      if(dot) dot.style.background='var(--rd)';
-      if(txt) txt.textContent='❌ Помилка';
-      res.innerHTML=`
-        <div style="color:var(--or);font-size:12px;margin-bottom:6px">✅ Логін і пароль — вірні</div>
-        <div style="color:var(--rd);font-size:13px;font-weight:700;margin-bottom:8px">❌ Невірний ключ ліцензії каси</div>
-        <div style="color:var(--m2);font-size:12px">Перевірте ключ в my.checkbox.ua → Каси → колонка "Ключ ліцензії"</div>
-        <div style="color:var(--m);font-size:11px;margin-top:4px">Введений ключ: <code style="background:var(--p3);padding:2px 6px;border-radius:4px">${cbSettings.cb_key||'—'}</code></div>`;
-      return;
-    }
-
-    // Крок 3: Все правильно
-    const shiftOpen=sh?.status==='OPENED';
+    const shiftOpen=r.shift_status==='OPENED';
     const fCash=cbSettings.cb_fiscalize_cash!=='false';
     const fCard=cbSettings.cb_fiscalize_card!=='false';
     if(dot) dot.style.background='var(--gr)';
@@ -3429,7 +3418,7 @@ async function testCbConnection(){
   }catch(e){
     if(dot) dot.style.background='var(--rd)';
     if(txt) txt.textContent='❌ Недоступний';
-    res.innerHTML=`<div style="color:var(--rd)">❌ Помилка з'єднання: ${e.message}</div>`;
+    res.innerHTML=`<div style="color:var(--rd)">❌ ${e.message}</div>`;
   }
 }
 async function openCbShiftManual(){
