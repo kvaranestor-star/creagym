@@ -2803,16 +2803,23 @@ async function returnProduct(saleId, amount, itemName, payMethod){
 
 // ПОВЕРНЕННЯ абонементу (тільки якщо не стартований)
 async function returnSubscription(subId, clientId, typeName, price, startDate, payMethod){
-  const today=new Date().toISOString().split('T')[0];
-  if(startDate<=today){
-    alert('❌ Повернення неможливе!\n\nАбонемент вже активований '+startDate+'.\nПовернення можливе тільки до початку дії абонементу.');
+  // Завантажуємо актуальні дані абонементу
+  let sub=null;
+  try{
+    const subs=await sb.get('subscriptions',`?id=eq.${subId}&select=*`);
+    sub=subs&&subs.length?subs[0]:null;
+  }catch(e){}
+
+  // Перевіряємо активацію по started_at або типу
+  const isActivated=sub&&(sub.started_at||(sub.start_type==='з дати продажу'));
+  if(isActivated){
+    alert('❌ Повернення неможливе!\n\nАбонемент вже активований — клієнт скористався ним.\nПовернення доступне тільки до першого відвідування.');
     return;
   }
+
   if(!confirm(`Повернення абонементу: "${typeName}"\nСума: ${price} ₴\n\nАбонемент буде скасовано.`))return;
   try{
-    // Скасовуємо абонемент
     await sb.patch('subscriptions',`id=eq.${subId}`,{status:'cancelled'});
-    // Записуємо повернення
     await sb.post('sales',{
       client_id:clientId,
       type:'return',
