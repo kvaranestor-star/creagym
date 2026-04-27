@@ -208,6 +208,7 @@ tr:hover td{background:#ffffff03;cursor:pointer}
 .s-frz{background:#3B82F614;color:var(--bl)}
 .s-exp{background:#EF444414;color:var(--rd)}
 .s-tri{background:#F9731614;color:var(--or)}
+.s-new{background:#A855F714;color:#A855F7}
 .ab-b{font-size:10px;color:var(--m2);background:var(--p2);padding:2px 6px;border-radius:6px;white-space:nowrap}
 .act-b{background:var(--p2);border:1px solid var(--bd2);border-radius:6px;padding:3px 9px;font-size:10px;font-weight:600;color:var(--m2);cursor:pointer;font-family:var(--f);transition:all .12s;white-space:nowrap}
 .act-b:hover{border-color:var(--ym);color:var(--y)}
@@ -1492,6 +1493,7 @@ const stMap={
   trial:    {cls:'s-tri', l:'Пробний'},
   inactive: {cls:'s-exp', l:'Неактивний'},
   pending:  {cls:'s-tri', l:'Не стартований'},
+  new:      {cls:'s-new', l:'Новий'},
 };
 
 // Розраховуємо реальний статус клієнта з його абонементів
@@ -1502,9 +1504,13 @@ async function syncClientStatuses(){
     const allSubs=await sb.get('subscriptions','?status=in.(active,frozen)&select=client_id,status,started_at,start_type,end_date');
     const subsByClient={};
     (allSubs||[]).forEach(s=>{ if(!subsByClient[s.client_id]) subsByClient[s.client_id]=[]; subsByClient[s.client_id].push(s); });
-    
+
     for(const c of allClients){
       const subs=subsByClient[c.id]||[];
+      const createdAt=c.created_at?new Date(c.created_at):null;
+      const daysSinceCreate=createdAt?Math.floor((new Date()-createdAt)/86400000):999;
+      const isNew=daysSinceCreate<=5;
+
       let newStatus='inactive';
       if(subs.length){
         const activeSub=subs.find(s=>s.status==='active');
@@ -1512,17 +1518,22 @@ async function syncClientStatuses(){
         if(frozenSub) newStatus='frozen';
         else if(activeSub){
           const isActivated=activeSub.started_at||(activeSub.start_type==='з дати продажу');
-          if(!isActivated) newStatus='pending';
+          if(!isActivated) newStatus=isNew?'new':'pending';
           else if(activeSub.end_date<today) newStatus='expired';
-          else newStatus='active';
+          else newStatus=isNew?'new':'active';
         }
+      } else {
+        // Немає абонементу
+        newStatus=isNew?'new':'inactive';
       }
-      if(c.status!==newStatus){
-        c.status=newStatus;
-        try{ await sb.patch('clients',`id=eq.${c.id}`,{status:newStatus==='pending'?'active':newStatus==='inactive'?'expired':newStatus}); }catch(e){}
-      }
+
+      if(c.status!==newStatus) c.status=newStatus;
     }
     renderClients();
+    // Оновлюємо бейдж (лічимо активних + нових з абонементом)
+    const activeCount=allClients.filter(c=>c.status==='active'||c.status==='new').length;
+    const badge=document.getElementById('cl-badge');
+    if(badge) badge.textContent=activeCount;
   }catch(e){ console.warn('syncClientStatuses:',e); }
 }
 
@@ -1881,21 +1892,30 @@ async function createClient(){
   if(!gender){alert('Оберіть стать');return}
   if(!hasPhoto){alert('⚠️ Фото обов\'язкове!\nБез фото клієнт не може бути зареєстрований.');return}
 
-  // Конвертуємо фото в base64 для збереження
+  // Фото вже в base64 в img.src (завантажено через FileReader)
   let photoUrl='';
   try{
-    // Стискаємо фото до 200x200px перед збереженням
-    const canvas=document.createElement('canvas');
-    canvas.width=200;canvas.height=200;
-    const ctx=canvas.getContext('2d');
-    const img=prevImg;
-    // Crop to square
-    const size=Math.min(img.naturalWidth||200,img.naturalHeight||200);
-    const ox=((img.naturalWidth||200)-size)/2;
-    const oy=((img.naturalHeight||200)-size)/2;
-    ctx.drawImage(img,ox,oy,size,size,0,0,200,200);
-    photoUrl=canvas.toDataURL('image/jpeg',0.7);
-  }catch(e){ photoUrl=prevImg.src||''; }
+    const imgEl=document.getElementById('ph-prev');
+    if(imgEl && imgEl.src && imgEl.src.startsWith('data:')){
+      // Стискаємо до 300x300 через canvas
+      await new Promise(resolve=>{
+        const tmpImg=new Image();
+        tmpImg.onload=()=>{
+          const canvas=document.createElement('canvas');
+          canvas.width=300;canvas.height=300;
+          const ctx=canvas.getContext('2d');
+          const size=Math.min(tmpImg.naturalWidth,tmpImg.naturalHeight);
+          const ox=(tmpImg.naturalWidth-size)/2;
+          const oy=(tmpImg.naturalHeight-size)/2;
+          ctx.drawImage(tmpImg,ox,oy,size,size,0,0,300,300);
+          photoUrl=canvas.toDataURL('image/jpeg',0.75);
+          resolve();
+        };
+        tmpImg.onerror=()=>{photoUrl=imgEl.src;resolve();}
+        tmpImg.src=imgEl.src;
+      });
+    }
+  }catch(e){ console.warn('photo error:',e); }
 
   const id='CG-'+(Date.now().toString().slice(-6));
   try {
@@ -1905,7 +1925,8 @@ async function createClient(){
       city:document.getElementById('f-city').value.trim()||'Вінниця',
       note:document.getElementById('f-note').value.trim()||'',
       photo_url:photoUrl,
-      status:'trial',visits:0
+      status:'new', visits:0,
+      created_at:new Date().toISOString()
     });
     closeMoD('mo-cl');
     await loadClients();
