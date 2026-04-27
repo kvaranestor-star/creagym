@@ -715,10 +715,15 @@ tr:hover td{background:#ffffff03;cursor:pointer}
 
                 <!-- ACTIONS -->
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
-                  <button onclick="saveCbSettings()" style="padding:9px 18px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">💾 Зберегти налаштування</button>
+                  <button id="cfg-save-btn" onclick="saveCbSettings()" style="padding:9px 18px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">💾 Зберегти налаштування</button>
                   <button onclick="testCbConnection()" style="padding:9px 18px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">🔌 Перевірити з'єднання</button>
-                  <button onclick="openCbShiftManual()" style="padding:9px 18px;border-radius:8px;border:1px solid #22C55E40;background:#22C55E14;color:var(--gr);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">▶ Відкрити зміну</button>
-                  <button onclick="closeCbShiftManual()" style="padding:9px 18px;border-radius:8px;border:1px solid #EF444440;background:#EF444414;color:var(--rd);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">⏹ Закрити зміну</button>
+                  <button id="cfg-open-shift-btn" onclick="openCbShiftManual()" style="padding:9px 18px;border-radius:8px;border:1px solid #22C55E40;background:#22C55E14;color:var(--gr);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">▶ Відкрити зміну</button>
+                  <button id="cfg-close-shift-btn" onclick="closeCbShiftManual()" style="display:none;padding:9px 18px;border-radius:8px;border:1px solid #EF444440;background:#EF444414;color:var(--rd);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">⏹ Закрити зміну</button>
+                </div>
+                <div id="cfg-shift-warn" style="display:none;margin-top:10px;padding:10px 14px;background:#F9731614;border:1px solid #F9731640;border-radius:8px;font-size:12px;color:var(--or)">
+                  🔒 Зміна відкрита — зміна налаштувань заблокована.<br>
+                  <span style="color:var(--m2);font-size:11px">Закрийте зміну щоб змінити логін, пароль, ключ або фіскалізацію.</span>
+                </div>
                 </div>
 
               </div>
@@ -1082,7 +1087,20 @@ function gp(id,el){
   if(id==='stats') loadStats();
   if(id==='subs') loadSubs();
   if(id==='fin'){okUpdateShiftUI(!!okShift);okLoadTx();}
-  if(id==='cfg'){ loadCbSettings(); setTimeout(applyCbSettingsToForm, 100); }
+  if(id==='cfg'){
+    loadCbSettings();
+    setTimeout(async()=>{
+      applyCbSettingsToForm();
+      // Перевіряємо стан зміни в Checkbox
+      try{
+        const lr=await cbCall('login');
+        if(lr.access_token){
+          const sh=await cbCall('shift_status',{token:lr.access_token});
+          updateCfgShiftLock(sh?.status==='OPENED');
+        }
+      }catch(e){ updateCfgShiftLock(false); }
+    },100);
+  }
 }
 function handleTopAction(){
   if(curPage==='clients') openMo('mo-cl');
@@ -1736,9 +1754,14 @@ async function okCloseShift(){
   showShiftReport('zreport',cashIn-cashOut,cardIn,okShift.cash_start||0,okTxAll);
   okShift=null;okTxAll=[];
   okUpdateShiftUI(false);
+  // Закриваємо зміну в Checkbox автоматично
+  try{
+    const lr=await cbCall('login');
+    if(lr.access_token){ await cbCall('close_shift',{token:lr.access_token}); }
+  }catch(e){ console.warn('cbCloseShift owner:', e.message); }
   const el=document.getElementById('ok-tx-body');
   if(el)el.innerHTML='<tr><td colspan="6" style="padding:30px;text-align:center;font-size:12px;color:var(--m2)">Зміну закрито</td></tr>';
-  ['ok-cash-total','ok-card-total','ok-total'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent='0 ₴'});
+  ['ok-cash-total','ok-card-total','ok-total'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent='0 ₴';});
 }
 
 // ===== ПОВЕРНЕННЯ ТОВАРУ (з причиною) =====
@@ -2476,36 +2499,36 @@ async function syncAdminClientStatuses(){
 // Перевіряємо існуючу зміну при завантаженні — не питаємо якщо вже відкрита
 async function cbCheckExistingShift(){
   try{
-    const lr = await cbCall('login');
+    const lr=await cbCall('login');
     if(!lr.access_token) return;
-    const sh = await cbCall('shift_status', {token: lr.access_token});
-    if(sh?.status === 'OPENED'){
-      // Якщо зміна в Checkbox відкрита але kasaShift порожній — відновлюємо з БД
+    const sh=await cbCall('shift_status',{token:lr.access_token});
+
+    if(sh?.status==='OPENED'){
+      // Checkbox відкрита — відновлюємо якщо немає локально
       if(!kasaShift){
         try{
-          const shifts = await sb.get('shifts','?status=eq.open&order=opened_at.desc&limit=1');
-          if(shifts && shifts.length > 0){
-            kasaShift = shifts[0];
-            kasaSaveShift();
-            kasaUpdateShiftUI(true);
-            kasaLoadTx();
-          }
+          const shifts=await sb.get('shifts','?status=eq.open&order=opened_at.desc&limit=1');
+          if(shifts&&shifts.length>0){ kasaShift=shifts[0]; kasaSaveShift(); kasaUpdateShiftUI(true); kasaLoadTx(); }
         }catch(e2){}
       }
-      // Оновлюємо бейдж в навбарі
-      const badge = document.getElementById('kasa-status-badge');
-      if(badge){
-        badge.textContent = 'ВІДКРИТО';
-        badge.style.background = '#22C55E20';
-        badge.style.color = 'var(--gr)';
+      const badge=document.getElementById('kasa-status-badge');
+      if(badge){badge.textContent='ВІДКРИТО';badge.style.background='#22C55E20';badge.style.color='var(--gr)';}
+      console.log('✅ Checkbox: зміна відкрита');
+    } else {
+      // Checkbox закрита — скидаємо локальний стан
+      if(kasaShift){
+        console.log('⚠️ Checkbox: зміна закрита — скидаємо локальний стан');
+        kasaShift=null;
+        kasaSaveShift();
+        kasaUpdateShiftUI(false);
       }
-      console.log('✅ Checkbox: зміна вже відкрита');
+      const badge=document.getElementById('kasa-status-badge');
+      if(badge){badge.textContent='ЗАЧИНЕНО';badge.style.background='';badge.style.color='';}
     }
   }catch(e){
-    console.warn('cbCheckExistingShift:', e.message);
+    console.warn('cbCheckExistingShift:',e.message);
   }
 }
-
 function admTab(id,btn){
   document.querySelectorAll('.adm-tab').forEach(t=>t.classList.remove('on'));btn.classList.add('on');
   document.querySelectorAll('.adm-page').forEach(p=>p.classList.remove('on'));
@@ -3133,7 +3156,14 @@ async function kasaCloseShift(){
   kasaShift=null;kasaTxAll=[];
   kasaSaveShift();
   kasaUpdateShiftUI(false);
-  // НЕ закриваємо зміну Checkbox автоматично — вона закриється при наступному відкритті
+  // Закриваємо зміну в Checkbox автоматично
+  try{
+    const lr=await cbCall('login');
+    if(lr.access_token){
+      await cbCall('close_shift',{token:lr.access_token});
+      console.log('✅ Checkbox зміну закрито автоматично');
+    }
+  }catch(e){ console.warn('cbCloseShift auto:', e.message); }
   document.getElementById('kasa-tx-body').innerHTML='<tr><td colspan="6" style="padding:30px;text-align:center;font-size:12px;color:var(--m2)">Зміну закрито</td></tr>';
   ['k-cash-total','k-card-total','k-total'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='0 ₴'});
   document.getElementById('k-tx-cnt').textContent='0';
@@ -3446,24 +3476,57 @@ async function testCbConnection(){
     res.innerHTML=`<div style="color:var(--rd)">❌ ${e.message}</div>`;
   }
 }
+// Блокуємо/розблоковуємо налаштування залежно від стану зміни
+function updateCfgShiftLock(isOpen){
+  const fields=['cfg-cb-login','cfg-cb-pass','cfg-cb-key','cfg-prro-name','cfg-prro-num'];
+  const cashCb=document.getElementById('cfg-fisk-cash');
+  const cardCb=document.getElementById('cfg-fisk-card');
+  const saveBtn=document.getElementById('cfg-save-btn');
+  const openBtn=document.getElementById('cfg-open-shift-btn');
+  const closeBtn=document.getElementById('cfg-close-shift-btn');
+
+  fields.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){
+      el.disabled=isOpen;
+      el.style.opacity=isOpen?'0.5':'1';
+      el.style.cursor=isOpen?'not-allowed':'text';
+    }
+  });
+  if(cashCb){ cashCb.disabled=isOpen; cashCb.style.opacity=isOpen?'0.5':'1'; cashCb.style.cursor=isOpen?'not-allowed':'pointer'; }
+  if(cardCb){ cardCb.disabled=isOpen; cardCb.style.opacity=isOpen?'0.5':'1'; cardCb.style.cursor=isOpen?'not-allowed':'pointer'; }
+  if(saveBtn){ saveBtn.disabled=isOpen; saveBtn.style.opacity=isOpen?'0.5':'1'; saveBtn.style.cursor=isOpen?'not-allowed':'pointer'; }
+  if(openBtn){ openBtn.disabled=isOpen; openBtn.style.opacity=isOpen?'0.5':'1'; openBtn.style.cursor=isOpen?'not-allowed':'pointer'; }
+  if(closeBtn){ closeBtn.style.display=isOpen?'inline-flex':'none'; }
+
+  // Показуємо попередження якщо зміна відкрита
+  const warn=document.getElementById('cfg-shift-warn');
+  if(warn) warn.style.display=isOpen?'block':'none';
+}
+
 async function openCbShiftManual(){
   try{
-    const lr = await cbCall('login');
-    if(!lr.access_token){ alert('❌ Помилка авторизації Checkbox'); return; }
-    const res = await cbCall('open_shift', {token: lr.access_token});
-    if(res.id){ alert('✅ Зміну в Checkbox відкрито!'); }
-    else { alert('Відповідь: '+JSON.stringify(res)); }
-  }catch(e){ alert('❌ '+e.message); }
+    const lr=await cbCall('login');
+    if(!lr.access_token){alert('❌ Помилка авторизації Checkbox');return;}
+    const res=await cbCall('open_shift',{token:lr.access_token});
+    if(res.id||res.status==='CREATING'||res.status==='OPENED'){
+      alert('✅ Зміну в Checkbox відкрито!');
+      updateCfgShiftLock(true);
+    } else {
+      alert('❌ Помилка відкриття зміни:\n'+(res.message||JSON.stringify(res)));
+    }
+  }catch(e){alert('❌ '+e.message);}
 }
 
 async function closeCbShiftManual(){
-  if(!confirm('Закрити зміну в Checkbox?')) return;
+  if(!confirm('Закрити зміну в Checkbox?\n\nПісля закриття можна змінити налаштування і відкрити нову зміну.'))return;
   try{
-    const lr = await cbCall('login');
-    if(!lr.access_token){ alert('❌ Помилка авторизації'); return; }
-    await cbCall('close_shift', {token: lr.access_token});
-    alert('✅ Зміну в Checkbox закрито');
-  }catch(e){ alert('❌ '+e.message); }
+    const lr=await cbCall('login');
+    if(!lr.access_token){alert('❌ Помилка авторизації');return;}
+    await cbCall('close_shift',{token:lr.access_token});
+    alert('✅ Зміну в Checkbox закрито.\nТепер можна змінювати налаштування.');
+    updateCfgShiftLock(false);
+  }catch(e){alert('❌ '+e.message);}
 }
 
 // ===== CHECKBOX ПРРО ІНТЕГРАЦІЯ =====
