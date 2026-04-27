@@ -1183,6 +1183,7 @@ async function doLogin(){
           setupOwnerApp(u);
           document.getElementById('app').classList.add('sh');
           loadStats();
+          loadGoods(); // Завантажуємо товари одразу
         } else {
           // → ПАНЕЛЬ АДМІНА
           setupAdminApp(u);
