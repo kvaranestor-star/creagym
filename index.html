@@ -3909,8 +3909,25 @@ async function cbCall(action,data){
 }
 
 function applyCbSettingsToForm(){
-  // Не заповнюємо поля автоматично - користувач вводить сам
-  // Функція залишена для сумісності
+  // Заповнюємо поля збереженими значеннями з БД
+  const set=function(id,val){
+    const el=document.getElementById(id);
+    if(!el)return;
+    if(el.type==='checkbox') el.checked=(val==='true');
+    else el.value=val||'';
+  };
+  set('cfg-cb-login',_cbSettings.cb_login);
+  set('cfg-cb-pass',_cbSettings.cb_pass);
+  set('cfg-cb-key',_cbSettings.cb_key);
+  set('cfg-prro-name',_cbSettings.cb_prro_name);
+  set('cfg-prro-num',_cbSettings.cb_prro_num);
+  set('cfg-fisk-cash',_cbSettings.cb_fiscalize_cash);
+  set('cfg-fisk-card',_cbSettings.cb_fiscalize_card);
+  // Підсвічуємо чекбокси якщо вони включені
+  const cashEl=document.getElementById('cfg-fisk-cash');
+  const cardEl=document.getElementById('cfg-fisk-card');
+  if(cashEl)updateFiskRow('cash',cashEl);
+  if(cardEl)updateFiskRow('card',cardEl);
 }
 
 function updateCfgShiftLock(opened){
