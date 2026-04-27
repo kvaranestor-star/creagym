@@ -729,9 +729,12 @@ tr:hover td{background:#ffffff03;cursor:pointer}
 
   <!-- СКЛАД -->
   <div id="g-stock" class="g-page">
-    <div style="margin-bottom:14px">
-      <div style="font-size:16px;font-weight:700">Склад</div>
-      <div style="font-size:12px;color:var(--m2)">Залишки та статус товарів</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:16px;font-weight:700">Склад</div>
+        <div style="font-size:12px;color:var(--m2)">Залишки та статус товарів</div>
+      </div>
+      <button onclick="openAutoOrder()" style="padding:9px 16px;border-radius:9px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">📦 Автозамовлення</button>
     </div>
     <div id="g-stock-list"></div>
   </div>
@@ -1037,7 +1040,7 @@ tr:hover td{background:#ffffff03;cursor:pointer}
           </select>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
         <div class="ff">
           <label>Залишок (шт)</label>
           <input class="fi2" type="number" id="prod-stock" placeholder="0" min="0">
@@ -1045,6 +1048,10 @@ tr:hover td{background:#ffffff03;cursor:pointer}
         <div class="ff">
           <label>Мін. залишок (шт)</label>
           <input class="fi2" type="number" id="prod-min" placeholder="5" min="0">
+        </div>
+        <div class="ff">
+          <label>Бажаний макс (шт)</label>
+          <input class="fi2" type="number" id="prod-max" placeholder="20" min="0" title="Скільки повинно бути на складі після поповнення (для автозамовлення)">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -2823,6 +2830,7 @@ async function openAddProduct(){
     document.getElementById('prod-cost').value=p.cost||'';
     document.getElementById('prod-stock').value=p.stock||0;
     document.getElementById('prod-min').value=p.min_stock||5;
+    document.getElementById('prod-max').value=p.desired_max||0;
     document.getElementById('prod-emoji').value=p.emoji||'📦';
     document.getElementById('prod-unit').value=p.unit||'шт';
     document.getElementById('prod-barcode').value=p.barcode||'';
@@ -2836,7 +2844,7 @@ function closeMoProd(e){if(e.target===document.getElementById('mo-prod'))closeMo
 function closeMoProdD(){
   document.getElementById('mo-prod').classList.remove('sh');
   _editProductId=null;
-  ['prod-name','prod-price','prod-cost','prod-stock','prod-min','prod-barcode','prod-sku','prod-desc','prod-emoji','prod-cat-new','prod-supplier-new'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['prod-name','prod-price','prod-cost','prod-stock','prod-min','prod-max','prod-barcode','prod-sku','prod-desc','prod-emoji','prod-cat-new','prod-supplier-new'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const cat=document.getElementById('prod-cat');if(cat)cat.value='';
   const sup=document.getElementById('prod-supplier');if(sup)sup.value='';
   const unit=document.getElementById('prod-unit');if(unit)unit.value='шт';
@@ -2852,6 +2860,7 @@ async function saveProduct(){
   const cost=parseInt(document.getElementById('prod-cost')?.value)||0;
   const stock=parseInt(document.getElementById('prod-stock')?.value)||0;
   const min_stock=parseInt(document.getElementById('prod-min')?.value)||5;
+  const desired_max=parseInt(document.getElementById('prod-max')?.value)||0;
   const emoji=(document.getElementById('prod-emoji')?.value||'📦').trim()||'📦';
   const unit=document.getElementById('prod-unit')?.value||'шт';
   const barcode=(document.getElementById('prod-barcode')?.value||'').trim();
@@ -2871,7 +2880,7 @@ async function saveProduct(){
   const btn=document.getElementById('prod-save-btn');
   btn.textContent='Збереження...';btn.disabled=true;
   try{
-    const data={name,category:cat,price,cost,stock,min_stock,emoji,unit,barcode,sku,description,supplier_id};
+    const data={name,category:cat,price,cost,stock,min_stock,desired_max,emoji,unit,barcode,sku,description,supplier_id};
     if(_editProductId){
       await sb.patch('products',`id=eq.${_editProductId}`,data);
       const p=gProducts.find(x=>x.id===_editProductId);
@@ -2885,6 +2894,204 @@ async function saveProduct(){
     renderAssortment();
   }catch(e){alert('❌ '+e.message);}
   finally{btn.textContent=_editProductId?'Зберегти зміни':'Додати товар';btn.disabled=false;}
+}
+
+// ===== АВТОЗАМОВЛЕННЯ =====
+async function openAutoOrder(){
+  // Завантажуємо постачальників
+  await loadCategoriesAndSuppliers();
+  if(!_suppliers.length){
+    alert('Немає жодного постачальника. Додайте постачальника при створенні/редагуванні товару.');
+    return;
+  }
+  // Створюємо модалку
+  let mo=document.getElementById('auto-order-mo');
+  if(!mo){
+    mo=document.createElement('div');
+    mo.id='auto-order-mo';
+    mo.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)';
+    mo.onclick=function(e){if(e.target===mo)mo.remove();};
+    document.body.appendChild(mo);
+  } else { mo.style.display='flex'; mo.innerHTML=''; }
+  mo.innerHTML=`
+    <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;width:100%;max-width:560px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--bd2);flex-shrink:0">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--m)">📦 Автозамовлення</div>
+          <div style="font-size:11px;color:var(--m2);margin-top:2px">Виберіть постачальника</div>
+        </div>
+        <button onclick="document.getElementById('auto-order-mo').remove()" style="width:28px;height:28px;background:var(--p3);border:1px solid var(--bd2);border-radius:6px;cursor:pointer;color:var(--m2);font-size:14px">✕</button>
+      </div>
+      <div id="auto-order-body" style="flex:1;overflow-y:auto;padding:16px"></div>
+    </div>`;
+  renderAutoOrderSupplierList();
+}
+
+function renderAutoOrderSupplierList(){
+  const body=document.getElementById('auto-order-body');
+  if(!body)return;
+  body.innerHTML='<div style="font-size:12px;color:var(--m2);margin-bottom:10px">Постачальники:</div>'+
+    _suppliers.map(s=>{
+      // Скільки товарів цього постачальника треба замовити
+      const lowProds=gProducts.filter(p=>p.supplier_id===s.id && (p.stock||0)<=(p.min_stock||0));
+      return `<button onclick="prepareAutoOrder('${s.id}')" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 14px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m);font-family:var(--f);font-size:13px;cursor:pointer;margin-bottom:6px;text-align:left">
+        <span>${s.name}</span>
+        <span style="font-size:11px;font-weight:700;color:${lowProds.length>0?'var(--or)':'var(--m2)'};background:${lowProds.length>0?'#F9731620':'var(--p3)'};padding:3px 9px;border-radius:20px">${lowProds.length} ${lowProds.length===1?'товар':'товарів'}</span>
+      </button>`;
+    }).join('');
+}
+
+function prepareAutoOrder(supplierId){
+  const sup=_suppliers.find(s=>s.id===supplierId);
+  if(!sup)return;
+  const lowProds=gProducts.filter(p=>p.supplier_id===supplierId && (p.stock||0)<=(p.min_stock||0));
+  if(!lowProds.length){
+    alert(`У постачальника "${sup.name}" немає товарів які треба замовити.\nВсі товари вище мінімального залишку.`);
+    return;
+  }
+  // Підрахунок: скільки замовити = desired_max - stock (якщо desired_max=0, то min_stock*3 за замовч.)
+  const orderItems=lowProds.map(p=>{
+    const max=p.desired_max>0?p.desired_max:Math.max((p.min_stock||5)*3,10);
+    const need=Math.max(max-(p.stock||0),1);
+    return {
+      name:p.name,
+      emoji:p.emoji||'📦',
+      sku:p.sku||'',
+      barcode:p.barcode||'',
+      stock:p.stock||0,
+      min_stock:p.min_stock||0,
+      desired_max:max,
+      qty:need,
+      cost:p.cost||0,
+      total:need*(p.cost||0),
+      unit:p.unit||'шт'
+    };
+  });
+  const totalSum=orderItems.reduce((s,i)=>s+i.total,0);
+  const body=document.getElementById('auto-order-body');
+  body.innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <button onclick="renderAutoOrderSupplierList()" style="padding:5px 10px;background:var(--p3);border:1px solid var(--bd2);border-radius:6px;color:var(--m2);font-family:var(--f);font-size:11px;cursor:pointer">← Назад</button>
+      <div style="font-size:13px;font-weight:700">${sup.name}</div>
+    </div>
+    <div style="background:var(--p2);border:1px solid var(--bd2);border-radius:8px;padding:10px;margin-bottom:10px">
+      <div style="font-size:11px;color:var(--m2);margin-bottom:6px">Замовлення на ${orderItems.length} товарів</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="border-bottom:1px solid var(--bd)">
+            <th style="text-align:left;padding:6px 4px;font-size:10px;color:var(--m2);font-weight:600">Товар</th>
+            <th style="text-align:center;padding:6px 4px;font-size:10px;color:var(--m2);font-weight:600">Зал.</th>
+            <th style="text-align:center;padding:6px 4px;font-size:10px;color:var(--m2);font-weight:600">Макс.</th>
+            <th style="text-align:center;padding:6px 4px;font-size:10px;color:var(--m2);font-weight:600">Замов.</th>
+            <th style="text-align:right;padding:6px 4px;font-size:10px;color:var(--m2);font-weight:600">Сума</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${orderItems.map(i=>`<tr style="border-top:1px solid var(--bd)">
+            <td style="padding:6px 4px">${i.emoji} ${i.name}</td>
+            <td style="text-align:center;padding:6px 4px;color:${i.stock<=0?'var(--rd)':'var(--or)'}">${i.stock}</td>
+            <td style="text-align:center;padding:6px 4px;color:var(--m2)">${i.desired_max}</td>
+            <td style="text-align:center;padding:6px 4px;font-weight:700;color:var(--y)">+${i.qty} ${i.unit}</td>
+            <td style="text-align:right;padding:6px 4px">${i.total?i.total.toLocaleString('uk-UA')+' ₴':'—'}</td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot>
+          <tr style="border-top:2px solid var(--bd2)">
+            <td colspan="4" style="padding:8px 4px;font-weight:700;text-align:right">Разом:</td>
+            <td style="text-align:right;padding:8px 4px;font-weight:700;color:var(--y)">${totalSum?totalSum.toLocaleString('uk-UA')+' ₴':'—'}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="document.getElementById('auto-order-mo').remove()" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">Скасувати</button>
+      <button onclick='generateAutoOrderPDF(${JSON.stringify({supplier:sup,items:orderItems,total:totalSum}).replace(/"/g,"&quot;").replace(/'/g,"&#39;")})' style="flex:2;padding:10px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">📄 Завантажити PDF</button>
+    </div>`;
+}
+
+function generateAutoOrderPDF(data){
+  // Створюємо HTML-документ і відкриваємо у новому вікні з window.print() для збереження як PDF
+  const sup=data.supplier;
+  const items=data.items;
+  const total=data.total;
+  const date=new Date().toLocaleDateString('uk-UA');
+  const time=new Date().toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Замовлення ${sup.name} ${date}</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0;font-family:'Helvetica',Arial,sans-serif}
+      body{padding:30px;color:#000;background:#fff;font-size:12px}
+      .header{border-bottom:2px solid #000;padding-bottom:14px;margin-bottom:20px}
+      h1{font-size:22px;margin-bottom:8px}
+      .meta{display:flex;justify-content:space-between;color:#555;font-size:11px}
+      .supplier{background:#f5f5f5;padding:14px;border-radius:6px;margin-bottom:20px}
+      .supplier-name{font-size:16px;font-weight:700;margin-bottom:4px}
+      .supplier-contact{font-size:11px;color:#555}
+      table{width:100%;border-collapse:collapse;font-size:11px}
+      th{background:#222;color:#fff;padding:8px 6px;text-align:left;font-weight:600}
+      th.center{text-align:center}
+      th.right{text-align:right}
+      td{padding:7px 6px;border-bottom:1px solid #ddd}
+      td.center{text-align:center}
+      td.right{text-align:right}
+      .total{margin-top:18px;padding:12px;background:#f9f9f9;border:2px solid #000;display:flex;justify-content:space-between;align-items:center}
+      .total-label{font-size:13px;font-weight:700}
+      .total-amount{font-size:18px;font-weight:700}
+      .footer{margin-top:30px;padding-top:14px;border-top:1px solid #ddd;font-size:10px;color:#888;display:flex;justify-content:space-between}
+      .signature-block{margin-top:40px;display:flex;justify-content:space-between;font-size:11px}
+      .sig-line{border-top:1px solid #000;width:200px;padding-top:4px;text-align:center}
+      @media print { body{padding:18px} }
+    </style></head><body>
+    <div class="header">
+      <h1>📦 ЗАМОВЛЕННЯ ТОВАРУ</h1>
+      <div class="meta">
+        <span>CREAGYM FITNESS</span>
+        <span>Дата: ${date} ${time}</span>
+      </div>
+    </div>
+    <div class="supplier">
+      <div class="supplier-name">Постачальник: ${sup.name}</div>
+      ${sup.phone||sup.email?`<div class="supplier-contact">${sup.phone?'☎ '+sup.phone:''}${sup.phone&&sup.email?' · ':''}${sup.email?'✉ '+sup.email:''}</div>`:''}
+    </div>
+    <table>
+      <thead><tr>
+        <th>#</th>
+        <th>Товар</th>
+        <th class="center">Артикул</th>
+        <th class="center">Залишок</th>
+        <th class="center">Замовити</th>
+        <th class="right">Ціна</th>
+        <th class="right">Сума</th>
+      </tr></thead>
+      <tbody>
+        ${items.map((i,idx)=>`<tr>
+          <td>${idx+1}</td>
+          <td>${i.emoji} ${i.name}</td>
+          <td class="center">${i.sku||'—'}</td>
+          <td class="center">${i.stock} ${i.unit}</td>
+          <td class="center"><b>${i.qty} ${i.unit}</b></td>
+          <td class="right">${i.cost?i.cost.toLocaleString('uk-UA')+' ₴':'—'}</td>
+          <td class="right">${i.total?i.total.toLocaleString('uk-UA')+' ₴':'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <div class="total">
+      <div class="total-label">РАЗОМ ДО СПЛАТИ:</div>
+      <div class="total-amount">${total?total.toLocaleString('uk-UA')+' ₴':'—'}</div>
+    </div>
+    <div class="signature-block">
+      <div class="sig-line">Замовив</div>
+      <div class="sig-line">Прийняв</div>
+    </div>
+    <div class="footer">
+      <span>CREAGYM CRM · ${date}</span>
+      <span>${items.length} ${items.length===1?'позиція':'позицій'}</span>
+    </div>
+    <script>window.onload=function(){setTimeout(()=>window.print(),300);};</`+`script>
+    </body></html>`;
+  const w=window.open('','_blank','width=800,height=900');
+  if(!w){alert('Дозвольте спливаючі вікна для завантаження PDF');return;}
+  w.document.write(html);
+  w.document.close();
 }
 </script>
 
