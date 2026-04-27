@@ -625,6 +625,10 @@ tr:hover td{background:#ffffff03;cursor:pointer}
 
         <!-- STATS -->
         <div class="sec on" id="sec-stats">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--m2);font-weight:600">Дані по:</span>
+            <div id="stats-branch-tabs" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+          </div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px" id="stats-grid">
             <div class="loading" style="grid-column:span 4"><div class="spin"></div>Завантаження даних...</div>
           </div>
@@ -1633,13 +1637,48 @@ function handleTopAction(){
 }
 
 // ===== STATS =====
+let _statsBranchFilter='current'; // 'current' | 'all' | <branch_id>
+
+function renderStatsBranchTabs(){
+  const el=document.getElementById('stats-branch-tabs');
+  if(!el)return;
+  // Якщо філій менше 2 — взагалі не показуємо селектор
+  if(!_branches||_branches.length<2){el.innerHTML='';return;}
+  const tabs=[
+    {id:'all',label:'🌐 Загальна',title:'Дані по всіх філіях'},
+    ..._branches.map(b=>({id:b.id,label:'🏢 '+b.name,title:b.address||''}))
+  ];
+  el.innerHTML=tabs.map(t=>{
+    const isActive=(t.id==='all'&&_statsBranchFilter==='all')||
+                   (t.id!=='all'&&_statsBranchFilter===t.id);
+    return `<button onclick="setStatsBranch('${t.id}')" title="${t.title}" style="padding:5px 12px;border-radius:20px;border:1px solid ${isActive?'var(--y)':'var(--bd2)'};background:${isActive?'var(--ym)':'var(--p2)'};color:${isActive?'var(--y)':'var(--m2)'};font-family:var(--f);font-size:11px;font-weight:${isActive?'700':'600'};cursor:pointer;transition:all .12s">${t.label}</button>`;
+  }).join('');
+}
+
+function setStatsBranch(id){
+  _statsBranchFilter=id;
+  renderStatsBranchTabs();
+  loadStats();
+}
+
 async function loadStats(){
   try {
+    // Підвантажуємо філії якщо вони ще не завантажені
+    if(!_branches||!_branches.length){
+      try{ _branches=await sb.get('branches','?order=created_at.asc')||[]; }catch(e){}
+    }
+    renderStatsBranchTabs();
+    // Визначаємо фільтр для запитів
+    let bid=null;
+    if(_statsBranchFilter==='current') bid=_currentBranch?.id||null;
+    else if(_statsBranchFilter==='all') bid=null;
+    else bid=_statsBranchFilter; // конкретний branch_id
+    const bf=bid?`&branch_id=eq.${bid}`:'';
     const [clients, sales, products, subs] = await Promise.all([
       sb.get('clients','?select=id,status'),
-      sb.get('sales','?select=amount,type,payment_method,created_at'),
-      sb.get('products','?select=name,stock,min_stock,emoji,category'),
-      sb.get('subscriptions','?select=end_date,status,client_id&status=eq.active')
+      sb.get('sales',`?select=amount,type,payment_method,created_at,branch_id${bf}`),
+      sb.get('products',`?select=name,stock,min_stock,emoji,category,branch_id${bf}`),
+      sb.get('subscriptions',`?select=end_date,status,client_id,branch_id&status=eq.active${bf}`)
     ]);
 
     const active = clients.filter(c=>c.status==='active').length;
