@@ -1287,6 +1287,14 @@ tr:hover td{background:#ffffff03;cursor:pointer}
         </div>
       </div>
 
+      <div style="margin-top:8px;padding:12px 14px;background:var(--p2);border:1px solid var(--bd2);border-radius:8px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="document.getElementById('sub-network').checked=!document.getElementById('sub-network').checked">
+        <input type="checkbox" id="sub-network" style="width:18px;height:18px;cursor:pointer;accent-color:var(--y)">
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:600;color:var(--m)">🌐 Сетевий абонемент</div>
+          <div style="font-size:10px;color:var(--m2);margin-top:2px">Відображається у всіх філіях. Інакше — тільки у поточній філії.</div>
+        </div>
+      </div>
+
       <div class="f-as" style="margin-top:4px">
         <button class="f-b se" onclick="closeMoD('mo-sub')">Скасувати</button>
         <button class="f-b pr" onclick="saveSub()">Зберегти абонемент</button>
@@ -1333,12 +1341,23 @@ tr:hover td{background:#ffffff03;cursor:pointer}
 const SB_URL = 'https://rkknbltiylsvmycbbyde.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJra25ibHRpeWxzdm15Y2JieWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNzkyMTksImV4cCI6MjA5Mjc1NTIxOX0.SrXSluAh8TMcXoCqVZLk_mylTSwzBu8tJDuUSudD-mA';
 
+// Таблиці які автоматично отримують branch_id поточної філії при створенні записів
+const _BRANCH_TABLES=['products','sales','shifts','product_movements','subscriptions'];
+
 const sb = {
   async get(table, params=''){
     const r = await fetch(`${SB_URL}/rest/v1/${table}${params}`,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'}});
     return r.json();
   },
   async post(table, data){
+    // Автоматично додаємо branch_id для відповідних таблиць
+    if(_BRANCH_TABLES.includes(table)&&_currentBranch&&_currentBranch.id){
+      if(Array.isArray(data)){
+        data=data.map(x=>x.branch_id===undefined?{...x,branch_id:_currentBranch.id}:x);
+      } else if(data&&typeof data==='object'&&data.branch_id===undefined){
+        data={...data,branch_id:_currentBranch.id};
+      }
+    }
     const r = await fetch(`${SB_URL}/rest/v1/${table}`,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(data)});
     return r.json();
   },
@@ -1443,6 +1462,19 @@ async function initBranchSwitcher(){
 
 let _currentBranch=null;
 
+// Хелпер: повертає фільтр для запиту по поточній філії (для не-сетевих ресурсів)
+// Якщо філія не обрана - повертає порожній рядок (показуємо всі)
+function branchFilter(prefix='&'){
+  if(!_currentBranch||!_currentBranch.id) return '';
+  return `${prefix}branch_id=eq.${_currentBranch.id}`;
+}
+
+// Хелпер: додає branch_id до даних які постимо в БД (для філійних ресурсів)
+function withBranch(data){
+  if(_currentBranch&&_currentBranch.id) return {...data,branch_id:_currentBranch.id};
+  return data;
+}
+
 function openBranchSwitcher(event){
   event.stopPropagation();
   // Закриваємо якщо вже відкрито
@@ -1489,8 +1521,13 @@ function switchBranch(id){
   if(nm) nm.textContent=b.name;
   const dd=document.getElementById('branch-dropdown');
   if(dd) dd.remove();
-  // Оновлюємо інтерфейс під поточну філію (якщо потрібно)
   console.log('Перемкнено на філію:',b.name);
+  // Перезавантажуємо дані поточної сторінки
+  if(curPage==='goods') loadGoods();
+  else if(curPage==='subs') loadSubs();
+  else if(curPage==='fin'){okSyncShiftFromCheckbox();okUpdateShiftUI(!!okShift);okLoadTx();}
+  else if(curPage==='stats') loadStats();
+  else if(curPage==='clients') loadClients();
 }
 
 // Перевірка стану Checkbox для власника - викликається при вході та періодично
@@ -1757,7 +1794,9 @@ let editSubId = null;
 async function loadSubs(){
   document.getElementById('subs-table-wrap').innerHTML='<div class="loading"><div class="spin"></div>Завантаження...</div>';
   try {
-    allSubs = await sb.get('subscription_types','?order=created_at.desc');
+    // Сетевий або (локальний цієї філії)
+    const bf=_currentBranch?.id?`?or=(is_network.eq.true,branch_id.eq.${_currentBranch.id})&order=created_at.desc`:'?order=created_at.desc';
+    allSubs = await sb.get('subscription_types',bf);
     renderSubs();
   } catch(e){
     document.getElementById('subs-table-wrap').innerHTML='<div class="loading" style="color:var(--rd)">⚠️ Помилка завантаження</div>';
@@ -1796,7 +1835,13 @@ function renderSubs(){
       <button class="sub-toggle ${s.is_active?'on':''}" onclick="event.stopPropagation();toggleSubActive('${s.id}',${!s.is_active})" title="${s.is_active?'Деактивувати':'Активувати'}"></button>
       <div>
         <div class="sub-name">${s.name}</div>
-        <div style="margin-top:3px"><span class="sub-cls ${cls}">${s.class_name||'—'}</span></div>
+        <div style="margin-top:3px;display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+          <span class="sub-cls ${cls}">${s.class_name||'—'}</span>
+          ${s.is_network
+            ?'<span style="font-size:9px;padding:2px 7px;border-radius:20px;background:#3B82F620;color:#60A5FA;font-weight:700;letter-spacing:.04em">🌐 СЕТЕВИЙ</span>'
+            :'<span style="font-size:9px;padding:2px 7px;border-radius:20px;background:var(--p3);color:var(--m2);font-weight:600">📍 Локальний</span>'
+          }
+        </div>
       </div>
       <div class="sub-dur">${s.days} ${s.duration_unit||'Доба'}</div>
       <div class="sub-price">${fmt(s.price)} ₴</div>
@@ -1833,6 +1878,7 @@ function openSubModal(id=null){
   document.getElementById('sub-vis-month').disabled=true;
   document.getElementById('sub-vis-month-unlim').checked=true;
   document.getElementById('price-preview').style.display='none';
+  const swNet=document.getElementById('sub-network');if(swNet)swNet.checked=false;
   document.getElementById('srv-list').innerHTML=`<div class="srv-row"><div class="srv-name"><select class="fs fi2-sm" style="width:100%"><option>Тренажерний зал</option><option>Групове тренування</option><option>Персональне тренування</option><option>Масаж</option><option>Басейн</option><option>Сауна</option></select></div><input class="fi2-sm srv-qty" type="number" placeholder="—"><select class="fs fi2-sm srv-unit"><option>Необм.</option><option>1 год.</option><option>Разів</option></select><button class="sub-del-b" onclick="this.parentElement.remove()">✕</button></div>`;
 
   if(id){
@@ -1854,6 +1900,7 @@ function openSubModal(id=null){
       document.getElementById('sub-vis-month-unlim').checked=vMU;
       document.getElementById('sub-vis-month').value=vMU?'':s.visits_per_month;
       document.getElementById('sub-vis-month').disabled=vMU;
+      const swNet2=document.getElementById('sub-network');if(swNet2)swNet2.checked=!!s.is_network;
       updatePricePreview();
     }
   }
@@ -1912,6 +1959,8 @@ async function saveSub(){
     unit:row.querySelector('.srv-unit')?.value||''
   }));
 
+  const isNetwork=document.getElementById('sub-network')?.checked||false;
+
   const data={
     name,
     price,
@@ -1925,7 +1974,10 @@ async function saveSub(){
     visits_per_month:visMonth,
     schedule:document.getElementById('sub-schedule').value,
     services:services,
-    is_active:true
+    is_active:true,
+    is_network:isNetwork,
+    // Якщо мережевий — branch_id null, інакше — поточна філія
+    branch_id:isNetwork?null:(_currentBranch?.id||null)
   };
 
   try {
@@ -2182,6 +2234,10 @@ async function okLoadTx(){
     if(okPeriod==='today')filter=`?created_at=gte.${today}T00:00:00&order=created_at.desc`;
     else if(okPeriod==='week'){const w=new Date();w.setDate(w.getDate()-7);filter=`?created_at=gte.${w.toISOString()}&order=created_at.desc`;}
     else if(okPeriod==='month'){const m=new Date();m.setMonth(m.getMonth()-1);filter=`?created_at=gte.${m.toISOString()}&order=created_at.desc`;}
+    // Додаємо фільтр по філії
+    if(_currentBranch?.id){
+      filter+=(filter.includes('?')?'&':'?')+'branch_id=eq.'+_currentBranch.id;
+    }
     okTxAll=await sb.get('sales',filter);
     okRenderTx();okUpdateStats();
   }catch(e){el.innerHTML='<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--rd)">Помилка завантаження</td></tr>';}
@@ -2616,8 +2672,10 @@ function gTab(id,btn){
 
 async function loadGoods(){
   try{
-    gProducts=await sb.get('products','?order=category.asc,name.asc')||[];
-    gMovements=await sb.get('product_movements','?order=created_at.desc&limit=200')||[];
+    const bf=_currentBranch?.id?`?branch_id=eq.${_currentBranch.id}&order=category.asc,name.asc`:'?order=category.asc,name.asc';
+    gProducts=await sb.get('products',bf)||[];
+    const mvf=_currentBranch?.id?`?branch_id=eq.${_currentBranch.id}&order=created_at.desc&limit=200`:'?order=created_at.desc&limit=200';
+    gMovements=await sb.get('product_movements',mvf)||[];
     // Категорії та постачальники - щоб показати в таблиці
     await loadCategoriesAndSuppliers();
     // Категорії для фільтра — беремо з БД (повний список, навіть якщо немає товарів)
@@ -3037,7 +3095,7 @@ async function saveProduct(){
       const p=gProducts.find(x=>x.id===_editProductId);
       if(p) Object.assign(p,data);
     } else {
-      const result=await sb.post('products',{...data,is_active:true});
+      const result=await sb.post('products',withBranch({...data,is_active:true}));
       const newP=Array.isArray(result)?result[0]:result;
       if(newP?.id) gProducts.push(newP);
     }
@@ -3854,10 +3912,24 @@ async function loadAdminData(){
   try{
     await loadCbSettings();
     if(kasaShift) kasaUpdateShiftUI(true);
+    // Визначаємо філію адміна: з localStorage (як у власника) або перша
+    let admBranchId=localStorage.getItem('current_branch_id');
+    if(!admBranchId){
+      try{
+        const branches=await sb.get('branches','?is_active=eq.true&order=created_at.asc&limit=1');
+        if(branches&&branches.length>0){
+          admBranchId=branches[0].id;
+          localStorage.setItem('current_branch_id',admBranchId);
+        }
+      }catch(e){}
+    }
+    _currentBranch={id:admBranchId};
+    const bf=admBranchId?`&branch_id=eq.${admBranchId}`:'';
     [admClients,admProducts,admSubTypes]=await Promise.all([
       sb.get('clients','?order=last_name.asc'),
-      sb.get('products','?is_active=eq.true&order=name.asc'),
-      sb.get('subscription_types','?is_active=eq.true&order=price.asc')
+      sb.get('products',`?is_active=eq.true${bf}&order=name.asc`),
+      // Сетеві + локальні поточної філії
+      sb.get('subscription_types',admBranchId?`?is_active=eq.true&or=(is_network.eq.true,branch_id.eq.${admBranchId})&order=price.asc`:'?is_active=eq.true&order=price.asc')
     ]);
     admRenderICP();admRenderShop();
     // Синхронізуємо статуси клієнтів
