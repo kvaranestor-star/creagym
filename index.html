@@ -3352,6 +3352,11 @@ async function admConfirmSell(){
     admSelectClient(admSellCl.id);
     // Фіскальний чек через Checkbox
     await cbCreateReceipt([{name:s.name,price:s.price,code:'SUB001'}],s.price,admPayM,admSellCl);
+    // Показуємо чек у модалці з можливістю друку
+    const items=[{name:s.name,qty:1,price:s.price,total:s.price}];
+    const text=buildReceiptText(items,s.price,admPayM,curUser?.name||'admin')+'\nКлієнт: '+admSellCl.last_name+' '+admSellCl.first_name;
+    document.getElementById('receipt-content').textContent=text;
+    admOpenMo('receipt-mo');
   }catch(e){alert('❌ Помилка: '+e.message)}
 }
 
@@ -3805,6 +3810,10 @@ async function admCheckout(m){
     if(kasaShift)kasaLoadTx();
     // Фіскальний чек
     await cbCreateReceipt(receiptItems,tot,m,null);
+    // Показуємо чек у модалці з можливістю друку
+    const text=buildReceiptText(receiptItems,tot,m,curUser?.name||'admin');
+    document.getElementById('receipt-content').textContent=text;
+    admOpenMo('receipt-mo');
   }catch(e){alert('❌ '+e.message)}
 }
 
