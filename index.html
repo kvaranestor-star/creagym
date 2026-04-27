@@ -2361,21 +2361,19 @@ function admSelPM(m){
 async function admConfirmSell(){
   if(!admSelSub||!admSellCl)return;
   const s=admSubTypes.find(x=>x.id===admSelSub);if(!s)return;
-  // ФІХ: використовуємо UTC дати щоб уникнути зміщення часового поясу
   const today=new Date();
-  const startDate=today.toISOString().split('T')[0]; // "2025-04-26"
+  const startDate=today.toISOString().split('T')[0];
   const endDate=new Date(today.getFullYear(),today.getMonth(),today.getDate()+s.days).toISOString().split('T')[0];
   try{
     await sb.post('subscriptions',{client_id:admSellCl.id,type_id:s.id,type_name:s.name,price:s.price,start_date:startDate,end_date:endDate,status:'active',payment_method:admPayM});
-    await sb.post('sales',{client_id:admSellCl.id,type:'subscription',item_name:s.name,amount:s.price,payment_method:admPayM,created_by:curUser?.name||'admin'});
+    const saleResult=await sb.post('sales',{client_id:admSellCl.id,type:'subscription',item_name:s.name,amount:s.price,payment_method:admPayM,created_by:curUser?.name||'admin'});
     await sb.patch('clients',`id=eq.${admSellCl.id}`,{status:'active'});
     const cl=admClients.find(x=>x.id===admSellCl.id);if(cl)cl.status='active';
-    // Оновлюємо касу якщо зміна відкрита
-    if(kasaShift){kasaLoadTx();}
+    if(kasaShift)kasaLoadTx();
     admCloseMoD('adm-sell');
-    const dl=s.days;
-    alert(`✅ Абонемент "${s.name}" продано!\n💰 ${s.price} ₴ · ${admPayM==='cash'?'Готівка':'Картка'}\n📅 Діє ${dl} днів: ${startDate} → ${endDate}`);
     admSelectClient(admSellCl.id);
+    // Фіскальний чек через Checkbox
+    await cbCreateReceipt([{name:s.name,price:s.price,code:'SUB001'}],s.price,admPayM,admSellCl);
   }catch(e){alert('❌ Помилка: '+e.message)}
 }
 
@@ -2408,6 +2406,10 @@ async function kasaOpenShift(){
   kasaLoadTx();
   const t=new Date().toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
   alert(`✅ Зміну відкрито о ${t}\n💵 Готівка на початок: ${amt.toLocaleString('uk-UA')} ₴`);
+  // Відкриваємо зміну в Checkbox (асинхронно)
+  cbOpenShift().then(id=>{
+    if(id) console.log('Checkbox зміна:', id);
+  });
 }
 
 function kasaUpdateShiftUI(open){
@@ -2701,6 +2703,8 @@ async function kasaCloseShift(){
   showShiftReport('zreport',cashTurn,cardTurn,kasaShift.cash_start||0,kasaTxAll);
   kasaShift=null;kasaTxAll=[];
   kasaUpdateShiftUI(false);
+  // Закриваємо зміну в Checkbox
+  cbCloseShift();
   document.getElementById('kasa-tx-body').innerHTML='<tr><td colspan="6" style="padding:30px;text-align:center;font-size:12px;color:var(--m2)">Зміну закрито</td></tr>';
   ['k-cash-total','k-card-total','k-total'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='0 ₴'});
   document.getElementById('k-tx-cnt').textContent='0';
@@ -2742,27 +2746,13 @@ async function admCheckout(m){
   if(!admCart.length)return;
   const tot=admCart.reduce((s,x)=>s+x.price*x.qty,0);
   try{
-    // Всі товари в ОДНІЙ транзакції
     const itemsDesc=admCart.map(i=>`${i.name}${i.qty>1?' ×'+i.qty:''}`).join(', ');
-    await sb.post('sales',{
-      type:'product',
-      item_name:itemsDesc,
-      amount:tot,
-      payment_method:m,
-      created_by:curUser?.name||'admin'
-    });
-    // Показуємо чек
-    const receiptItems=admCart.map(i=>({
-      name:i.emoji+' '+i.name,
-      qty:i.qty,
-      price:i.price,
-      total:i.price*i.qty
-    }));
-    const receiptText=buildReceiptText(receiptItems,tot,m,curUser?.name||'admin');
+    await sb.post('sales',{type:'product',item_name:itemsDesc,amount:tot,payment_method:m,created_by:curUser?.name||'admin'});
+    const receiptItems=admCart.map(i=>({name:i.emoji+' '+i.name,qty:i.qty,price:i.price,total:i.price*i.qty,code:'GOOD'+i.id.slice(-3)}));
     admCart=[];admRenderCart();
     if(kasaShift)kasaLoadTx();
-    document.getElementById('receipt-content').textContent=receiptText;
-    admOpenMo('receipt-mo');
+    // Фіскальний чек
+    await cbCreateReceipt(receiptItems,tot,m,null);
   }catch(e){alert('❌ '+e.message)}
 }
 
@@ -2807,6 +2797,204 @@ async function admCreateClient(){
 function admOpenMo(id){document.getElementById(id).classList.add('sh')}
 function admCloseMo(id,e){if(e.target===document.getElementById(id))admCloseMoD(id)}
 function admCloseMoD(id){document.getElementById(id).classList.remove('sh')}
+
+// ===== CHECKBOX ПРРО ІНТЕГРАЦІЯ =====
+const CB_PROXY = 'https://rkknbltiylsvmycbbyde.supabase.co/functions/v1/checkbox-proxy';
+let cbToken = null;
+let cbShiftId = null;
+
+// Виклик Edge Function
+async function cbCall(action, data={}) {
+  const r = await fetch(CB_PROXY, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJra25ibHRpeWxzdm15Y2JieWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNzkyMTksImV4cCI6MjA5Mjc1NTIxOX0.SrXSluAh8TMcXoCqVZLk_mylTSwzBu8tJDuUSudD-mA'
+    },
+    body: JSON.stringify({ action, data })
+  });
+  return r.json();
+}
+
+// Авторизація в Checkbox (отримуємо токен)
+async function cbLogin() {
+  if(cbToken) return cbToken;
+  try {
+    const res = await cbCall('login');
+    if(res.access_token) {
+      cbToken = res.access_token;
+      console.log('✅ Checkbox авторизовано');
+      return cbToken;
+    } else {
+      console.warn('Checkbox login failed:', res);
+      return null;
+    }
+  } catch(e) {
+    console.warn('Checkbox недоступний:', e.message);
+    return null;
+  }
+}
+
+// Відкрити зміну в Checkbox (викликається разом з відкриттям зміни в CRM)
+async function cbOpenShift() {
+  const token = await cbLogin();
+  if(!token) return null;
+  try {
+    const res = await cbCall('open_shift', { token });
+    if(res.id) {
+      cbShiftId = res.id;
+      // Чекаємо поки зміна відкриється (статус OPENED)
+      for(let i=0; i<10; i++) {
+        await new Promise(r=>setTimeout(r,1500));
+        const status = await cbCall('shift_status', { token });
+        if(status.status === 'OPENED') {
+          console.log('✅ Checkbox зміну відкрито:', res.id);
+          return res.id;
+        }
+        if(status.status === 'CLOSED') break;
+      }
+    }
+    return null;
+  } catch(e) {
+    console.warn('Checkbox open shift error:', e.message);
+    return null;
+  }
+}
+
+// Закрити зміну в Checkbox
+async function cbCloseShift() {
+  const token = await cbLogin();
+  if(!token || !cbShiftId) return;
+  try {
+    await cbCall('close_shift', { token });
+    cbShiftId = null;
+    console.log('✅ Checkbox зміну закрито');
+  } catch(e) {
+    console.warn('Checkbox close shift error:', e.message);
+  }
+}
+
+// Створити фіскальний чек
+async function cbCreateReceipt(items, total, payMethod, client) {
+  const token = await cbLogin();
+  if(!token) {
+    // Якщо Checkbox недоступний — показуємо звичайний чек
+    const receiptItems = items.map(i => ({name:i.name,qty:i.qty||1,price:i.price,total:i.price*(i.qty||1)}));
+    const text = buildReceiptText(receiptItems, total, payMethod, curUser?.name||'admin');
+    document.getElementById('receipt-content').textContent = text;
+    admOpenMo('receipt-mo');
+    return;
+  }
+
+  // Показуємо індикатор
+  showCbLoading(true);
+
+  try {
+    const res = await cbCall('create_receipt', {
+      token,
+      items: items.map(i => ({
+        name: i.name.replace(/[^\w\s\u0400-\u04FF]/g, '').trim() || 'Послуга',
+        price: i.price,
+        qty: i.qty || 1,
+        code: i.code || '001',
+      })),
+      total,
+      payment_method: payMethod,
+      client_email: client?.email || null,
+      client_phone: client?.phone || null,
+    });
+
+    showCbLoading(false);
+
+    if(res.id) {
+      // Чекаємо фіскалізацію
+      let receipt = res;
+      for(let i=0; i<8; i++) {
+        await new Promise(r=>setTimeout(r,1000));
+        const updated = await cbCall('get_receipt', { token, receipt_id: res.id });
+        if(updated.status === 'DONE') { receipt = updated; break; }
+      }
+      // Показуємо фіскальний чек
+      showCbReceipt(receipt, total, payMethod, client);
+    } else {
+      // Fallback — звичайний чек
+      const receiptItems = items.map(i => ({name:i.name,qty:i.qty||1,price:i.price,total:i.price*(i.qty||1)}));
+      const text = buildReceiptText(receiptItems, total, payMethod, curUser?.name||'admin');
+      document.getElementById('receipt-content').textContent = text + '\n\n⚠️ Фіскалізація: ' + (res.message||'помилка');
+      admOpenMo('receipt-mo');
+    }
+  } catch(e) {
+    showCbLoading(false);
+    console.warn('Checkbox receipt error:', e);
+    const receiptItems = items.map(i => ({name:i.name,qty:i.qty||1,price:i.price,total:i.price*(i.qty||1)}));
+    const text = buildReceiptText(receiptItems, total, payMethod, curUser?.name||'admin');
+    document.getElementById('receipt-content').textContent = text;
+    admOpenMo('receipt-mo');
+  }
+}
+
+// Показати фіскальний чек з QR
+function showCbReceipt(receipt, total, payMethod, client) {
+  const mo = document.getElementById('receipt-mo');
+  const content = document.getElementById('receipt-content');
+
+  // Фіскальні дані
+  const fiscalNum = receipt.fiscal_code || receipt.id?.slice(0,8).toUpperCase() || '—';
+  const fiscalDate = receipt.created_at ? new Date(receipt.created_at).toLocaleString('uk-UA') : new Date().toLocaleString('uk-UA');
+  const checkUrl = receipt.public_url || `https://check.checkbox.ua/${receipt.id}`;
+
+  content.innerHTML = `
+    <div style="font-family:'Courier New',monospace;font-size:12px;line-height:1.7;color:#000;text-align:center">
+      <div style="font-weight:700;font-size:14px">CREAGYM FITNESS</div>
+      <div style="font-size:11px">ФОП / ПРРО Checkbox</div>
+      <div>─────────────────────────────</div>
+      <div style="text-align:left">
+        ${(receipt.goods||[]).map(g=>`
+          <div>${g.good?.name||'Послуга'}</div>
+          <div style="display:flex;justify-content:space-between">
+            <span>${g.quantity/1000} × ${(g.good?.price/100).toFixed(2)} ₴</span>
+            <span style="font-weight:700">${((g.quantity/1000)*(g.good?.price/100)).toFixed(2)} ₴</span>
+          </div>`).join('')}
+      </div>
+      <div>─────────────────────────────</div>
+      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px">
+        <span>РАЗОМ:</span><span>${total.toLocaleString('uk-UA')} ₴</span>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span>Оплата:</span><span>${payMethod==='card'?'Картка':'Готівка'}</span>
+      </div>
+      <div>─────────────────────────────</div>
+      <div style="font-size:11px">Касир: ${curUser?.name||'—'}</div>
+      <div style="font-size:11px">${fiscalDate}</div>
+      <div style="font-weight:700;color:#22C55E">✅ ФІСКАЛЬНИЙ ЧЕК</div>
+      <div style="font-size:11px">Фіскальний №: <b>${fiscalNum}</b></div>
+      <div>─────────────────────────────</div>
+      <div style="margin:10px 0">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(checkUrl)}"
+          style="width:120px;height:120px;border:1px solid #ddd;border-radius:4px"
+          onerror="this.style.display='none'">
+        <div style="font-size:10px;margin-top:4px;word-break:break-all">
+          <a href="${checkUrl}" target="_blank" style="color:#3B82F6">${checkUrl}</a>
+        </div>
+      </div>
+      <div style="font-size:11px">Дякуємо за відвідування!</div>
+    </div>`;
+
+  admOpenMo('receipt-mo');
+}
+
+// Індикатор завантаження
+function showCbLoading(show) {
+  let el = document.getElementById('cb-loading');
+  if(!el) {
+    el = document.createElement('div');
+    el.id = 'cb-loading';
+    el.style.cssText = 'position:fixed;inset:0;background:#00000080;z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#fff;font-family:var(--f);font-size:13px;font-weight:600';
+    el.innerHTML = '<div style="width:36px;height:36px;border:3px solid #FFD30030;border-top-color:#FFD300;border-radius:50%;animation:spin .7s linear infinite"></div>Фіскалізація чека в Checkbox...';
+    document.body.appendChild(el);
+  }
+  el.style.display = show ? 'flex' : 'none';
+}
 </script>
 </body>
 </html>
