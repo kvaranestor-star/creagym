@@ -272,7 +272,8 @@ tr:hover td{background:#ffffff03;cursor:pointer}
 .da-b.pr:hover{background:#FFE033}
 
 /* MODAL */
-.mo{position:fixed;inset:0;background:#00000080;z-index:300;display:none;align-items:center;justify-content:center;padding:20px}
+.mo{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)}
+.mo-bx{background:var(--p1);border:1px solid var(--bd2);border-radius:16px;width:100%;overflow-y:auto;max-height:90vh}
 .mo.sh{display:flex}
 .mo-box{background:var(--p1);border:1px solid var(--bd2);border-radius:14px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;animation:fadeUp .2s ease}
 .mo-box::-webkit-scrollbar{width:3px}
@@ -832,7 +833,7 @@ tr:hover td{background:#ffffff03;cursor:pointer}
 </div>
 
 <!-- PRODUCT MODAL -->
-<div class="mo" id="mo-prod" onclick="closeMoProd(event)">
+<div class="mo" id="mo-prod" onclick="closeMoProd(event)" style="z-index:1000">
   <div class="mo-bx" style="width:520px;max-width:95vw">
     <div class="mo-hd">
       <div class="mo-ti" id="mo-prod-title">Новий товар</div>
