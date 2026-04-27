@@ -1273,7 +1273,7 @@ function gp(id,el){
       try{
         const lr=await cbCall('login');
         if(lr&&lr.access_token){
-          const sh=await cbCall('shift_status',{token:lr.access_token});
+          const sh=await cbCall("shift_status", {token:lr.access_token, _license_key:_cbSettings.cb_key});
           const isOpen=sh&&sh.status==='OPENED';
           updateCfgShiftLock(isOpen);
         } else {
@@ -1806,7 +1806,7 @@ async function okSyncShiftFromCheckbox(){
   try{
     const lr=await cbCall('login');
     if(!lr||!lr.access_token)return;
-    const sh=await cbCall('shift_status',{token:lr.access_token});
+    const sh=await cbCall("shift_status", {token:lr.access_token, _license_key:_cbSettings.cb_key});
     const isOpenInCb=sh?.status==='OPENED';
 
     if(isOpenInCb){
@@ -1848,9 +1848,9 @@ async function okOpenShift(){
       alert('❌ Не вдалося авторизуватися в Checkbox:\n'+(lr&&lr.message?lr.message:'Перевірте логін, пароль і ключ ліцензії.')+'\n\nЗміну не відкрито.');
       return;
     }
-    const sh=await cbCall('shift_status',{token:lr.access_token});
+    const sh=await cbCall("shift_status", {token:lr.access_token, _license_key:_cbSettings.cb_key});
     if(!sh||sh.status!=='OPENED'){
-      const r=await cbCall('open_shift',{token:lr.access_token});
+      const r=await cbCall("open_shift", {token:lr.access_token, _license_key:_cbSettings.cb_key});
       if(!r||(!r.id&&!r.serial)){
         alert('❌ Не вдалося відкрити зміну в Checkbox:\n'+((r&&(r.message||r.error))||'Невідома помилка')+'\n\nЗміну не відкрито.');
         return;
@@ -1996,7 +1996,7 @@ async function okCloseShift(){
   // Закриваємо зміну в Checkbox автоматично
   try{
     const lr=await cbCall('login');
-    if(lr.access_token){ await cbCall('close_shift',{token:lr.access_token}); }
+    if(lr.access_token){ await cbCall("close_shift", {token:lr.access_token, _license_key:_cbSettings.cb_key}); }
   }catch(e){ console.warn('cbCloseShift owner:', e.message); }
   const el=document.getElementById('ok-tx-body');
   if(el)el.innerHTML='<tr><td colspan="6" style="padding:30px;text-align:center;font-size:12px;color:var(--m2)">Зміну закрито</td></tr>';
@@ -3031,7 +3031,7 @@ async function cbCheckExistingShift(){
   try{
     const lr=await cbCall('login');
     if(!lr.access_token) return;
-    const sh=await cbCall('shift_status',{token:lr.access_token});
+    const sh=await cbCall("shift_status", {token:lr.access_token, _license_key:_cbSettings.cb_key});
 
     if(sh?.status==='OPENED'){
       // Checkbox відкрита — відновлюємо якщо немає локально
@@ -3369,12 +3369,12 @@ async function kasaOpenShift(){
       alert('❌ Не вдалося авторизуватися в Checkbox.\n'+(lr&&lr.message?lr.message:'Перевірте логін, пароль і ключ ліцензії в налаштуваннях.')+'\n\nЗміну не відкрито.');
       return;
     }
-    const sh=await cbCall('shift_status',{token:lr.access_token});
+    const sh=await cbCall("shift_status", {token:lr.access_token, _license_key:_cbSettings.cb_key});
     // sh === null означає що зміни взагалі немає — треба відкрити
     // sh.status === 'CLOSED' — попередня закрита, треба відкрити нову
     // sh.status === 'OPENED' — вже відкрита, нічого не робимо
     if(!sh||sh.status!=='OPENED'){
-      const r=await cbCall('open_shift',{token:lr.access_token});
+      const r=await cbCall("open_shift", {token:lr.access_token, _license_key:_cbSettings.cb_key});
       if(!r||(!r.id&&!r.serial)){
         alert('❌ Не вдалося відкрити зміну в Checkbox:\n'+((r&&(r.message||r.error))||'Невідома помилка')+'\n\nЗміну не відкрито.');
         return;
@@ -3724,7 +3724,7 @@ async function kasaCloseShift(){
   try{
     const lr=await cbCall('login');
     if(lr.access_token){
-      await cbCall('close_shift',{token:lr.access_token});
+      await cbCall("close_shift", {token:lr.access_token, _license_key:_cbSettings.cb_key});
       console.log('✅ Checkbox зміну закрито автоматично');
     }
   }catch(e){ console.warn('cbCloseShift auto:', e.message); }
@@ -3901,6 +3901,12 @@ async function loadCbSettings(){
 
 async function cbCall(action,data){
   data=data||{};
+  // Якщо це login без переданих credentials - використовуємо те що в БД (не env)
+  if(action==='login'&&!data._login&&!data._pass&&!data._license_key){
+    if(_cbSettings.cb_login) data._login=_cbSettings.cb_login;
+    if(_cbSettings.cb_pass) data._pass=_cbSettings.cb_pass;
+    if(_cbSettings.cb_key) data._license_key=_cbSettings.cb_key;
+  }
   try{
     const r=await fetch(CB_PROXY_URL,{
       method:'POST',
@@ -4075,7 +4081,7 @@ async function openCbShiftManual(){
       showCbResult('❌ Не вдалося авторизуватися: '+(lr.message||'перевірте логін/пароль'),'err');
       return;
     }
-    const r=await cbCall('open_shift',{token:lr.access_token});
+    const r=await cbCall("open_shift", {token:lr.access_token, _license_key:_cbSettings.cb_key});
     if(r.id||r.serial){
       showCbResult('✅ Зміну відкрито в Checkbox','ok');
       updateCfgShiftLock(true);
@@ -4098,7 +4104,7 @@ async function closeCbShiftManual(){
       showCbResult('❌ Не вдалося авторизуватися','err');
       return;
     }
-    await cbCall('close_shift',{token:lr.access_token});
+    await cbCall("close_shift", {token:lr.access_token, _license_key:_cbSettings.cb_key});
     showCbResult('✅ Зміну закрито','ok');
     updateCfgShiftLock(false);
     const badge=document.getElementById('kasa-status-badge');
@@ -4135,7 +4141,7 @@ async function cbCreateReceipt(items, total, payMethod, client){
     }
 
     // Перевіряємо що зміна відкрита
-    const sh = await cbCall('shift_status', {token: lr.access_token});
+    const sh = await cbCall("shift_status", {token: lr.access_token, _license_key:_cbSettings.cb_key});
     if(sh && sh.status !== 'OPENED'){
       alert('⚠️ Чек не фіскалізовано: зміна в Checkbox не відкрита');
       return;
@@ -4143,6 +4149,7 @@ async function cbCreateReceipt(items, total, payMethod, client){
 
     const r = await cbCall('create_receipt', {
       token: lr.access_token,
+      _license_key: _cbSettings.cb_key,
       items: items,
       payment_method: payMethod,
       total: total
@@ -4205,6 +4212,7 @@ async function cbReturnReceipt(itemName, amount, payMethod, reason, origSaleId){
     const items = [{name: itemName, qty: 1, price: amount, total: amount, code: 'RET'}];
     const r = await cbCall('return_receipt', {
       token: lr.access_token,
+      _license_key: _cbSettings.cb_key,
       items: items,
       payment_method: payMethod,
       total: amount,
