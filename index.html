@@ -1211,6 +1211,26 @@ function setupOwnerApp(u){
   document.getElementById('sb-av').textContent=u.initials;
   document.getElementById('sb-nm').textContent=u.name;
   document.getElementById('sb-role').textContent='Owner';
+  // Перевіряємо стан Checkbox при вході - підтягуємо БД-значення в форму і блокуємо якщо зміна відкрита
+  ownerCheckCheckboxStatus();
+}
+
+// Перевірка стану Checkbox для власника - викликається при вході та періодично
+async function ownerCheckCheckboxStatus(){
+  try{
+    await loadCbSettings();
+    applyCbSettingsToForm();
+    if(!_cbSettings.cb_login||!_cbSettings.cb_pass||!_cbSettings.cb_key) return;
+    const lr=await cbCall('login');
+    if(!lr||!lr.access_token){updateCfgShiftLock(false);return;}
+    const sh=await cbCall("shift_status",{token:lr.access_token,_license_key:_cbSettings.cb_key});
+    const isOpen=sh&&sh.status==='OPENED';
+    // Якщо зміна відкрита - примусово повертаємо БД-значення і блокуємо
+    if(isOpen){applyCbSettingsToForm();}
+    updateCfgShiftLock(isOpen);
+  }catch(e){
+    console.warn('ownerCheckCheckboxStatus:',e);
+  }
 }
 
 function setupAdminApp(u){
