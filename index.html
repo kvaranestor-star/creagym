@@ -2306,8 +2306,9 @@ let admClients=[],admProducts=[],admSubTypes=[],admInClub=[],admCart=[],admSelSu
 
 async function loadAdminData(){
   try{
-    // Завантажуємо налаштування Checkbox разом з даними
     await loadCbSettings();
+    // Відновлюємо стан зміни з sessionStorage
+    if(kasaShift) kasaUpdateShiftUI(true);
     [admClients,admProducts,admSubTypes]=await Promise.all([
       sb.get('clients','?order=last_name.asc'),
       sb.get('products','?is_active=eq.true&order=name.asc'),
@@ -2515,6 +2516,19 @@ async function admConfirmSell(){
 // ===== KASA =====
 let kasaShift=null, kasaPeriod='today', kasaTypeFilter='all', kasaTxAll=[], kasaOpType='income';
 
+// Відновлюємо зміну з sessionStorage при завантаженні
+try{
+  const saved=sessionStorage.getItem('kasaShift');
+  if(saved) kasaShift=JSON.parse(saved);
+}catch(e){}
+
+function kasaSaveShift(){
+  try{
+    if(kasaShift) sessionStorage.setItem('kasaShift',JSON.stringify(kasaShift));
+    else sessionStorage.removeItem('kasaShift');
+  }catch(e){}
+}
+
 async function kasaOpenShift(){
   if(!confirm('Відкрити нову зміну?\nГотівка на початок буде скопійована автоматично з кінця попередньої зміни.'))return;
   // Автоматично копіюємо суму з кінця попередньої зміни — без питань
@@ -2535,6 +2549,7 @@ async function kasaOpenShift(){
   }catch(e){
     kasaShift={id:'demo-'+Date.now(),opened_by:curUser?.name||'admin',cash_start:amt,opened_at:new Date().toISOString(),status:'open'};
   }
+  kasaSaveShift();
   kasaUpdateShiftUI(true);
   kasaLoadTx();
   const t=new Date().toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
@@ -2832,6 +2847,7 @@ async function kasaCloseShift(){
   }catch(e){}
   showShiftReport('zreport',cashTurn,cardTurn,kasaShift.cash_start||0,kasaTxAll);
   kasaShift=null;kasaTxAll=[];
+  kasaSaveShift();
   kasaUpdateShiftUI(false);
   // НЕ закриваємо зміну Checkbox автоматично — вона закриється при наступному відкритті
   document.getElementById('kasa-tx-body').innerHTML='<tr><td colspan="6" style="padding:30px;text-align:center;font-size:12px;color:var(--m2)">Зміну закрито</td></tr>';
