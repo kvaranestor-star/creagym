@@ -1275,6 +1275,10 @@ function gp(id,el){
         if(lr&&lr.access_token){
           const sh=await cbCall("shift_status", {token:lr.access_token, _license_key:_cbSettings.cb_key});
           const isOpen=sh&&sh.status==='OPENED';
+          // Якщо зміна відкрита - примусово повертаємо БД-значення (стираємо незбережені правки)
+          if(isOpen){
+            applyCbSettingsToForm();
+          }
           updateCfgShiftLock(isOpen);
         } else {
           updateCfgShiftLock(false);
