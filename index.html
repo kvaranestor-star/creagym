@@ -2996,12 +2996,42 @@ async function cbCheckExistingShift(){
   }
 }
 function admTab(id,btn){
+  console.log('[admTab] click:',id);
   document.querySelectorAll('.adm-tab').forEach(t=>t.classList.remove('on'));btn.classList.add('on');
   document.querySelectorAll('.adm-page').forEach(p=>p.classList.remove('on'));
   document.getElementById('adm-'+id).classList.add('on');
   if(id==='kasa'){kasaUpdateShiftUI(!!kasaShift);if(kasaShift)kasaLoadTx();}
   if(id==='aclients'||id==='reg') reloadAdmClients();
 }
+
+// === ЗАГЛУШКИ для відсутніх Checkbox-функцій ===
+// Без них при запуску loadAdminData падала помилка ReferenceError
+if(typeof loadCbSettings==='undefined'){
+  window.loadCbSettings=function(){console.log('[stub] loadCbSettings');return Promise.resolve();};
+}
+if(typeof cbCall==='undefined'){
+  window.cbCall=async function(action,params){
+    console.log('[stub] cbCall',action,params);
+    return {status:'CLOSED'};
+  };
+}
+if(typeof applyCbSettingsToForm==='undefined'){
+  window.applyCbSettingsToForm=function(){console.log('[stub] applyCbSettingsToForm');};
+}
+if(typeof updateCfgShiftLock==='undefined'){
+  window.updateCfgShiftLock=function(opened){console.log('[stub] updateCfgShiftLock',opened);};
+}
+
+// Захист: закриваємо випадково відкриті модалки при старті адмінки
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
+    document.querySelectorAll('.mo.sh, .mo2.sh, .dos-ov.sh').forEach(m=>{
+      console.log('[guard] closing stuck modal:',m.id);
+      m.classList.remove('sh');
+      m.style.display='';
+    });
+  },1500);
+});
 
 async function reloadAdmClients(){
   try{
@@ -3785,3 +3815,6 @@ function admCloseMoD(id){
 }
 
 
+</script>
+</body>
+</html>
