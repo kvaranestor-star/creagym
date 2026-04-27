@@ -681,6 +681,11 @@ tr:hover td{background:#ffffff03;cursor:pointer}
                       </div>
                     </div>
                   </div>
+                  <div class="ff" style="margin-top:4px">
+                    <label>Ключ ліцензії каси *</label>
+                    <input class="fi2" type="text" id="cfg-cb-key" placeholder="2fb5132d5ee52270bf3c0094">
+                    <div style="font-size:10px;color:var(--m);margin-top:3px">З my.checkbox.ua → Каси → колонка "Ключ ліцензії"</div>
+                  </div>
                 </div>
 
                 <!-- ФІСКАЛІЗАЦІЯ -->
@@ -2924,6 +2929,7 @@ function applyCbSettingsToForm(){
   const f = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
   f('cfg-cb-login',   s.cb_login);
   f('cfg-cb-pass',    s.cb_pass);
+  f('cfg-cb-key',     s.cb_key);
   f('cfg-prro-name',  s.cb_prro_name);
   f('cfg-prro-num',   s.cb_prro_num);
   const cash = document.getElementById('cfg-fisk-cash');
@@ -2941,16 +2947,19 @@ function updateFiskRow(type, cb){
 async function saveCbSettings(){
   const login   = document.getElementById('cfg-cb-login')?.value.trim();
   const pass    = document.getElementById('cfg-cb-pass')?.value.trim();
+  const key     = document.getElementById('cfg-cb-key')?.value.trim() || '';
   const prroNm  = document.getElementById('cfg-prro-name')?.value.trim() || 'ПРРО';
   const prroNum = document.getElementById('cfg-prro-num')?.value.trim()  || '';
   const fCash   = document.getElementById('cfg-fisk-cash')?.checked;
   const fCard   = document.getElementById('cfg-fisk-card')?.checked;
 
   if(!login || !pass){ alert('Введіть логін і пароль касира'); return; }
+  if(!key){ alert('Введіть ключ ліцензії каси з my.checkbox.ua → Каси'); return; }
 
   const updates = {
     cb_login:          login,
     cb_pass:           pass,
+    cb_key:            key,
     cb_prro_name:      prroNm,
     cb_prro_num:       prroNum,
     cb_fiscalize_cash: fCash ? 'true' : 'false',
