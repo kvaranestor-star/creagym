@@ -3181,29 +3181,68 @@ function admClFilter(v){admClFilterTxt=v;admRenderClients()}
 function admGoClient(id){admTab('reg',document.querySelector('.adm-tab'));admSelectClient(id)}
 
 function admOpenCreateCl(){admOpenMo('adm-cl-mo')}
+let _admPhotoData = '';
+
 function admPrevPhoto(inp){
   if(!inp.files||!inp.files[0])return;
   const r=new FileReader();
-  r.onload=e=>{const img=document.getElementById('adm-ph-prev');img.src=e.target.result;img.style.display='block';document.getElementById('adm-ph-ph').style.display='none';};
+  r.onload=e=>{
+    const src=e.target.result;
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');
+      canvas.width=150;canvas.height=150;
+      const ctx=canvas.getContext('2d');
+      const size=Math.min(img.width,img.height);
+      ctx.drawImage(img,(img.width-size)/2,(img.height-size)/2,size,size,0,0,150,150);
+      _admPhotoData=canvas.toDataURL('image/jpeg',0.65);
+      const prev=document.getElementById('adm-ph-prev');
+      prev.src=_admPhotoData;prev.style.display='block';
+      document.getElementById('adm-ph-ph').style.display='none';
+    };
+    img.onerror=()=>{ _admPhotoData=src; };
+    img.src=src;
+  };
   r.readAsDataURL(inp.files[0]);
 }
+
 async function admCreateClient(){
-  const last=document.getElementById('adm-last').value.trim(),first=document.getElementById('adm-first').value.trim(),phone=document.getElementById('adm-phone').value.trim(),gender=document.getElementById('adm-gender').value;
+  const last=document.getElementById('adm-last').value.trim();
+  const first=document.getElementById('adm-first').value.trim();
+  const phone=document.getElementById('adm-phone').value.trim();
+  const gender=document.getElementById('adm-gender').value;
   const hasPhoto=document.getElementById('adm-ph-prev').style.display!=='none';
   if(!last||!first||!phone||!gender){alert('Заповніть всі поля');return}
   if(!hasPhoto){alert('⚠️ Фото обов\'язкове!');return}
+  if(!_admPhotoData){alert('⚠️ Зачекайте поки фото завантажиться');return}
   const id='CG-'+Date.now().toString().slice(-6);
   try{
-    const result=await sb.post('clients',{id,first_name:first,last_name:last,phone,gender,status:'trial',visits:0});
+    const result=await sb.post('clients',{
+      id,first_name:first,last_name:last,phone,gender,
+      photo_url:_admPhotoData,
+      status:'new',visits:0
+    });
     if(result&&!Array.isArray(result)&&result.code){alert('❌ '+result.message);return}
-    admClients.unshift(Array.isArray(result)?result[0]:{id,first_name:first,last_name:last,phone,gender,status:'trial',visits:0});
-    admCloseMoD('adm-cl-mo');admRenderClients();
+    const newClient={id,first_name:first,last_name:last,phone,gender,photo_url:_admPhotoData,status:'new',visits:0};
+    admClients.unshift(newClient);
+    _admPhotoData='';
+    admCloseMoD('adm-cl-mo');
+    admRenderClients();
     alert('✅ Клієнт '+last+' '+first+' доданий!');
   }catch(e){alert('❌ '+e.message)}
 }
 function admOpenMo(id){document.getElementById(id).classList.add('sh')}
 function admCloseMo(id,e){if(e.target===document.getElementById(id))admCloseMoD(id)}
-function admCloseMoD(id){document.getElementById(id).classList.remove('sh')}
+function admCloseMoD(id){
+  document.getElementById(id).classList.remove('sh');
+  if(id==='adm-cl-mo'){
+    _admPhotoData='';
+    const prev=document.getElementById('adm-ph-prev');
+    if(prev){prev.style.display='none';prev.src='';}
+    const ph=document.getElementById('adm-ph-ph');
+    if(ph) ph.style.display='block';
+  }
+}
 
 // ===== CHECKBOX НАЛАШТУВАННЯ =====
 // Кешуємо налаштування в пам'яті після завантаження з БД
