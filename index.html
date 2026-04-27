@@ -1542,19 +1542,17 @@ function okUpdateShiftUI(open){
 }
 
 async function okOpenShift(){
-  if(!confirm('Відкрити нову зміну?\nСума буде скопійована з попереднього закриття.'))return;
+  if(!confirm('Відкрити нову зміну?\nГотівка на початок буде скопійована автоматично з кінця попередньої зміни.'))return;
   let prevCashEnd=0;
   try{const ps=await sb.get('shifts','?status=eq.closed&order=closed_at.desc&limit=1');if(ps&&ps.length)prevCashEnd=ps[0].cash_end||0;}catch(e){}
-  const cs=prompt('Готівка на початок зміни (₴):',prevCashEnd||'0');
-  if(cs===null)return;
-  const amt=parseFloat(cs)||0;
+  const amt=prevCashEnd;
   try{
     const r=await sb.post('shifts',{opened_by:curUser?.name||'owner',cash_start:amt,status:'open'});
     okShift=Array.isArray(r)?r[0]:r;
     if(!okShift||okShift.code)okShift={id:'demo-ok-'+Date.now(),opened_by:curUser?.name||'owner',cash_start:amt,opened_at:new Date().toISOString(),status:'open'};
   }catch(e){okShift={id:'demo-ok-'+Date.now(),opened_by:curUser?.name||'owner',cash_start:amt,opened_at:new Date().toISOString(),status:'open'};}
   okUpdateShiftUI(true);okLoadTx();
-  alert('✅ Зміну відкрито\n💵 На початок: '+amt.toLocaleString('uk-UA')+' ₴');
+  alert('✅ Зміну відкрито\n💵 На початок: '+amt.toLocaleString('uk-UA')+' ₴\n(скопійовано з кінця попередньої зміни)');
 }
 
 async function okLoadTx(){
@@ -2491,6 +2489,12 @@ function admSelPM(m){
 }
 async function admConfirmSell(){
   if(!admSelSub||!admSellCl)return;
+  // Перевіряємо чи відкрита зміна
+  if(!kasaShift){
+    admCloseMoD('adm-sell');
+    alert('⚠️ Зміна не відкрита!\n\nПерейдіть в розділ "Каса" і відкрийте зміну перед продажем абонементу.');
+    return;
+  }
   const s=admSubTypes.find(x=>x.id===admSelSub);if(!s)return;
   const today=new Date();
   const startDate=today.toISOString().split('T')[0];
@@ -2512,16 +2516,14 @@ async function admConfirmSell(){
 let kasaShift=null, kasaPeriod='today', kasaTypeFilter='all', kasaTxAll=[], kasaOpType='income';
 
 async function kasaOpenShift(){
-  if(!confirm('Відкрити нову зміну?\nСума на початок буде скопійована з закриття попередньої зміни.'))return;
-  // Берем суму із закриття останньої зміни
+  if(!confirm('Відкрити нову зміну?\nГотівка на початок буде скопійована автоматично з кінця попередньої зміни.'))return;
+  // Автоматично копіюємо суму з кінця попередньої зміни — без питань
   let prevCashEnd=0;
   try{
     const prevShifts=await sb.get('shifts','?status=eq.closed&order=closed_at.desc&limit=1');
     if(prevShifts&&prevShifts.length>0) prevCashEnd=prevShifts[0].cash_end||0;
   }catch(e){}
-  const cashStart=prompt(`Готівка на початок зміни (₴):\n(Скопійовано з попереднього закриття)`,prevCashEnd||'0');
-  if(cashStart===null)return;
-  const amt=parseFloat(cashStart)||0;
+  const amt=prevCashEnd;
   try{
     const result=await sb.post('shifts',{
       opened_by:curUser?.name||'admin',
@@ -2536,7 +2538,7 @@ async function kasaOpenShift(){
   kasaUpdateShiftUI(true);
   kasaLoadTx();
   const t=new Date().toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
-  alert(`✅ Зміну відкрито о ${t}\n💵 Готівка на початок: ${amt.toLocaleString('uk-UA')} ₴\n\nCheckbox зміна відкриється автоматично при першому чеку`);
+  alert(`✅ Зміну відкрито о ${t}\n💵 Готівка на початок: ${amt.toLocaleString('uk-UA')} ₴\n(скопійовано з кінця попередньої зміни)`);
 }
 
 function kasaUpdateShiftUI(open){
@@ -2871,6 +2873,11 @@ function admRenderCart(){
 }
 async function admCheckout(m){
   if(!admCart.length)return;
+  // Перевіряємо чи відкрита зміна
+  if(!kasaShift){
+    alert('⚠️ Зміна не відкрита!\n\nПерейдіть в розділ "Каса" і відкрийте зміну перед оформленням продажу.');
+    return;
+  }
   const tot=admCart.reduce((s,x)=>s+x.price*x.qty,0);
   try{
     const itemsDesc=admCart.map(i=>`${i.name}${i.qty>1?' ×'+i.qty:''}`).join(', ');
@@ -3110,41 +3117,20 @@ async function cbCreateReceipt(items, total, payMethod, client) {
     }
     const token = loginRes.access_token;
 
-    // 2. Перевіряємо зміну
-    showCbLoading(true, 'Перевірка зміни...');
+    // 2. Перевіряємо зміну — якщо не відкрита, не відкриваємо автоматично
+    showCbLoading(true, 'Перевірка зміни в Checkbox...');
     let shiftOk = false;
     try {
       const st = await cbCall('shift_status', { token });
       if(st?.status === 'OPENED') shiftOk = true;
     } catch(e) {}
 
-    // 3. Відкриваємо зміну якщо не відкрита
-    if(!shiftOk) {
-      showCbLoading(true, 'Відкриття зміни в Checkbox...');
-      try {
-        const openRes = await cbCall('open_shift', { token });
-        if(openRes?.id) {
-          for(let i=0; i<8; i++) {
-            await new Promise(r=>setTimeout(r,1500));
-            const st = await cbCall('shift_status', { token });
-            if(st?.status === 'OPENED') { shiftOk = true; break; }
-            if(st?.status === 'CLOSED') break;
-          }
-        } else {
-          // Показуємо точну помилку від Checkbox
-          showCbLoading(false);
-          const errMsg = openRes?.message || openRes?.detail?.[0]?.msg || JSON.stringify(openRes);
-          showLocalReceipt(items, total, payMethod,
-            `❌ Checkbox помилка відкриття зміни:\n${errMsg}\n\nПеревірте налаштування в панелі власника → Налаштування`);
-          return;
-        }
-      } catch(e) {}
-    }
-
     if(!shiftOk) {
       showCbLoading(false);
+      // Зміна в Checkbox не відкрита — показуємо звичайний чек
+      // (зміна в CREAGYM вже перевірена раніше, це тільки Checkbox)
       showLocalReceipt(items, total, payMethod,
-        `❌ Не вдалось відкрити зміну в Checkbox.\n\nПричина: ключ ліцензії або КЕП касира.\nЗайдіть: Панель власника → Налаштування → Перевірити з'єднання`);
+        `⚠️ Зміна в Checkbox не відкрита.\nЗайдіть: Налаштування → Відкрити зміну вручну`);
       return;
     }
 
