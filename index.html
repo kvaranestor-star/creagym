@@ -1263,17 +1263,9 @@ function gp(id,el){
   if(id==='fin'){okUpdateShiftUI(!!okShift);okLoadTx();}
   if(id==='goods') loadGoods();
   if(id==='cfg'){
-    // Поля не заповнюємо автоматично — користувач вводить сам
-    // Тільки перевіряємо стан зміни в Checkbox для блокування кнопок
-    setTimeout(async()=>{
-      try{
-        const lr=await cbCall('login');
-        if(lr.access_token){
-          const sh=await cbCall('shift_status',{token:lr.access_token});
-          updateCfgShiftLock(sh?.status==='OPENED');
-        }
-      }catch(e){ updateCfgShiftLock(false); }
-    },100);
+    // Нічого не робимо автоматично.
+    // Користувач сам вводить дані і натискає "Перевірити з'єднання" або "Зберегти".
+    // Стан зміни оновлюється тільки після ручної перевірки/відкриття/закриття.
   }
 }
 function handleTopAction(){
