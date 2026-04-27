@@ -566,6 +566,11 @@ tr:hover td{background:#ffffff03;cursor:pointer}
     <div style="display:flex;align-items:center;gap:7px;flex:1">
       <div style="font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--y)">CREAGYM</div>
       <div style="font-size:9px;color:var(--m);background:var(--p2);border:1px solid var(--bd2);padding:2px 6px;border-radius:5px" id="rbadge">OWNER</div>
+      <div id="branch-switcher" style="display:none;align-items:center;gap:6px;margin-left:8px;padding:4px 9px;border-radius:7px;border:1px solid var(--bd2);background:var(--p2);cursor:pointer;transition:all .12s" onclick="openBranchSwitcher(event)">
+        <span style="font-size:11px">🏢</span>
+        <span id="current-branch-name" style="font-size:11px;font-weight:600;color:var(--m);max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</span>
+        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" style="color:var(--m2)"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
     </div>
     <div style="display:flex;align-items:center;gap:7px">
       <div class="nbell"><svg viewBox="0 0 20 20" fill="none"><path d="M10 2a6 6 0 016 6c0 3 1 4 2 5H2c1-1 2-2 2-5a6 6 0 016-6z" stroke="currentColor" stroke-width="1.4"/><path d="M8 17a2 2 0 004 0" stroke="currentColor" stroke-width="1.4"/></svg></div>
@@ -599,6 +604,7 @@ tr:hover td{background:#ffffff03;cursor:pointer}
         <div class="ni" data-tip="Маркетинг" onclick="gp('mkt',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><path d="M3 10c0-1 .5-2 2-3l8-4v14l-8-4c-1.5-1-2-2-2-3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></div><span class="nl">Маркетинг</span></div>
         <div class="sg">Команда</div>
         <div class="ni" data-tip="Персонал" onclick="gp('staff',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><path d="M3 16c0-2.5 2-4 4-4h6c2 0 4 1.5 4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="10" cy="7" r="3.5" stroke="currentColor" stroke-width="1.4"/></svg></div><span class="nl">Персонал</span></div>
+        <div class="ni" data-tip="Філії" onclick="gp('branches',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><path d="M3 17h14M5 17V8l5-4 5 4v9M8 17v-5h4v5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span class="nl">Філії</span></div>
         <div class="ni" data-tip="Налаштування" onclick="gp('cfg',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M10 2v2m0 12v2M2 10h2m12 0h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div><span class="nl">Налаштування</span></div>
       </div>
       <div class="sb-bot"><div class="uc"><div class="ua" id="sb-av">ВЛ</div><div class="ui-i"><div class="un" id="sb-nm">Власник</div><div class="ur" id="sb-role">Owner</div></div></div></div>
@@ -859,6 +865,55 @@ tr:hover td{background:#ffffff03;cursor:pointer}
         </div>
         <div class="sec" id="sec-mkt"><div class="cs"><div class="cs-ic"><svg viewBox="0 0 28 28" fill="none"><path d="M4 14c0-1.5.7-3 3-4.5L18 4v20L7 18.5C4.7 17 4 15.5 4 14z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div><div class="cs-t">Маркетинг</div><div class="cs-s">SMS/Viber, промокоди — в розробці</div></div></div>
         <div class="sec" id="sec-staff"><div class="cs"><div class="cs-ic"><svg viewBox="0 0 28 28" fill="none"><path d="M4 22c0-3.5 2.8-5.5 6-5.5h8c3.2 0 6 2 6 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="14" cy="10" r="5" stroke="currentColor" stroke-width="1.6"/></svg></div><div class="cs-t">Персонал</div><div class="cs-s">Акаунти, ролі, доступи — в розробці</div></div></div>
+        <div class="sec" id="sec-branches">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+            <div>
+              <div style="font-size:16px;font-weight:700">🏢 Філії</div>
+              <div style="font-size:12px;color:var(--m2)">Управління філіями мережі</div>
+            </div>
+            <button onclick="openBranchModal()" style="padding:9px 16px;border-radius:9px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">+ Нова філія</button>
+          </div>
+          <div id="branches-list"></div>
+        </div>
+
+        <!-- BRANCH MODAL -->
+        <div class="mo" id="mo-branch" onclick="closeBranchMo(event)" style="z-index:1000">
+          <div class="mo-bx" style="width:480px;max-width:95vw">
+            <div class="mo-hd">
+              <div class="mo-ti" id="mo-branch-title">Нова філія</div>
+              <button class="cls-b" onclick="closeBranchMoD()">✕</button>
+            </div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+              <div class="ff">
+                <label>Назва філії *</label>
+                <input class="fi2" type="text" id="branch-name" placeholder="Наприклад: Центральна філія">
+              </div>
+              <div class="ff">
+                <label>Адреса</label>
+                <input class="fi2" type="text" id="branch-address" placeholder="м. Київ, вул. Хрещатик 1">
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="ff">
+                  <label>Телефон</label>
+                  <input class="fi2" type="text" id="branch-phone" placeholder="+380...">
+                </div>
+                <div class="ff">
+                  <label>Email</label>
+                  <input class="fi2" type="email" id="branch-email" placeholder="branch@example.com">
+                </div>
+              </div>
+              <div class="ff">
+                <label>Примітки</label>
+                <textarea class="fi2" id="branch-notes" rows="2" placeholder="Додаткова інформація..." style="resize:vertical"></textarea>
+              </div>
+            </div>
+            <div class="mo-ft">
+              <button class="f-b se" onclick="closeBranchMoD()">Скасувати</button>
+              <button class="f-b" onclick="saveBranch()" id="branch-save-btn">Зберегти</button>
+            </div>
+          </div>
+        </div>
+
         <div class="sec" id="sec-cfg">
           <div style="display:flex;flex-direction:column;gap:16px;max-width:720px">
 
@@ -1363,6 +1418,79 @@ function setupOwnerApp(u){
   document.getElementById('sb-role').textContent='Owner';
   // Перевіряємо стан Checkbox при вході - підтягуємо БД-значення в форму і блокуємо якщо зміна відкрита
   ownerCheckCheckboxStatus();
+  // Завантажуємо філії і показуємо селектор
+  initBranchSwitcher();
+}
+
+// Ініціалізація селектора філій (тільки для власника)
+async function initBranchSwitcher(){
+  try{
+    _branches=await sb.get('branches','?order=created_at.asc')||[];
+    if(!_branches.length) return;
+    // Поточна філія: з localStorage або перша
+    const savedId=localStorage.getItem('current_branch_id');
+    let current=savedId?_branches.find(b=>b.id===savedId):null;
+    if(!current) current=_branches[0];
+    _currentBranch=current;
+    localStorage.setItem('current_branch_id',current.id);
+    // Показуємо селектор
+    const sw=document.getElementById('branch-switcher');
+    if(sw) sw.style.display='inline-flex';
+    const nm=document.getElementById('current-branch-name');
+    if(nm) nm.textContent=current.name;
+  }catch(e){console.warn('initBranchSwitcher:',e);}
+}
+
+let _currentBranch=null;
+
+function openBranchSwitcher(event){
+  event.stopPropagation();
+  // Закриваємо якщо вже відкрито
+  const existing=document.getElementById('branch-dropdown');
+  if(existing){existing.remove();return;}
+  const sw=document.getElementById('branch-switcher');
+  if(!sw)return;
+  const rect=sw.getBoundingClientRect();
+  const dd=document.createElement('div');
+  dd.id='branch-dropdown';
+  dd.style.cssText=`position:fixed;top:${rect.bottom+4}px;left:${rect.left}px;min-width:${Math.max(rect.width,220)}px;background:var(--p1);border:1px solid var(--bd2);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:5000;padding:4px;max-height:60vh;overflow-y:auto`;
+  dd.innerHTML=_branches.map(b=>`
+    <button onclick="switchBranch('${b.id}')" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:6px;border:none;background:${_currentBranch&&_currentBranch.id===b.id?'var(--ym)':'transparent'};color:${_currentBranch&&_currentBranch.id===b.id?'var(--y)':'var(--m)'};font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer;text-align:left;transition:all .1s" onmouseover="if('${_currentBranch?.id||''}'!=='${b.id}')this.style.background='var(--p3)'" onmouseout="if('${_currentBranch?.id||''}'!=='${b.id}')this.style.background='transparent'">
+      <span style="font-size:13px">🏢</span>
+      <div style="flex:1;min-width:0">
+        <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.name}</div>
+        ${b.address?`<div style="font-size:10px;color:var(--m2);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.address}</div>`:''}
+      </div>
+      ${_currentBranch&&_currentBranch.id===b.id?'<span style="color:var(--y);font-size:11px">✓</span>':''}
+    </button>`).join('')+
+    `<div style="border-top:1px solid var(--bd);margin:4px 0"></div>
+    <button onclick="document.getElementById('branch-dropdown').remove();gp('branches',document.querySelector('[data-tip=&quot;Філії&quot;]'))" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:6px;border:none;background:transparent;color:var(--m2);font-family:var(--f);font-size:11px;cursor:pointer;text-align:left">
+      <span>⚙️</span><span>Управління філіями</span>
+    </button>`;
+  document.body.appendChild(dd);
+  // Закриваємо при кліку поза
+  setTimeout(()=>{
+    const handler=(e)=>{
+      if(!dd.contains(e.target)&&!sw.contains(e.target)){
+        dd.remove();
+        document.removeEventListener('click',handler);
+      }
+    };
+    document.addEventListener('click',handler);
+  },0);
+}
+
+function switchBranch(id){
+  const b=_branches.find(x=>x.id===id);
+  if(!b)return;
+  _currentBranch=b;
+  localStorage.setItem('current_branch_id',id);
+  const nm=document.getElementById('current-branch-name');
+  if(nm) nm.textContent=b.name;
+  const dd=document.getElementById('branch-dropdown');
+  if(dd) dd.remove();
+  // Оновлюємо інтерфейс під поточну філію (якщо потрібно)
+  console.log('Перемкнено на філію:',b.name);
 }
 
 // Перевірка стану Checkbox для власника - викликається при вході та періодично
@@ -1414,7 +1542,7 @@ function toggleSb(){
 }
 
 // ===== PAGES =====
-const PC={stats:{t:'Статистика',s:'Огляд ключових показників',a:'Оновити'},clients:{t:'Клієнти',s:'База клієнтів залу',a:'Новий клієнт'},subs:{t:'Абонементи',s:'Типи та класи абонементів',a:'Новий абонемент'},goods:{t:'Товари',s:'Склад та залишки',a:''},fin:{t:'Каса',s:'Операції з касою і транзакції',a:''},mkt:{t:'Маркетинг',s:'Розсилки та акції',a:''},staff:{t:'Персонал',s:'Команда та доступи',a:''},cfg:{t:'Налаштування',s:'Інтеграції та конфігурація',a:''}};
+const PC={stats:{t:'Статистика',s:'Огляд ключових показників',a:'Оновити'},clients:{t:'Клієнти',s:'База клієнтів залу',a:'Новий клієнт'},subs:{t:'Абонементи',s:'Типи та класи абонементів',a:'Новий абонемент'},goods:{t:'Товари',s:'Склад та залишки',a:''},fin:{t:'Каса',s:'Операції з касою і транзакції',a:''},mkt:{t:'Маркетинг',s:'Розсилки та акції',a:''},staff:{t:'Персонал',s:'Команда та доступи',a:''},branches:{t:'Філії',s:'Управління філіями мережі',a:''},cfg:{t:'Налаштування',s:'Інтеграції та конфігурація',a:''}};
 let curPage='stats';
 function gp(id,el){
   curPage=id;
@@ -1432,6 +1560,7 @@ function gp(id,el){
   if(id==='subs') loadSubs();
   if(id==='fin'){okSyncShiftFromCheckbox();okUpdateShiftUI(!!okShift);okLoadTx();}
   if(id==='goods') loadGoods();
+  if(id==='branches') loadBranches();
   if(id==='cfg'){
     // Завантажуємо збережені налаштування
     loadCbSettings().then(async ()=>{
@@ -2916,6 +3045,155 @@ async function saveProduct(){
     renderAssortment();
   }catch(e){alert('❌ '+e.message);}
   finally{btn.textContent=_editProductId?'Зберегти зміни':'Додати товар';btn.disabled=false;}
+}
+
+// ===== ФІЛІЇ =====
+let _branches=[];
+let _editBranchId=null;
+
+async function loadBranches(){
+  try{
+    _branches=await sb.get('branches','?order=created_at.asc')||[];
+    renderBranches();
+  }catch(e){console.warn('loadBranches:',e);}
+}
+
+function renderBranches(){
+  const el=document.getElementById('branches-list');
+  if(!el)return;
+  if(!_branches.length){
+    el.innerHTML='<div style="padding:40px;text-align:center;color:var(--m2);font-size:13px;background:var(--p1);border:1px dashed var(--bd2);border-radius:12px">Немає жодної філії. Натисніть «+ Нова філія» щоб додати першу.</div>';
+    return;
+  }
+  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">${
+    _branches.map(b=>`
+      <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+            <div style="width:38px;height:38px;border-radius:9px;background:var(--ym);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🏢</div>
+            <div style="min-width:0">
+              <div style="font-size:14px;font-weight:700;color:var(--m);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.name}</div>
+              ${b.address?`<div style="font-size:11px;color:var(--m2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${b.address}">📍 ${b.address}</div>`:''}
+            </div>
+          </div>
+          <span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;background:${b.is_active!==false?'#22C55E14':'var(--p3)'};color:${b.is_active!==false?'var(--gr)':'var(--m2)'};white-space:nowrap">${b.is_active!==false?'Активна':'Неактивна'}</span>
+        </div>
+        ${b.phone||b.email?`<div style="font-size:11px;color:var(--m2);display:flex;flex-direction:column;gap:2px;padding-top:6px;border-top:1px solid var(--bd)">
+          ${b.phone?`<div>☎ ${b.phone}</div>`:''}
+          ${b.email?`<div>✉ ${b.email}</div>`:''}
+        </div>`:''}
+        ${b.notes?`<div style="font-size:11px;color:var(--m2);font-style:italic;padding-top:6px;border-top:1px solid var(--bd)">${b.notes}</div>`:''}
+        <div style="display:flex;gap:6px;margin-top:auto;padding-top:8px">
+          <button onclick="editBranch('${b.id}')" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer">✏️ Редагувати</button>
+          <button onclick="deleteBranch('${b.id}','${b.name.replace(/'/g,"&#39;")}')" style="padding:6px 10px;border-radius:6px;border:1px solid #EF444430;background:#EF444410;color:var(--rd);font-family:var(--f);font-size:11px;cursor:pointer">🗑</button>
+        </div>
+      </div>`).join('')
+  }</div>`;
+}
+
+function openBranchModal(){
+  _editBranchId=null;
+  document.getElementById('mo-branch-title').textContent='Нова філія';
+  document.getElementById('branch-save-btn').textContent='Створити';
+  ['branch-name','branch-address','branch-phone','branch-email','branch-notes'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  document.getElementById('mo-branch').classList.add('sh');
+}
+
+function editBranch(id){
+  const b=_branches.find(x=>x.id===id);
+  if(!b)return;
+  _editBranchId=id;
+  document.getElementById('mo-branch-title').textContent='Редагувати філію';
+  document.getElementById('branch-save-btn').textContent='Зберегти зміни';
+  document.getElementById('branch-name').value=b.name||'';
+  document.getElementById('branch-address').value=b.address||'';
+  document.getElementById('branch-phone').value=b.phone||'';
+  document.getElementById('branch-email').value=b.email||'';
+  document.getElementById('branch-notes').value=b.notes||'';
+  document.getElementById('mo-branch').classList.add('sh');
+}
+
+function closeBranchMo(e){if(e.target===document.getElementById('mo-branch'))closeBranchMoD();}
+function closeBranchMoD(){
+  document.getElementById('mo-branch').classList.remove('sh');
+  _editBranchId=null;
+}
+
+async function saveBranch(){
+  const name=(document.getElementById('branch-name')?.value||'').trim();
+  if(!name){alert('Введіть назву філії');return;}
+  // Перевірка унікальності назви
+  if(_branches.some(b=>b.name.toLowerCase()===name.toLowerCase() && b.id!==_editBranchId)){
+    alert('Філія з такою назвою вже існує');
+    return;
+  }
+  const data={
+    name,
+    address:(document.getElementById('branch-address')?.value||'').trim()||null,
+    phone:(document.getElementById('branch-phone')?.value||'').trim()||null,
+    email:(document.getElementById('branch-email')?.value||'').trim()||null,
+    notes:(document.getElementById('branch-notes')?.value||'').trim()||null
+  };
+  const btn=document.getElementById('branch-save-btn');
+  btn.textContent='Збереження...';btn.disabled=true;
+  try{
+    if(_editBranchId){
+      await sb.patch('branches',`id=eq.${_editBranchId}`,data);
+      const b=_branches.find(x=>x.id===_editBranchId);
+      if(b) Object.assign(b,data);
+    } else {
+      const result=await sb.post('branches',{...data,is_active:true});
+      const newB=Array.isArray(result)?result[0]:result;
+      if(newB?.id) _branches.push(newB);
+    }
+    closeBranchMoD();
+    renderBranches();
+    // Якщо редагували поточну філію — оновити шапку
+    if(_currentBranch && _editBranchId===_currentBranch.id){
+      _currentBranch=_branches.find(b=>b.id===_currentBranch.id);
+      const nm=document.getElementById('current-branch-name');
+      if(nm&&_currentBranch) nm.textContent=_currentBranch.name;
+    }
+    // Якщо це перша філія - показуємо селектор і робимо її поточною
+    if(!_currentBranch && _branches.length>0){
+      _currentBranch=_branches[0];
+      localStorage.setItem('current_branch_id',_currentBranch.id);
+      const sw=document.getElementById('branch-switcher');
+      if(sw) sw.style.display='inline-flex';
+      const nm=document.getElementById('current-branch-name');
+      if(nm) nm.textContent=_currentBranch.name;
+    }
+  }catch(e){alert('❌ '+e.message);}
+  finally{btn.textContent=_editBranchId?'Зберегти зміни':'Створити';btn.disabled=false;}
+}
+
+async function deleteBranch(id,name){
+  if(!confirm(`Видалити філію "${name}"?\nЦю дію не можна скасувати.`))return;
+  try{
+    const resp=await fetch(`${SB_URL}/rest/v1/branches?id=eq.${id}`,{
+      method:'DELETE',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    });
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    _branches=_branches.filter(b=>b.id!==id);
+    renderBranches();
+    // Якщо видалили поточну філію - перемикаємось на першу або ховаємо селектор
+    if(_currentBranch && _currentBranch.id===id){
+      if(_branches.length>0){
+        _currentBranch=_branches[0];
+        localStorage.setItem('current_branch_id',_currentBranch.id);
+        const nm=document.getElementById('current-branch-name');
+        if(nm) nm.textContent=_currentBranch.name;
+      } else {
+        _currentBranch=null;
+        localStorage.removeItem('current_branch_id');
+        const sw=document.getElementById('branch-switcher');
+        if(sw) sw.style.display='none';
+      }
+    }
+  }catch(e){alert('❌ '+(e.message||'Не вдалося видалити'));}
 }
 
 // ===== АВТОЗАМОВЛЕННЯ =====
