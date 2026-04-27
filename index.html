@@ -2005,11 +2005,19 @@ async function okShowReceipt(tx){
   admOpenMo('receipt-mo');
 }
 
-function okXReport(){
-  const cashIn=okTxAll.filter(x=>x.payment_method==='cash'&&x.type!=='outcome'&&x.type!=='return').reduce((s,x)=>s+x.amount,0);
-  const cashOut=okTxAll.filter(x=>x.payment_method==='cash'&&(x.type==='outcome'||x.type==='return')).reduce((s,x)=>s+x.amount,0);
-  const cardIn=okTxAll.filter(x=>x.payment_method==='card').reduce((s,x)=>s+x.amount,0);
-  showShiftReport('xreport',cashIn-cashOut,cardIn,okShift?.cash_start||0,okTxAll);
+async function okXReport(){
+  // Фіскальний X-звіт через Checkbox
+  try{
+    await loadCbSettings();
+    const lr=await cbCall('login');
+    if(!lr.access_token){alert('Не вдалося авторизуватися в Checkbox');return;}
+    const r=await cbCall('x_report',{token:lr.access_token,_license_key:_cbSettings.cb_key});
+    if(r && r.id){
+      await showFiscalReport(r.id);
+    } else {
+      alert('Не вдалося сформувати X-звіт: ' + (r.message || r.error || 'невідома помилка'));
+    }
+  }catch(e){alert('❌ '+e.message);}
 }
 
 async function okCloseShift(){
@@ -2043,12 +2051,11 @@ async function okCloseShift(){
   okShift=null;okTxAll=[];
   okUpdateShiftUI(false);
 
-  // 3. Показуємо звіт
+  // 3. Показуємо тільки фіскальний Z-звіт
   if(cbZReportId){
     await showFiscalReport(cbZReportId);
-    setTimeout(()=>{ showLocalShiftReport(closedShift,closedTx,cashTurn,cardTurn); },500);
   } else {
-    showLocalShiftReport(closedShift,closedTx,cashTurn,cardTurn);
+    alert('⚠️ Зміну закрито, але фіскальний Z-звіт не отримано. Перевірте налаштування Checkbox.');
   }
 
   const el=document.getElementById('ok-tx-body');
@@ -3782,12 +3789,19 @@ function printReceipt(){
   setTimeout(()=>w.print(),300);
 }
 
-function kasaXReport(){
-  const cashIn=kasaTxAll.filter(x=>x.payment_method==='cash'&&x.type!=='outcome').reduce((s,x)=>s+x.amount,0);
-  const cashOut=kasaTxAll.filter(x=>x.payment_method==='cash'&&x.type==='outcome').reduce((s,x)=>s+x.amount,0);
-  const cashTurn=cashIn-cashOut;
-  const cardTurn=kasaTxAll.filter(x=>x.payment_method==='card').reduce((s,x)=>s+x.amount,0);
-  showShiftReport('xreport',cashTurn,cardTurn,kasaShift?.cash_start||0,kasaTxAll);
+async function kasaXReport(){
+  // Фіскальний X-звіт через Checkbox
+  try{
+    await loadCbSettings();
+    const lr=await cbCall('login');
+    if(!lr.access_token){alert('Не вдалося авторизуватися в Checkbox');return;}
+    const r=await cbCall('x_report',{token:lr.access_token,_license_key:_cbSettings.cb_key});
+    if(r && r.id){
+      await showFiscalReport(r.id);
+    } else {
+      alert('Не вдалося сформувати X-звіт: ' + (r.message || r.error || 'невідома помилка'));
+    }
+  }catch(e){alert('❌ '+e.message);}
 }
 
 async function kasaCloseShift(){
@@ -3828,14 +3842,11 @@ async function kasaCloseShift(){
   kasaSaveShift();
   kasaUpdateShiftUI(false);
 
-  // 3. Показуємо звіт - спочатку фіскальний Z-чек з Checkbox, потім локальний зведений
+  // 3. Показуємо тільки фіскальний Z-звіт
   if(cbZReportId){
     await showFiscalReport(cbZReportId);
-    // Після закриття фіскального чека юзером - показуємо локальний зведений
-    setTimeout(()=>{ showLocalShiftReport(closedShift,closedTx,cashTurn,cardTurn); },500);
   } else {
-    // Фіскалізації немає - тільки локальний зведений
-    showLocalShiftReport(closedShift,closedTx,cashTurn,cardTurn);
+    alert('⚠️ Зміну закрито, але фіскальний Z-звіт не отримано. Перевірте налаштування Checkbox.');
   }
 
   document.getElementById('kasa-tx-body').innerHTML='<tr><td colspan="6" style="padding:30px;text-align:center;font-size:12px;color:var(--m2)">Зміну закрито</td></tr>';
