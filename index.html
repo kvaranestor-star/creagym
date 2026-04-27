@@ -1893,30 +1893,35 @@ async function createClient(){
   if(!gender){alert('Оберіть стать');return}
   if(!hasPhoto){alert('⚠️ Фото обов\'язкове!\nБез фото клієнт не може бути зареєстрований.');return}
 
-  // Фото вже в base64 в img.src (завантажено через FileReader)
+  // Читаємо фото напряму з FileReader result (вже є в ph-prev.src)
   let photoUrl='';
   try{
-    const imgEl=document.getElementById('ph-prev');
-    if(imgEl && imgEl.src && imgEl.src.startsWith('data:')){
-      await new Promise(resolve=>{
-        const tmpImg=new Image();
-        tmpImg.onload=()=>{
-          const canvas=document.createElement('canvas');
-          // 150x150 — достатньо для аватара, ~10KB
-          canvas.width=150;canvas.height=150;
-          const ctx=canvas.getContext('2d');
-          const size=Math.min(tmpImg.naturalWidth,tmpImg.naturalHeight);
-          const ox=(tmpImg.naturalWidth-size)/2;
-          const oy=(tmpImg.naturalHeight-size)/2;
-          ctx.drawImage(tmpImg,ox,oy,size,size,0,0,150,150);
-          photoUrl=canvas.toDataURL('image/jpeg',0.6);
-          resolve();
+    const fileInput=document.querySelector('#ph-zone input[type=file]');
+    if(fileInput && fileInput.files && fileInput.files[0]){
+      photoUrl=await new Promise((resolve)=>{
+        const reader=new FileReader();
+        reader.onload=async(ev)=>{
+          const originalData=ev.target.result;
+          // Стискаємо через canvas
+          const img=new Image();
+          img.onload=()=>{
+            const canvas=document.createElement('canvas');
+            canvas.width=150;canvas.height=150;
+            const ctx=canvas.getContext('2d');
+            const size=Math.min(img.width,img.height);
+            const ox=(img.width-size)/2;
+            const oy=(img.height-size)/2;
+            ctx.drawImage(img,ox,oy,size,size,0,0,150,150);
+            resolve(canvas.toDataURL('image/jpeg',0.65));
+          };
+          img.onerror=()=>resolve(originalData);
+          img.src=originalData;
         };
-        tmpImg.onerror=()=>{ photoUrl=''; resolve(); }
-        tmpImg.src=imgEl.src;
+        reader.onerror=()=>resolve('');
+        reader.readAsDataURL(fileInput.files[0]);
       });
     }
-  }catch(e){ console.warn('photo compress error:',e); }
+  }catch(e){ console.warn('photo error:',e); }
 
   const id='CG-'+(Date.now().toString().slice(-6));
   try {
