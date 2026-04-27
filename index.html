@@ -4231,7 +4231,7 @@ async function cbCreateReceipt(items, total, payMethod, client){
   }
 }
 
-// Показати фіскальний чек у новому вікні (HTML з QR-кодом з Checkbox)
+// Показати фіскальний чек у модалці поверх сторінки (як LuckyFit)
 async function showFiscalReceipt(fiscalReceiptId){
   if(!fiscalReceiptId){alert('У цього продажу немає фіскального чека');return;}
   try{
@@ -4243,16 +4243,50 @@ async function showFiscalReceipt(fiscalReceiptId){
       _license_key: _cbSettings.cb_key,
       receipt_id: fiscalReceiptId
     });
-    if(r && r.html){
-      const w = window.open('', '_blank', 'width=420,height=700,scrollbars=yes');
-      if(!w){alert('Дозвольте спливаючі вікна для друку чека');return;}
-      w.document.open();
-      w.document.write(r.html);
-      w.document.close();
-    } else {
+    if(!r || !r.html){
       alert('Не вдалося отримати фіскальний чек: ' + (r.error || 'невідома помилка'));
+      return;
     }
+    // Створюємо модалку якщо ще немає
+    let mo = document.getElementById('fiscal-receipt-mo');
+    if(!mo){
+      mo = document.createElement('div');
+      mo.id = 'fiscal-receipt-mo';
+      mo.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)';
+      mo.onclick = function(e){if(e.target===mo)mo.remove();};
+      document.body.appendChild(mo);
+    } else { mo.innerHTML = ''; mo.style.display='flex'; }
+
+    mo.innerHTML = `
+      <div style="background:#fff;border-radius:12px;width:100%;max-width:420px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #eee;background:#fafafa">
+          <div style="font-size:14px;font-weight:700;color:#000">🧾 Фіскальний чек</div>
+          <button onclick="document.getElementById('fiscal-receipt-mo').remove()" style="width:28px;height:28px;background:#f0f0f0;border:none;border-radius:6px;cursor:pointer;color:#666;font-size:14px">✕</button>
+        </div>
+        <iframe id="fiscal-receipt-frame" style="flex:1;width:100%;border:none;min-height:520px;background:#fff"></iframe>
+        <div style="display:flex;gap:8px;padding:12px 18px;border-top:1px solid #eee;background:#fafafa">
+          <button onclick="document.getElementById('fiscal-receipt-mo').remove()" style="flex:1;padding:10px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#666;font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">Закрити</button>
+          <button onclick="printFiscalReceipt()" style="flex:1;padding:10px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">🖨️ Друкувати</button>
+        </div>
+      </div>`;
+
+    // Записуємо HTML в iframe
+    const frame = document.getElementById('fiscal-receipt-frame');
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    doc.open();
+    doc.write(r.html);
+    doc.close();
   }catch(e){alert('❌ ' + e.message);}
+}
+
+// Друк фіскального чеку (з модалки)
+function printFiscalReceipt(){
+  const frame = document.getElementById('fiscal-receipt-frame');
+  if(!frame)return;
+  try{
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+  }catch(e){alert('❌ Не вдалося надрукувати: ' + e.message);}
 }
 
 async function cbReturnReceipt(itemName, amount, payMethod, reason, origSaleId){
