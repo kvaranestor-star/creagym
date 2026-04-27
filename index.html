@@ -1478,18 +1478,60 @@ async function loadClients(){
     allClients = await sb.get('clients','?select=*&order=created_at.desc');
     document.getElementById('cl-badge').textContent=allClients.filter(c=>c.status==='active').length;
     renderClients();
+    // Синхронізуємо статуси з реальними абонементами
+    syncClientStatuses();
   } catch(e){
     document.getElementById('cl-table-wrap').innerHTML='<div class="loading" style="color:var(--rd)">⚠️ Помилка завантаження клієнтів</div>';
   }
 }
 
-const stMap={active:{cls:'s-act',l:'Активний'},frozen:{cls:'s-frz',l:'Заморожений'},expired:{cls:'s-exp',l:'Прострочений'},trial:{cls:'s-tri',l:'Пробний'}};
+const stMap={
+  active:   {cls:'s-act', l:'Активний'},
+  frozen:   {cls:'s-frz', l:'Заморожений'},
+  expired:  {cls:'s-exp', l:'Прострочений'},
+  trial:    {cls:'s-tri', l:'Пробний'},
+  inactive: {cls:'s-exp', l:'Неактивний'},
+  pending:  {cls:'s-tri', l:'Не стартований'},
+};
+
+// Розраховуємо реальний статус клієнта з його абонементів
+async function syncClientStatuses(){
+  if(!allClients.length) return;
+  try{
+    const today=new Date().toISOString().split('T')[0];
+    const allSubs=await sb.get('subscriptions','?status=in.(active,frozen)&select=client_id,status,started_at,start_type,end_date');
+    const subsByClient={};
+    (allSubs||[]).forEach(s=>{ if(!subsByClient[s.client_id]) subsByClient[s.client_id]=[]; subsByClient[s.client_id].push(s); });
+    
+    for(const c of allClients){
+      const subs=subsByClient[c.id]||[];
+      let newStatus='inactive';
+      if(subs.length){
+        const activeSub=subs.find(s=>s.status==='active');
+        const frozenSub=subs.find(s=>s.status==='frozen');
+        if(frozenSub) newStatus='frozen';
+        else if(activeSub){
+          const isActivated=activeSub.started_at||(activeSub.start_type==='з дати продажу');
+          if(!isActivated) newStatus='pending';
+          else if(activeSub.end_date<today) newStatus='expired';
+          else newStatus='active';
+        }
+      }
+      if(c.status!==newStatus){
+        c.status=newStatus;
+        try{ await sb.patch('clients',`id=eq.${c.id}`,{status:newStatus==='pending'?'active':newStatus==='inactive'?'expired':newStatus}); }catch(e){}
+      }
+    }
+    renderClients();
+  }catch(e){ console.warn('syncClientStatuses:',e); }
+}
 
 function renderClients(){
+  const today=new Date().toISOString().split('T')[0];
   const list=allClients.filter(c=>{
     const q=filterTxt.toLowerCase();
     return(!q||[c.first_name,c.last_name,c.phone,c.id].some(f=>(f||'').toLowerCase().includes(q)))
-      &&(!filterSt||c.status===filterSt)
+      &&(!filterSt||c.status===filterSt||( filterSt==='active'&&c.status==='pending'))
       &&(!filterGn||c.gender===filterGn);
   });
   document.getElementById('cl-cnt').textContent=list.length+' клієнт'+(list.length===1?'':'ів');
@@ -2398,27 +2440,48 @@ async function admSelectClient(id){
 
   let subBlock='';
   if(activeSub){
-    const s=new Date(activeSub.start_date),e2=new Date(activeSub.end_date);
-    const pct=Math.max(0,Math.min(100,Math.round((e2-new Date())/(e2-s)*100)));
-    const dl=Math.max(0,Math.round((e2-new Date())/86400000));
-    // Активований = started_at заповнено АБО тип "з дати продажу"
-    // Активований тільки якщо started_at заповнено, АБО тип 'з дати продажу'
+    const today2=new Date().toISOString().split('T')[0];
     const isActivated=activeSub.started_at||(activeSub.start_type==='з дати продажу');
-    const notStarted=!isActivated;
+    const isFrozen=activeSub.status==='frozen';
+    const notStarted=!isActivated&&!isFrozen;
+
+    // Відлік іде тільки якщо активований і не заморожений
+    let pct=0, dl=0, statusLabel='', statusColor='var(--gr)', statusBg='#22C55E14';
+    if(notStarted){
+      statusLabel='Не активований'; statusColor='var(--or)'; statusBg='#F9731614';
+      pct=100; dl=0;
+    } else if(isFrozen){
+      statusLabel='Заморожений'; statusColor='var(--bl)'; statusBg='#3B82F614';
+      pct=50; dl=0;
+    } else {
+      // Активований — рахуємо від started_at або start_date
+      const startD=new Date(activeSub.started_at||activeSub.start_date);
+      const endD=new Date(activeSub.end_date);
+      const now=new Date();
+      pct=Math.max(0,Math.min(100,Math.round((endD-now)/(endD-startD)*100)));
+      dl=Math.max(0,Math.round((endD-now)/86400000));
+      if(dl===0){ statusLabel='Закінчується сьогодні!'; statusColor='var(--rd)'; statusBg='#EF444414'; }
+      else if(dl<=3){ statusLabel='Закінчується ('+dl+' дн)'; statusColor='var(--rd)'; statusBg='#EF444414'; }
+      else if(dl<=7){ statusLabel='Скоро закінчується'; statusColor='var(--or)'; statusBg='#F9731614'; }
+      else{ statusLabel='Активний'; statusColor='var(--gr)'; statusBg='#22C55E14'; }
+    }
+
     const returnBtn=notStarted
       ?`<button class="ca rd" style="font-size:10px" onclick="returnSubscription('${activeSub.id}','${id}','${activeSub.type_name}',${activeSub.price},'${activeSub.start_date}','${activeSub.payment_method||'cash'}')">🔁 Повернення</button>`
       :`<span style="font-size:10px;color:var(--m);padding:4px 8px">Повернення недоступне (активований)</span>`;
     const activateBtn=notStarted
       ?`<button class="ca gr" style="font-size:10px;margin-left:4px" onclick="activateSubscription('${activeSub.id}','${id}')">▶ Активувати</button>`
       :'';
+    const daysInfo=notStarted?'⏳ Чекає активації':isFrozen?'❄️ Заморожений':dl===0?'⚠️ Закінчується сьогодні':dl+' днів залишилось';
+
     subBlock=`<div class="cl-sub2">
       <div class="cl-sub-hd2">
         <div class="cl-sub-nm2">${activeSub.type_name}</div>
-        <span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;background:${notStarted?'#F9731614':'#22C55E14'};color:${notStarted?'var(--or)':'var(--gr)'}">${notStarted?'Не активований':'Активний'}</span>
+        <span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;background:${statusBg};color:${statusColor}">${statusLabel}</span>
       </div>
-      <div class="sub-pr"><div class="sub-pr-f" style="width:${pct}%"></div></div>
+      <div class="sub-pr"><div class="sub-pr-f" style="width:${pct}%;background:${dl<=3&&!notStarted&&!isFrozen?'var(--rd)':'var(--y)'}"></div></div>
       <div class="sub-dt">
-        <span>${notStarted?'⏳ Чекає активації':dl+' днів залишилось'}</span>
+        <span style="color:${dl<=3&&!notStarted&&!isFrozen?'var(--rd)':'inherit'}">${daysInfo}</span>
         <span>${activeSub.price} ₴</span>
       </div>
       <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">${returnBtn}${activateBtn}</div>
