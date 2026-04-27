@@ -1991,7 +1991,12 @@ async function okDeleteTx(id,amount,type){
   try{await sb.del('sales',`id=eq.${id}`);okLoadTx();alert('✅ Видалено');}catch(e){alert('❌ '+e.message)}
 }
 
-function okShowReceipt(tx){
+async function okShowReceipt(tx){
+  // Якщо була фіскалізація — справжній фіскальний чек
+  if(tx.fiscal_receipt_id){
+    await showFiscalReceipt(tx.fiscal_receipt_id);
+    return;
+  }
   const clMap=Object.fromEntries((allClients||[]).map(c=>[c.id,c.last_name+' '+c.first_name]));
   const cl=tx.client_id?clMap[tx.client_id]:'';
   const items=[{name:tx.item_name||tx.type,qty:1,price:tx.amount,total:tx.amount}];
@@ -3351,12 +3356,17 @@ async function admConfirmSell(){
     admCloseMoD('adm-sell');
     admSelectClient(admSellCl.id);
     // Фіскальний чек через Checkbox
-    await cbCreateReceipt([{name:s.name,price:s.price,code:'SUB001'}],s.price,admPayM,admSellCl);
-    // Показуємо чек у модалці з можливістю друку
-    const items=[{name:s.name,qty:1,price:s.price,total:s.price}];
-    const text=buildReceiptText(items,s.price,admPayM,curUser?.name||'admin')+'\nКлієнт: '+admSellCl.last_name+' '+admSellCl.first_name;
-    document.getElementById('receipt-content').textContent=text;
-    admOpenMo('receipt-mo');
+    const fiscalId=await cbCreateReceipt([{name:s.name,price:s.price,code:'SUB001'}],s.price,admPayM,admSellCl);
+    if(fiscalId){
+      // Справжній фіскальний чек з Checkbox (з QR-кодом)
+      await showFiscalReceipt(fiscalId);
+    } else {
+      // Локальний чек
+      const items=[{name:s.name,qty:1,price:s.price,total:s.price}];
+      const text=buildReceiptText(items,s.price,admPayM,curUser?.name||'admin')+'\nКлієнт: '+admSellCl.last_name+' '+admSellCl.first_name;
+      document.getElementById('receipt-content').textContent=text;
+      admOpenMo('receipt-mo');
+    }
   }catch(e){alert('❌ Помилка: '+e.message)}
 }
 
@@ -3500,7 +3510,7 @@ function kasaRenderTx(){
     const isNeg=tx.type==='outcome'||tx.type==='return';
     const canDelete=tx.type==='outcome'||tx.type==='return';
     const canReturn=tx.type==='product'&&!tx.is_return&&!tx.is_deleted;
-    const txJson=JSON.stringify({id:tx.id,amount:tx.amount,type:tx.type,item_name:tx.item_name,payment_method:tx.payment_method,created_by:tx.created_by,created_at:tx.created_at,client_id:tx.client_id}).replace(/"/g,'&quot;');
+    const txJson=JSON.stringify({id:tx.id,amount:tx.amount,type:tx.type,item_name:tx.item_name,payment_method:tx.payment_method,created_by:tx.created_by,created_at:tx.created_at,client_id:tx.client_id,fiscal_receipt_id:tx.fiscal_receipt_id}).replace(/"/g,'&quot;');
     return `<tr style="border-top:1px solid var(--bd);background:${isNeg?'#EF444406':'transparent'}">
       <td style="padding:9px 13px;font-size:11px;color:var(--m2);white-space:nowrap">${date} ${time}</td>
       <td style="padding:9px 13px;font-size:12px">${tx.created_by||'—'}</td>
@@ -3696,7 +3706,13 @@ function buildReceiptText(items, total, method, operator, type='sale', extraInfo
   return body;
 }
 
-function showTxReceipt(tx){
+async function showTxReceipt(tx){
+  // Якщо була фіскалізація - показуємо справжній фіскальний чек з Checkbox
+  if(tx.fiscal_receipt_id){
+    await showFiscalReceipt(tx.fiscal_receipt_id);
+    return;
+  }
+  // Інакше показуємо локальний текстовий чек
   const cl=admClients.find(x=>x.id===tx.client_id);
   const clName=cl?cl.last_name+' '+cl.first_name:'';
   const items=[{name:tx.item_name||tx.type,qty:1,price:tx.amount,total:tx.amount}];
@@ -3809,11 +3825,16 @@ async function admCheckout(m){
     admCart=[];admRenderCart();
     if(kasaShift)kasaLoadTx();
     // Фіскальний чек
-    await cbCreateReceipt(receiptItems,tot,m,null);
-    // Показуємо чек у модалці з можливістю друку
-    const text=buildReceiptText(receiptItems,tot,m,curUser?.name||'admin');
-    document.getElementById('receipt-content').textContent=text;
-    admOpenMo('receipt-mo');
+    const fiscalId=await cbCreateReceipt(receiptItems,tot,m,null);
+    if(fiscalId){
+      // Показуємо справжній фіскальний чек з Checkbox (з QR-кодом)
+      await showFiscalReceipt(fiscalId);
+    } else {
+      // Фіскалізація вимкнена або не пройшла — показуємо локальний чек
+      const text=buildReceiptText(receiptItems,tot,m,curUser?.name||'admin');
+      document.getElementById('receipt-content').textContent=text;
+      admOpenMo('receipt-mo');
+    }
   }catch(e){alert('❌ '+e.message)}
 }
 
@@ -4158,26 +4179,26 @@ async function cbCreateReceipt(items, total, payMethod, client){
 
   if(!shouldFiscalize){
     console.log('ℹ️ Фіскалізація вимкнена для', payMethod);
-    return;
+    return null;
   }
 
   if(!_cbSettings.cb_login || !_cbSettings.cb_pass || !_cbSettings.cb_key){
     console.warn('⚠️ Немає налаштувань Checkbox — пропускаю фіскалізацію');
-    return;
+    return null;
   }
 
   try{
     const lr = await cbCall('login');
     if(!lr.access_token){
       alert('⚠️ Чек не фіскалізовано: ' + (lr.message || 'помилка авторизації Checkbox'));
-      return;
+      return null;
     }
 
     // Перевіряємо що зміна відкрита
     const sh = await cbCall("shift_status", {token: lr.access_token, _license_key:_cbSettings.cb_key});
     if(sh && sh.status !== 'OPENED'){
       alert('⚠️ Чек не фіскалізовано: зміна в Checkbox не відкрита');
-      return;
+      return null;
     }
 
     const r = await cbCall('create_receipt', {
@@ -4197,14 +4218,41 @@ async function cbCreateReceipt(items, total, payMethod, client){
           await sb.patch('sales', `id=eq.${recent[0].id}`, {fiscal_receipt_id: r.id});
         }
       }catch(e){ console.warn('save fiscal_id:', e); }
+      return r.id;
     } else {
       console.warn('Checkbox response:', r);
       alert('⚠️ Чек не фіскалізовано: ' + (r.message || r.error || 'невідома помилка'));
+      return null;
     }
   }catch(e){
     console.warn('cbCreateReceipt:', e.message);
     alert('⚠️ Помилка фіскалізації: ' + e.message);
+    return null;
   }
+}
+
+// Показати фіскальний чек у новому вікні (HTML з QR-кодом з Checkbox)
+async function showFiscalReceipt(fiscalReceiptId){
+  if(!fiscalReceiptId){alert('У цього продажу немає фіскального чека');return;}
+  try{
+    await loadCbSettings();
+    const lr = await cbCall('login');
+    if(!lr.access_token){alert('Не вдалося авторизуватися в Checkbox');return;}
+    const r = await cbCall('get_receipt_html', {
+      token: lr.access_token,
+      _license_key: _cbSettings.cb_key,
+      receipt_id: fiscalReceiptId
+    });
+    if(r && r.html){
+      const w = window.open('', '_blank', 'width=420,height=700,scrollbars=yes');
+      if(!w){alert('Дозвольте спливаючі вікна для друку чека');return;}
+      w.document.open();
+      w.document.write(r.html);
+      w.document.close();
+    } else {
+      alert('Не вдалося отримати фіскальний чек: ' + (r.error || 'невідома помилка'));
+    }
+  }catch(e){alert('❌ ' + e.message);}
 }
 
 async function cbReturnReceipt(itemName, amount, payMethod, reason, origSaleId){
