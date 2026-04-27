@@ -843,33 +843,25 @@ tr:hover td{background:#ffffff03;cursor:pointer}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="ff">
           <label>Категорія *</label>
-          <div style="display:flex;gap:4px;align-items:stretch">
-            <select class="fi2" id="prod-cat" style="flex:1">
-              <option value="">Виберіть категорію</option>
-            </select>
-            <button type="button" onclick="deleteCategoryBtn()" title="Видалити обрану категорію" style="background:#EF444420;border:1px solid #EF444440;color:#EF4444;border-radius:8px;padding:0 10px;cursor:pointer;font-size:14px">🗑</button>
-          </div>
-          <div style="margin-top:4px;display:flex;gap:4px;align-items:stretch">
-            <input id="prod-cat-new" placeholder="або нова категорія..." class="fi2" style="font-size:11px;padding:5px 8px;flex:1">
-            <button type="button" onclick="addCategoryBtn()" title="Створити категорію" style="background:var(--y);border:none;color:var(--bg);border-radius:8px;padding:0 12px;cursor:pointer;font-size:14px;font-weight:700">+</button>
+          <select class="fi2" id="prod-cat">
+            <option value="">Виберіть категорію</option>
+            <option>Спорт. харчування</option>
+            <option>Напої</option>
+            <option>Мерч</option>
+            <option>Обладнання</option>
+            <option>Аксесуари</option>
+            <option>БАД</option>
+            <option>BCAA</option>
+            <option>Протеїни</option>
+            <option>Інше</option>
+          </select>
+          <div style="margin-top:4px;display:flex;gap:6px;align-items:center">
+            <input id="prod-cat-new" placeholder="або нова категорія..." class="fi2" style="font-size:11px;padding:5px 8px">
           </div>
         </div>
         <div class="ff">
           <label>Емодзі</label>
           <input class="fi2" type="text" id="prod-emoji" placeholder="📦" maxlength="2">
-        </div>
-      </div>
-      <div class="ff">
-        <label>Постачальник</label>
-        <div style="display:flex;gap:4px;align-items:stretch">
-          <select class="fi2" id="prod-supplier" style="flex:1">
-            <option value="">Без постачальника</option>
-          </select>
-          <button type="button" onclick="deleteSupplierBtn()" title="Видалити обраного постачальника" style="background:#EF444420;border:1px solid #EF444440;color:#EF4444;border-radius:8px;padding:0 10px;cursor:pointer;font-size:14px">🗑</button>
-        </div>
-        <div style="margin-top:4px;display:flex;gap:4px;align-items:stretch">
-          <input id="prod-supplier-new" placeholder="або новий постачальник..." class="fi2" style="font-size:11px;padding:5px 8px;flex:1">
-          <button type="button" onclick="addSupplierBtn()" title="Створити постачальника" style="background:var(--y);border:none;color:var(--bg);border-radius:8px;padding:0 12px;cursor:pointer;font-size:14px;font-weight:700">+</button>
         </div>
       </div>
       <div class="ff">
@@ -2400,16 +2392,17 @@ let _editProductId=null;
 
 function editProduct(id){ _editProductId=id; openAddProduct(); }
 
-async function openAddProduct(){
+function openAddProduct(){
   const p=_editProductId?gProducts.find(x=>x.id===_editProductId):null;
   document.getElementById('mo-prod-title').textContent=p?'Редагувати товар':'Новий товар';
   document.getElementById('prod-save-btn').textContent=p?'Зберегти зміни':'Додати товар';
-  // Завантажуємо категорії та постачальників з БД
-  await refreshCategoriesUI();
-  await refreshSuppliersUI();
+  const cats=[...new Set(gProducts.map(x=>x.category))];
+  const defaults=['Спорт. харчування','Напої','Мерч','Обладнання','Аксесуари','БАД','BCAA','Протеїни','Інше'];
+  const allCats=[...new Set([...defaults,...cats])];
+  const sel=document.getElementById('prod-cat');
+  sel.innerHTML='<option value="">Виберіть категорію</option>'+allCats.map(c=>`<option value="${c}">${c}</option>`).join('');
   if(p){
-    document.getElementById('prod-cat').value=p.category||'';
-    document.getElementById('prod-supplier').value=p.supplier_id||'';
+    sel.value=p.category||'';
     document.getElementById('prod-name').value=p.name||'';
     document.getElementById('prod-price').value=p.price||'';
     document.getElementById('prod-cost').value=p.cost||'';
@@ -2428,128 +2421,15 @@ function closeMoProd(e){if(e.target===document.getElementById('mo-prod'))closeMo
 function closeMoProdD(){
   document.getElementById('mo-prod').classList.remove('sh');
   _editProductId=null;
-  ['prod-name','prod-price','prod-cost','prod-stock','prod-min','prod-barcode','prod-sku','prod-desc','prod-emoji','prod-cat-new','prod-supplier-new'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['prod-name','prod-price','prod-cost','prod-stock','prod-min','prod-barcode','prod-sku','prod-desc','prod-emoji','prod-cat-new'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const cat=document.getElementById('prod-cat');if(cat)cat.value='';
-  const sup=document.getElementById('prod-supplier');if(sup)sup.value='';
   const unit=document.getElementById('prod-unit');if(unit)unit.value='шт';
-}
-
-// ============== КАТЕГОРІЇ ТА ПОСТАЧАЛЬНИКИ ==============
-let _catsCache=[],_supsCache=[];
-
-async function refreshCategoriesUI(){
-  try{
-    _catsCache=await sb.get('categories','?order=name.asc')||[];
-  }catch(e){_catsCache=[];}
-  // Фолбек: якщо в товарах є категорії, яких немає в таблиці — додаємо в селект для відображення
-  const fromProducts=[...new Set(gProducts.map(x=>x.category).filter(Boolean))];
-  const allNames=[...new Set([..._catsCache.map(c=>c.name),...fromProducts])].sort();
-  const sel=document.getElementById('prod-cat');
-  if(sel){
-    const cur=sel.value;
-    sel.innerHTML='<option value="">Виберіть категорію</option>'+allNames.map(c=>`<option value="${c}">${c}</option>`).join('');
-    sel.value=cur;
-  }
-}
-
-async function refreshSuppliersUI(){
-  try{
-    _supsCache=await sb.get('suppliers','?order=name.asc')||[];
-  }catch(e){_supsCache=[];}
-  const sel=document.getElementById('prod-supplier');
-  if(sel){
-    const cur=sel.value;
-    sel.innerHTML='<option value="">Без постачальника</option>'+_supsCache.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
-    sel.value=cur;
-  }
-}
-
-async function addCategoryBtn(){
-  const inp=document.getElementById('prod-cat-new');
-  const name=(inp?.value||'').trim();
-  if(!name){alert('Введіть назву нової категорії');return;}
-  try{
-    await sb.post('categories',{name});
-    inp.value='';
-    await refreshCategoriesUI();
-    document.getElementById('prod-cat').value=name;
-    alert('✅ Категорію "'+name+'" створено');
-  }catch(e){
-    if(e.message&&e.message.includes('duplicate')) alert('❌ Така категорія вже існує');
-    else alert('❌ '+e.message);
-  }
-}
-
-async function deleteCategoryBtn(){
-  const sel=document.getElementById('prod-cat');
-  const name=sel?.value;
-  if(!name){alert('Спочатку оберіть категорію зі списку');return;}
-  // Перевіряємо чи є товари в цій категорії
-  const used=gProducts.filter(p=>p.category===name&&p.is_active!==false).length;
-  if(used>0){
-    alert('❌ Неможливо видалити категорію "'+name+'": в ній '+used+' товар(ів). Спочатку перенесіть або видаліть їх.');
-    return;
-  }
-  if(!confirm('Видалити категорію "'+name+'"?'))return;
-  try{
-    // Видаляємо за name (бо в products зберігається name, не id)
-    await fetch(`${SB_URL}/rest/v1/categories?name=eq.${encodeURIComponent(name)}`,{
-      method:'DELETE',
-      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
-    });
-    await refreshCategoriesUI();
-    sel.value='';
-    alert('✅ Категорію видалено');
-  }catch(e){alert('❌ '+e.message);}
-}
-
-async function addSupplierBtn(){
-  const inp=document.getElementById('prod-supplier-new');
-  const name=(inp?.value||'').trim();
-  if(!name){alert('Введіть назву нового постачальника');return;}
-  try{
-    const r=await sb.post('suppliers',{name});
-    const newS=Array.isArray(r)?r[0]:r;
-    inp.value='';
-    await refreshSuppliersUI();
-    if(newS?.id) document.getElementById('prod-supplier').value=newS.id;
-    alert('✅ Постачальника "'+name+'" створено');
-  }catch(e){
-    if(e.message&&e.message.includes('duplicate')) alert('❌ Такий постачальник вже існує');
-    else alert('❌ '+e.message);
-  }
-}
-
-async function deleteSupplierBtn(){
-  const sel=document.getElementById('prod-supplier');
-  const id=sel?.value;
-  if(!id){alert('Спочатку оберіть постачальника зі списку');return;}
-  const sup=_supsCache.find(s=>s.id===id);
-  const name=sup?.name||'?';
-  // Рахуємо скільки товарів використовує цього постачальника (для попередження)
-  const used=gProducts.filter(p=>p.supplier_id===id).length;
-  const msg=used>0
-    ? `Видалити постачальника "${name}"?\nУ ${used} товар(ів) поле постачальника буде очищено.`
-    : `Видалити постачальника "${name}"?`;
-  if(!confirm(msg))return;
-  try{
-    await fetch(`${SB_URL}/rest/v1/suppliers?id=eq.${id}`,{
-      method:'DELETE',
-      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
-    });
-    // Локально очищаємо supplier_id у товарів (БД це зробила сама через ON DELETE SET NULL)
-    gProducts.forEach(p=>{ if(p.supplier_id===id) p.supplier_id=null; });
-    await refreshSuppliersUI();
-    sel.value='';
-    alert('✅ Постачальника видалено');
-  }catch(e){alert('❌ '+e.message);}
 }
 
 async function saveProduct(){
   const catSel=document.getElementById('prod-cat').value;
   const catNew=(document.getElementById('prod-cat-new')?.value||'').trim();
   const cat=catNew||catSel;
-  const supplier_id=document.getElementById('prod-supplier')?.value||null;
   const name=(document.getElementById('prod-name')?.value||'').trim();
   const price=parseInt(document.getElementById('prod-price')?.value)||0;
   const cost=parseInt(document.getElementById('prod-cost')?.value)||0;
@@ -2563,20 +2443,15 @@ async function saveProduct(){
   if(!cat){alert('Оберіть або введіть категорію');return;}
   if(!name){alert('Введіть назву товару');return;}
   if(!price){alert('Введіть ціну');return;}
-  // Якщо введено нову категорію — створюємо в БД
-  if(catNew){
-    try{ await sb.post('categories',{name:catNew}); }catch(e){/* конфлікт = вже є */}
-  }
   const btn=document.getElementById('prod-save-btn');
   btn.textContent='Збереження...';btn.disabled=true;
   try{
-    const payload={name,category:cat,price,cost,stock,min_stock,emoji,unit,barcode,sku,description,supplier_id:supplier_id||null};
     if(_editProductId){
-      await sb.patch('products',`id=eq.${_editProductId}`,payload);
+      await sb.patch('products',`id=eq.${_editProductId}`,{name,category:cat,price,cost,stock,min_stock,emoji,unit,barcode,sku,description});
       const p=gProducts.find(x=>x.id===_editProductId);
-      if(p) Object.assign(p,payload);
+      if(p) Object.assign(p,{name,category:cat,price,cost,stock,min_stock,emoji,unit,barcode,sku,description});
     } else {
-      const result=await sb.post('products',{...payload,is_active:true});
+      const result=await sb.post('products',{name,category:cat,price,cost,stock,min_stock,emoji,unit,barcode,sku,description,is_active:true});
       const newP=Array.isArray(result)?result[0]:result;
       if(newP?.id) gProducts.push(newP);
     }
@@ -3120,212 +2995,20 @@ async function cbCheckExistingShift(){
     console.warn('cbCheckExistingShift:',e.message);
   }
 }
+// === ЗАГЛУШКИ для відсутніх Checkbox-функцій ===
+// Без них падає ReferenceError при старті і не працюють кліки на вкладки
+if(typeof loadCbSettings==='undefined') window.loadCbSettings=function(){return Promise.resolve();};
+if(typeof cbCall==='undefined') window.cbCall=async function(){return {status:'CLOSED'};};
+if(typeof applyCbSettingsToForm==='undefined') window.applyCbSettingsToForm=function(){};
+if(typeof updateCfgShiftLock==='undefined') window.updateCfgShiftLock=function(){};
+
 function admTab(id,btn){
-  console.log('[admTab] click:',id);
   document.querySelectorAll('.adm-tab').forEach(t=>t.classList.remove('on'));btn.classList.add('on');
   document.querySelectorAll('.adm-page').forEach(p=>p.classList.remove('on'));
   document.getElementById('adm-'+id).classList.add('on');
   if(id==='kasa'){kasaUpdateShiftUI(!!kasaShift);if(kasaShift)kasaLoadTx();}
   if(id==='aclients'||id==='reg') reloadAdmClients();
 }
-
-// === Checkbox-проксі через Supabase Edge Function ===
-const CB_PROXY_URL='https://rkknbltiylsvmycbbyde.supabase.co/functions/v1/checkbox-proxy';
-let _cbSettings=null;
-
-async function loadCbSettings(){
-  try{
-    const rows=await sb.get('settings','?key=in.(cb_login,cb_pass,cb_key,cb_prro_name,cb_prro_num,cb_fiscalize_cash,cb_fiscalize_card)');
-    const map={};(rows||[]).forEach(r=>map[r.key]=r.value);
-    _cbSettings=map;
-    return map;
-  }catch(e){console.warn('loadCbSettings:',e);_cbSettings={};return{};}
-}
-
-async function cbCall(action,data={}){
-  try{
-    const r=await fetch(CB_PROXY_URL,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SB_KEY},
-      body:JSON.stringify({action,data})
-    });
-    const j=await r.json();
-    return j;
-  }catch(e){
-    console.warn('cbCall '+action+':',e.message);
-    return {error:e.message};
-  }
-}
-
-function applyCbSettingsToForm(){
-  const s=_cbSettings||{};
-  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
-  set('cfg-cb-login',s.cb_login);
-  set('cfg-cb-pass',s.cb_pass);
-  set('cfg-cb-key',s.cb_key);
-  set('cfg-prro-name',s.cb_prro_name);
-  set('cfg-prro-num',s.cb_prro_num);
-  const fc=document.getElementById('cfg-fisk-cash'),fk=document.getElementById('cfg-fisk-card');
-  if(fc){ fc.checked=s.cb_fiscalize_cash==='true'; updateFiskRow('cash',fc); }
-  if(fk){ fk.checked=s.cb_fiscalize_card==='true'; updateFiskRow('card',fk); }
-}
-
-function updateCfgShiftLock(opened){
-  const banner=document.getElementById('cfg-shift-warn');
-  if(banner) banner.style.display=opened?'block':'none';
-  const openBtn=document.getElementById('cfg-open-shift-btn');
-  const closeBtn=document.getElementById('cfg-close-shift-btn');
-  if(openBtn) openBtn.style.display=opened?'none':'inline-block';
-  if(closeBtn) closeBtn.style.display=opened?'inline-block':'none';
-  // Блокуємо поля при відкритій зміні
-  ['cfg-cb-login','cfg-cb-pass','cfg-cb-key','cfg-prro-name','cfg-prro-num','cfg-fisk-cash','cfg-fisk-card','cfg-save-btn'].forEach(id=>{
-    const el=document.getElementById(id);if(!el)return;
-    if(opened) el.setAttribute('disabled','disabled');
-    else el.removeAttribute('disabled');
-  });
-}
-
-// Перемикач показу пароля
-function toggleCfgPass(){
-  const inp=document.getElementById('cfg-cb-pass');
-  if(!inp)return;
-  inp.type=inp.type==='password'?'text':'password';
-}
-
-// Підсвічування рядків галочок фіскалізації
-function updateFiskRow(kind,el){
-  const row=document.getElementById('fisk-'+kind+'-row');
-  if(!row)return;
-  if(el.checked){row.style.borderColor='var(--y)';row.style.background='var(--y)0d';}
-  else{row.style.borderColor='';row.style.background='';}
-}
-
-// === Збереження налаштувань Checkbox у БД ===
-async function saveCbSettings(){
-  const btn=document.getElementById('cfg-save-btn');
-  const oldText=btn?btn.textContent:'';
-  if(btn){btn.textContent='Збереження...';btn.disabled=true;}
-  const get=id=>(document.getElementById(id)?.value||'').trim();
-  const updates=[
-    {key:'cb_login',value:get('cfg-cb-login')},
-    {key:'cb_pass',value:get('cfg-cb-pass')},
-    {key:'cb_key',value:get('cfg-cb-key')},
-    {key:'cb_prro_name',value:get('cfg-prro-name')},
-    {key:'cb_prro_num',value:get('cfg-prro-num')},
-    {key:'cb_fiscalize_cash',value:document.getElementById('cfg-fisk-cash')?.checked?'true':'false'},
-    {key:'cb_fiscalize_card',value:document.getElementById('cfg-fisk-card')?.checked?'true':'false'}
-  ];
-  try{
-    // PostgREST upsert через POST з заголовком Prefer: resolution=merge-duplicates
-    for(const u of updates){
-      await fetch(`${SB_URL}/rest/v1/settings`,{
-        method:'POST',
-        headers:{
-          'Content-Type':'application/json',
-          'apikey':SB_KEY,
-          'Authorization':'Bearer '+SB_KEY,
-          'Prefer':'resolution=merge-duplicates'
-        },
-        body:JSON.stringify(u)
-      });
-    }
-    await loadCbSettings();
-    showCbResult('✅ Налаштування збережено','ok');
-  }catch(e){
-    showCbResult('❌ '+e.message,'err');
-  }finally{
-    if(btn){btn.textContent=oldText||'💾 Зберегти налаштування';btn.disabled=false;}
-  }
-}
-
-// === Перевірка з'єднання з Checkbox ===
-async function testCbConnection(){
-  showCbResult('⏳ Перевіряю...','info');
-  const get=id=>(document.getElementById(id)?.value||'').trim();
-  const _login=get('cfg-cb-login'),_pass=get('cfg-cb-pass'),_license_key=get('cfg-cb-key');
-  if(!_login||!_pass||!_license_key){
-    showCbResult('❌ Заповніть логін, пароль і ключ ліцензії','err');return;
-  }
-  try{
-    const r=await cbCall('verify_all',{_login,_pass,_license_key});
-    if(r.ok){
-      showCbResult(`✅ З'єднання успішне. Зміна: <b>${r.shift_status||'?'}</b>`,'ok');
-      updateCfgShiftLock(r.shift_status==='OPENED');
-    } else {
-      const where=r.step==='login'?'логін/пароль':r.step==='license'?'ключ ліцензії':'параметри';
-      showCbResult(`❌ Помилка (${where}): ${r.message||'невідома'}`,'err');
-    }
-  }catch(e){showCbResult('❌ '+e.message,'err');}
-}
-
-// === Відкриття зміни вручну ===
-async function openCbShiftManual(){
-  if(!confirm('Відкрити нову зміну в Checkbox?'))return;
-  showCbResult('⏳ Відкриваю зміну...','info');
-  try{
-    const lr=await cbCall('login');
-    if(!lr.access_token){showCbResult('❌ Не вдалося авторизуватися: '+(lr.message||'?'),'err');return;}
-    const r=await cbCall('open_shift',{token:lr.access_token});
-    if(r.id||r.serial){
-      showCbResult('✅ Зміну відкрито','ok');
-      updateCfgShiftLock(true);
-      // Оновлюємо локальний kasaShift якщо потрібно
-      if(typeof kasaShift!=='undefined'){
-        try{
-          const shifts=await sb.get('shifts','?status=eq.open&order=opened_at.desc&limit=1');
-          if(shifts&&shifts[0]){ window.kasaShift=shifts[0]; if(typeof kasaSaveShift==='function')kasaSaveShift(); if(typeof kasaUpdateShiftUI==='function')kasaUpdateShiftUI(true); }
-        }catch(e){}
-      }
-      // Оновлюємо badge на вкладці Каса (якщо є)
-      const badge=document.getElementById('kasa-status-badge');
-      if(badge){badge.textContent='ВІДКРИТО';badge.style.background='#22C55E20';badge.style.color='var(--gr)';}
-    } else {
-      showCbResult('❌ '+(r.message||r.error||'Не вдалося відкрити'),'err');
-    }
-  }catch(e){showCbResult('❌ '+e.message,'err');}
-}
-
-// === Закриття зміни вручну ===
-async function closeCbShiftManual(){
-  if(!confirm('Закрити поточну зміну в Checkbox? Буде сформовано Z-звіт.'))return;
-  showCbResult('⏳ Закриваю зміну...','info');
-  try{
-    const lr=await cbCall('login');
-    if(!lr.access_token){showCbResult('❌ Не вдалося авторизуватися','err');return;}
-    const r=await cbCall('close_shift',{token:lr.access_token});
-    showCbResult('✅ Зміну закрито','ok');
-    updateCfgShiftLock(false);
-    if(typeof kasaShift!=='undefined'&&window.kasaShift){
-      window.kasaShift=null;
-      if(typeof kasaSaveShift==='function')kasaSaveShift();
-      if(typeof kasaUpdateShiftUI==='function')kasaUpdateShiftUI(false);
-    }
-    const badge=document.getElementById('kasa-status-badge');
-    if(badge){badge.textContent='ЗАЧИНЕНО';badge.style.background='';badge.style.color='';}
-  }catch(e){showCbResult('❌ '+e.message,'err');}
-}
-
-// Хелпер для виводу повідомлень в блоці результату
-function showCbResult(html,kind){
-  const el=document.getElementById('cfg-cb-result');
-  if(!el)return;
-  el.style.display='block';
-  el.innerHTML=html;
-  const colors={ok:'#22C55E',err:'#EF4444',info:'var(--m2)'};
-  el.style.color=colors[kind]||'var(--m2)';
-  el.style.borderColor=kind==='ok'?'#22C55E40':kind==='err'?'#EF444440':'var(--bd2)';
-}
-
-// Захист: закриваємо випадково відкриті модалки при старті адмінки
-window.addEventListener('load',()=>{
-  setTimeout(()=>{
-    document.querySelectorAll('.mo.sh, .mo2.sh, .dos-ov.sh').forEach(m=>{
-      console.log('[guard] closing stuck modal:',m.id);
-      m.classList.remove('sh');
-      m.style.display='';
-    });
-  },1500);
-});
 
 async function reloadAdmClients(){
   try{
@@ -4109,6 +3792,3 @@ function admCloseMoD(id){
 }
 
 
-</script>
-</body>
-</html>
