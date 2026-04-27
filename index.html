@@ -962,6 +962,10 @@ const sb = {
   async patch(table, filter, data){
     const r = await fetch(`${SB_URL}/rest/v1/${table}?${filter}`,{method:'PATCH',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify(data)});
     return r.json();
+  },
+  async del(table, filter){
+    const r = await fetch(`${SB_URL}/rest/v1/${table}?${filter}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'}});
+    return r.ok;
   }
 };
 
@@ -1833,12 +1837,38 @@ async function openDos(id){
     </div>
     <div class="das-as">
       <button class="da-b" onclick="alert('Функція в розробці')">📱 SMS</button>
+      <button class="da-b rd" onclick="ownerDeleteClient('${c.id}','${c.last_name} ${c.first_name}')" style="color:var(--rd);border-color:#EF444440">🗑 Видалити</button>
       <button class="da-b" onclick="closeDosD()">Закрити</button>
     </div>`;
   document.getElementById('dos-ov').classList.add('sh');
 }
 function closeDos(e){if(e.target===document.getElementById('dos-ov'))closeDosD()}
 function closeDosD(){document.getElementById('dos-ov').classList.remove('sh')}
+
+async function ownerDeleteClient(clientId, clientName){
+  // Перевіряємо чи є активні абонементи
+  try{
+    const subs=await sb.get('subscriptions',`?client_id=eq.${clientId}&status=eq.active&select=id&limit=1`);
+    if(subs && subs.length>0){
+      alert(`❌ Неможливо видалити!\n\nКлієнт "${clientName}" має активний абонемент.\nСпочатку завершіть або скасуйте абонемент.`);
+      return;
+    }
+  }catch(e){}
+
+  if(!confirm(`⚠️ Видалити клієнта "${clientName}"?\n\nЦя дія незворотня — всі дані клієнта будуть видалені.`)) return;
+  if(!confirm(`Підтвердіть ще раз:\nВидалити "${clientName}" назавжди?`)) return;
+
+  try{
+    // Видаляємо пов'язані дані
+    await sb.del('subscriptions',`client_id=eq.${clientId}`);
+    await sb.del('visits',`client_id=eq.${clientId}`);
+    await sb.del('clients',`id=eq.${clientId}`);
+    allClients=allClients.filter(c=>c.id!==clientId);
+    closeDosD();
+    renderClients();
+    alert(`✅ Клієнт "${clientName}" видалений.`);
+  }catch(e){alert('❌ Помилка видалення: '+e.message)}
+}
 
 // Власник видаляє абонемент клієнта (без повернення коштів)
 async function ownerDeleteClientSub(subId,clientId,typeName){
@@ -2310,6 +2340,7 @@ async function createClient(){
     <div class="mo2-bd">
       <div class="fr2b"><div class="ff2"><label>Прізвище *</label><input class="fi3" type="text" id="adm-last" placeholder="Іваненко"></div><div class="ff2"><label>Ім'я *</label><input class="fi3" type="text" id="adm-first" placeholder="Марія"></div></div>
       <div class="fr2b"><div class="ff2"><label>Телефон *</label><input class="fi3" type="text" id="adm-phone" placeholder="+38 067 000 00 00"></div><div class="ff2"><label>Стать *</label><select class="fi3" id="adm-gender"><option value="">Оберіть...</option><option value="Ж">Жінка</option><option value="М">Чоловік</option></select></div></div>
+      <div class="fr2b"><div class="ff2"><label>Дата народження</label><input class="fi3" type="date" id="adm-bday"></div><div class="ff2"></div></div>
       <div class="ff2"><label>Фото * (обов'язково)</label>
         <div class="ph-up2" id="adm-ph-zone"><input type="file" accept="image/*" onchange="admPrevPhoto(this)"><div id="adm-ph-ph"><div style="font-size:22px">📷</div><div style="font-size:11px;color:var(--m2);margin-top:4px">Натисніть або перетягніть фото</div><div style="font-size:10px;color:var(--rd);margin-top:2px;font-weight:600">Без фото реєстрація неможлива</div></div><img id="adm-ph-prev" style="display:none;width:70px;height:70px;border-radius:9px;object-fit:cover;margin:0 auto"></div>
       </div>
@@ -3219,6 +3250,7 @@ async function admCreateClient(){
   try{
     const result=await sb.post('clients',{
       id,first_name:first,last_name:last,phone,gender,
+      birth_date:document.getElementById('adm-bday').value||null,
       photo_url:_admPhotoData,
       status:'new',visits:0
     });
@@ -3241,6 +3273,8 @@ function admCloseMoD(id){
     if(prev){prev.style.display='none';prev.src='';}
     const ph=document.getElementById('adm-ph-ph');
     if(ph) ph.style.display='block';
+    const bday=document.getElementById('adm-bday');
+    if(bday) bday.value='';
   }
 }
 
