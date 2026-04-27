@@ -1859,9 +1859,10 @@ async function ownerDeleteClient(clientId, clientName){
   if(!confirm(`Підтвердіть ще раз:\nВидалити "${clientName}" назавжди?`)) return;
 
   try{
-    // Видаляємо пов'язані дані
-    await sb.del('subscriptions',`client_id=eq.${clientId}`);
+    // Видаляємо в правильному порядку (FK залежності)
+    await sb.del('sales',`client_id=eq.${clientId}`);
     await sb.del('visits',`client_id=eq.${clientId}`);
+    await sb.del('subscriptions',`client_id=eq.${clientId}`);
     await sb.del('clients',`id=eq.${clientId}`);
     allClients=allClients.filter(c=>c.id!==clientId);
     closeDosD();
@@ -2510,6 +2511,15 @@ function admTab(id,btn){
   document.querySelectorAll('.adm-page').forEach(p=>p.classList.remove('on'));
   document.getElementById('adm-'+id).classList.add('on');
   if(id==='kasa'){kasaUpdateShiftUI(!!kasaShift);if(kasaShift)kasaLoadTx();}
+  if(id==='aclients'||id==='reg') reloadAdmClients();
+}
+
+async function reloadAdmClients(){
+  try{
+    const fresh=await sb.get('clients','?order=last_name.asc');
+    admClients=fresh||admClients;
+    await syncAdminClientStatuses();
+  }catch(e){ console.warn('reloadAdmClients:',e); }
 }
 
 let admST=null;
