@@ -2497,10 +2497,14 @@ async function loadGoods(){
     gMovements=await sb.get('product_movements','?order=created_at.desc&limit=200')||[];
     // Категорії та постачальники - щоб показати в таблиці
     await loadCategoriesAndSuppliers();
-    // Категорії для фільтра
-    const cats=[...new Set(gProducts.map(p=>p.category))];
+    // Категорії для фільтра — беремо з БД (повний список, навіть якщо немає товарів)
+    const allCatNames=[...new Set([..._categories.map(c=>c.name), ...gProducts.map(p=>p.category).filter(Boolean)])].sort();
     const catSel=document.getElementById('g-cat-filter');
-    if(catSel){ catSel.innerHTML='<option value="">Всі категорії</option>'+cats.map(c=>`<option value="${c}">${c}</option>`).join(''); }
+    if(catSel){ 
+      const curr=catSel.value;
+      catSel.innerHTML='<option value="">Всі категорії</option>'+allCatNames.map(c=>`<option value="${c}">${c}</option>`).join('');
+      if(curr) catSel.value=curr;
+    }
     renderAssortment();
     // Бейдж — товари з низьким залишком
     const low=gProducts.filter(p=>p.stock<=p.min_stock).length;
@@ -2755,6 +2759,14 @@ async function addCategoryBtn(){
       _categories.sort((a,b)=>a.name.localeCompare(b.name));
       refreshCategoriesUI(created.name);
       inp.value='';
+      // Оновлюємо фільтр категорій на сторінці Товари (якщо вона видима)
+      const catFilter=document.getElementById('g-cat-filter');
+      if(catFilter){
+        const curr=catFilter.value;
+        const allCatNames=[...new Set([..._categories.map(c=>c.name), ...gProducts.map(p=>p.category).filter(Boolean)])].sort();
+        catFilter.innerHTML='<option value="">Всі категорії</option>'+allCatNames.map(c=>`<option value="${c}">${c}</option>`).join('');
+        if(curr) catFilter.value=curr;
+      }
     }
   }catch(e){alert('❌ '+(e.message||'Не вдалося створити категорію'));}
 }
