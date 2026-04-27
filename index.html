@@ -1263,15 +1263,26 @@ function gp(id,el){
   if(id==='fin'){okSyncShiftFromCheckbox();okUpdateShiftUI(!!okShift);okLoadTx();}
   if(id==='goods') loadGoods();
   if(id==='cfg'){
-    // Тільки завантажуємо збережені налаштування і показуємо форму
-    // НЕ запускаємо автоматичну перевірку Checkbox - тільки коли юзер натисне кнопку
-    loadCbSettings().then(()=>{
+    // Завантажуємо збережені налаштування
+    loadCbSettings().then(async ()=>{
       applyCbSettingsToForm();
       // Скидаємо результат попередньої перевірки
       const res=document.getElementById('cfg-cb-result');
       if(res){res.style.display='none';res.innerHTML='';}
-      // Кнопки замикаємо/розмикаємо тільки коли юзер сам перевірить
-      updateCfgShiftLock(false);
+      // Перевіряємо статус зміни в Checkbox - тільки читаємо, не діємо
+      try{
+        const lr=await cbCall('login');
+        if(lr&&lr.access_token){
+          const sh=await cbCall('shift_status',{token:lr.access_token});
+          const isOpen=sh&&sh.status==='OPENED';
+          updateCfgShiftLock(isOpen);
+        } else {
+          updateCfgShiftLock(false);
+        }
+      }catch(e){
+        console.warn('cfg shift check:',e);
+        updateCfgShiftLock(false);
+      }
     });
   }
 }
