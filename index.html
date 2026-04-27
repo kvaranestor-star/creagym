@@ -3283,46 +3283,24 @@ async function cbReturnReceipt(itemName, amount, payMethod, reason) {
       return;
     }
 
-    // 3. Чек повернення через Checkbox API
-    const returnRes = await fetch(`https://api.checkbox.ua/api/v1/receipts/return`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        'X-License-Key': cbSettings.cb_key || '',
-        'X-Client-Name': 'CREAGYM-CRM',
-      },
-      body: JSON.stringify({
-        goods: [{
-          good: {
-            code: '001',
-            name: itemName.substring(0, 50),
-            price: Math.round(amount * 100),
-          },
-          quantity: 1000,
-          is_return: true,
-        }],
-        payments: [{
-          type: payMethod === 'card' ? 'CASHLESS' : 'CASH',
-          value: Math.round(amount * 100),
-          label: payMethod === 'card' ? 'Картка' : 'Готівка',
-        }],
-        header: `CREAGYM FITNESS\nПОВЕРНЕННЯ`,
-        footer: `Причина: ${reason}`,
-      }),
+    // 3. Чек повернення через Edge Function
+    showCbLoading(true, 'Фіскалізація повернення...');
+    const returnRes = await cbCall('return_receipt', {
+      token,
+      items: [{ name: itemName.substring(0,50), price: amount, qty: 1, code: '001' }],
+      payment_method: payMethod,
+      total: amount,
+      reason: reason,
     });
-
-    const result = await returnRes.json();
     showCbLoading(false);
 
-    if(result.id) {
-      // Чекаємо фіскалізацію
-      let receipt = result;
+    if(returnRes.id) {
+      let receipt = returnRes;
       showCbLoading(true, 'Очікування підтвердження ДПС...');
       for(let i=0; i<8; i++) {
         await new Promise(r=>setTimeout(r,1000));
         try {
-          const upd = await cbCall('get_receipt', { token, receipt_id: result.id });
+          const upd = await cbCall('get_receipt', { token, receipt_id: returnRes.id });
           if(upd.status === 'DONE' || upd.status === 'ERROR') { receipt = upd; break; }
         } catch(e) { break; }
       }
@@ -3368,7 +3346,7 @@ async function cbReturnReceipt(itemName, amount, payMethod, reason) {
         admOpenMo('receipt-mo');
       }
     } else {
-      alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴\n\n⚠️ Checkbox: ${result.message||'помилка створення чека повернення'}`);
+      alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴\n\n⚠️ Checkbox: ${returnRes.message||'помилка створення чека повернення'}`);
     }
   } catch(e) {
     showCbLoading(false);
