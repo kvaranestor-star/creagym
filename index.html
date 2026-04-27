@@ -3988,3 +3988,121 @@ async function closeCbShiftManual(){
   }
 }
 
+
+// ===== ФІСКАЛЬНІ ЧЕКИ ЧЕРЕЗ CHECKBOX =====
+async function cbCreateReceipt(items, total, payMethod, client){
+  // Перевіряємо налаштування фіскалізації
+  await loadCbSettings();
+  const fiskCash = _cbSettings.cb_fiscalize_cash === 'true';
+  const fiskCard = _cbSettings.cb_fiscalize_card === 'true';
+  const shouldFiscalize = (payMethod === 'cash' && fiskCash) || (payMethod === 'card' && fiskCard);
+
+  if(!shouldFiscalize){
+    console.log('ℹ️ Фіскалізація вимкнена для', payMethod);
+    return;
+  }
+
+  if(!_cbSettings.cb_login || !_cbSettings.cb_pass || !_cbSettings.cb_key){
+    console.warn('⚠️ Немає налаштувань Checkbox — пропускаю фіскалізацію');
+    return;
+  }
+
+  try{
+    const lr = await cbCall('login');
+    if(!lr.access_token){
+      alert('⚠️ Чек не фіскалізовано: ' + (lr.message || 'помилка авторизації Checkbox'));
+      return;
+    }
+
+    // Перевіряємо що зміна відкрита
+    const sh = await cbCall('shift_status', {token: lr.access_token});
+    if(sh && sh.status !== 'OPENED'){
+      alert('⚠️ Чек не фіскалізовано: зміна в Checkbox не відкрита');
+      return;
+    }
+
+    const r = await cbCall('create_receipt', {
+      token: lr.access_token,
+      items: items,
+      payment_method: payMethod,
+      total: total
+    });
+
+    if(r && r.id){
+      console.log('✅ Фіскальний чек створено:', r.id);
+      // Зберігаємо ID чека в останньому продажу
+      try{
+        const recent = await sb.get('sales', '?order=created_at.desc&limit=1');
+        if(recent && recent.length){
+          await sb.patch('sales', `id=eq.${recent[0].id}`, {fiscal_receipt_id: r.id});
+        }
+      }catch(e){ console.warn('save fiscal_id:', e); }
+    } else {
+      console.warn('Checkbox response:', r);
+      alert('⚠️ Чек не фіскалізовано: ' + (r.message || r.error || 'невідома помилка'));
+    }
+  }catch(e){
+    console.warn('cbCreateReceipt:', e.message);
+    alert('⚠️ Помилка фіскалізації: ' + e.message);
+  }
+}
+
+async function cbReturnReceipt(itemName, amount, payMethod, reason, origSaleId){
+  // Перевіряємо налаштування
+  await loadCbSettings();
+  const fiskCash = _cbSettings.cb_fiscalize_cash === 'true';
+  const fiskCard = _cbSettings.cb_fiscalize_card === 'true';
+  const shouldFiscalize = (payMethod === 'cash' && fiskCash) || (payMethod === 'card' && fiskCard);
+
+  if(!shouldFiscalize){
+    console.log('ℹ️ Фіскалізація повернення вимкнена для', payMethod);
+    return;
+  }
+
+  if(!_cbSettings.cb_login || !_cbSettings.cb_pass || !_cbSettings.cb_key){
+    console.warn('⚠️ Немає налаштувань Checkbox — пропускаю фіскальне повернення');
+    return;
+  }
+
+  // Перевіряємо що оригінальний продаж був фіскальним
+  if(origSaleId){
+    try{
+      const orig = await sb.get('sales', `?id=eq.${origSaleId}&select=fiscal_receipt_id`);
+      if(orig && orig.length && !orig[0].fiscal_receipt_id){
+        console.log('ℹ️ Оригінальний продаж не був фіскальним — пропускаю');
+        return;
+      }
+    }catch(e){}
+  }
+
+  try{
+    const lr = await cbCall('login');
+    if(!lr.access_token){
+      alert('⚠️ Повернення не фіскалізовано: ' + (lr.message || 'помилка авторизації'));
+      return;
+    }
+
+    const items = [{name: itemName, qty: 1, price: amount, total: amount, code: 'RET'}];
+    const r = await cbCall('return_receipt', {
+      token: lr.access_token,
+      items: items,
+      payment_method: payMethod,
+      total: amount,
+      reason: reason || 'Повернення товару'
+    });
+
+    if(r && r.id){
+      console.log('✅ Фіскальне повернення створено:', r.id);
+    } else {
+      console.warn('Checkbox return:', r);
+      alert('⚠️ Повернення не фіскалізовано: ' + (r.message || r.error || 'невідома помилка'));
+    }
+  }catch(e){
+    console.warn('cbReturnReceipt:', e.message);
+    alert('⚠️ Помилка фіскального повернення: ' + e.message);
+  }
+}
+
+</script>
+</body>
+</html>
