@@ -1263,9 +1263,18 @@ function gp(id,el){
   if(id==='fin'){okUpdateShiftUI(!!okShift);okLoadTx();}
   if(id==='goods') loadGoods();
   if(id==='cfg'){
-    // Нічого не робимо автоматично.
-    // Користувач сам вводить дані і натискає "Перевірити з'єднання" або "Зберегти".
-    // Стан зміни оновлюється тільки після ручної перевірки/відкриття/закриття.
+    loadCbSettings();
+    setTimeout(async()=>{
+      applyCbSettingsToForm();
+      // Перевіряємо стан зміни в Checkbox
+      try{
+        const lr=await cbCall('login');
+        if(lr.access_token){
+          const sh=await cbCall('shift_status',{token:lr.access_token});
+          updateCfgShiftLock(sh?.status==='OPENED');
+        }
+      }catch(e){ updateCfgShiftLock(false); }
+    },100);
   }
 }
 function handleTopAction(){
@@ -2986,173 +2995,6 @@ async function cbCheckExistingShift(){
     console.warn('cbCheckExistingShift:',e.message);
   }
 }
-// ============================================================
-// CHECKBOX ІНТЕГРАЦІЯ
-// ============================================================
-const CB_PROXY_URL='https://rkknbltiylsvmycbbyde.supabase.co/functions/v1/checkbox-proxy';
-let _cbSettings=null;
-
-async function loadCbSettings(){
-  try{
-    const rows=await sb.get('settings','?key=in.(cb_login,cb_pass,cb_key,cb_prro_name,cb_prro_num,cb_fiscalize_cash,cb_fiscalize_card)');
-    const map={};(rows||[]).forEach(r=>map[r.key]=r.value);
-    _cbSettings=map;
-    return map;
-  }catch(e){console.warn('loadCbSettings:',e);_cbSettings={};return{};}
-}
-
-async function cbCall(action,data={}){
-  try{
-    const r=await fetch(CB_PROXY_URL,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SB_KEY},
-      body:JSON.stringify({action,data})
-    });
-    return await r.json();
-  }catch(e){
-    return {error:e.message};
-  }
-}
-
-function applyCbSettingsToForm(){
-  const s=_cbSettings||{};
-  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
-  set('cfg-cb-login',s.cb_login);
-  set('cfg-cb-pass',s.cb_pass);
-  set('cfg-cb-key',s.cb_key);
-  set('cfg-prro-name',s.cb_prro_name);
-  set('cfg-prro-num',s.cb_prro_num);
-  const fc=document.getElementById('cfg-fisk-cash'),fk=document.getElementById('cfg-fisk-card');
-  if(fc){ fc.checked=s.cb_fiscalize_cash==='true'; if(typeof updateFiskRow==='function') updateFiskRow('cash',fc); }
-  if(fk){ fk.checked=s.cb_fiscalize_card==='true'; if(typeof updateFiskRow==='function') updateFiskRow('card',fk); }
-}
-
-function updateCfgShiftLock(opened){
-  const banner=document.getElementById('cfg-shift-warn');
-  if(banner) banner.style.display=opened?'block':'none';
-  const openBtn=document.getElementById('cfg-open-shift-btn');
-  const closeBtn=document.getElementById('cfg-close-shift-btn');
-  if(openBtn) openBtn.style.display=opened?'none':'inline-flex';
-  if(closeBtn) closeBtn.style.display=opened?'inline-flex':'none';
-  ['cfg-cb-login','cfg-cb-pass','cfg-cb-key','cfg-prro-name','cfg-prro-num','cfg-fisk-cash','cfg-fisk-card','cfg-save-btn'].forEach(id=>{
-    const el=document.getElementById(id);if(!el)return;
-    if(opened){ el.setAttribute('disabled','disabled'); el.style.opacity='0.5'; el.style.cursor='not-allowed'; }
-    else{ el.removeAttribute('disabled'); el.style.opacity=''; el.style.cursor=''; }
-  });
-}
-
-function toggleCfgPass(){
-  const inp=document.getElementById('cfg-cb-pass');
-  if(!inp)return;
-  inp.type=inp.type==='password'?'text':'password';
-}
-
-function updateFiskRow(kind,el){
-  const row=document.getElementById('fisk-'+kind+'-row');
-  if(!row)return;
-  if(el.checked){row.style.borderColor='var(--y)';row.style.background='#FFD30010';}
-  else{row.style.borderColor='';row.style.background='';}
-}
-
-function showCbResult(html,kind){
-  const el=document.getElementById('cfg-cb-result');
-  if(!el)return;
-  el.style.display='block';
-  el.innerHTML=html;
-  const colorMap={ok:'#22C55E',err:'#EF4444',info:'var(--m2)'};
-  const bgMap={ok:'#22C55E14',err:'#EF444414',info:'var(--p2)'};
-  const bdMap={ok:'#22C55E40',err:'#EF444440',info:'var(--bd2)'};
-  el.style.color=colorMap[kind]||'var(--m2)';
-  el.style.background=bgMap[kind]||'var(--p2)';
-  el.style.borderColor=bdMap[kind]||'var(--bd2)';
-}
-
-async function saveCbSettings(){
-  const btn=document.getElementById('cfg-save-btn');
-  const oldText=btn?btn.innerHTML:'';
-  if(btn){btn.innerHTML='⏳ Збереження...';btn.disabled=true;}
-  const get=id=>(document.getElementById(id)?.value||'').trim();
-  const updates=[
-    {key:'cb_login',value:get('cfg-cb-login')},
-    {key:'cb_pass',value:get('cfg-cb-pass')},
-    {key:'cb_key',value:get('cfg-cb-key')},
-    {key:'cb_prro_name',value:get('cfg-prro-name')},
-    {key:'cb_prro_num',value:get('cfg-prro-num')},
-    {key:'cb_fiscalize_cash',value:document.getElementById('cfg-fisk-cash')?.checked?'true':'false'},
-    {key:'cb_fiscalize_card',value:document.getElementById('cfg-fisk-card')?.checked?'true':'false'}
-  ];
-  try{
-    for(const u of updates){
-      await fetch(`${SB_URL}/rest/v1/settings`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'resolution=merge-duplicates'},
-        body:JSON.stringify(u)
-      });
-    }
-    await loadCbSettings();
-    showCbResult('✅ Налаштування збережено','ok');
-  }catch(e){
-    showCbResult('❌ Помилка збереження: '+e.message,'err');
-  }finally{
-    if(btn){btn.innerHTML=oldText||'💾 Зберегти налаштування';btn.disabled=false;}
-  }
-}
-
-async function testCbConnection(){
-  const get=id=>(document.getElementById(id)?.value||'').trim();
-  const _login=get('cfg-cb-login'),_pass=get('cfg-cb-pass'),_license_key=get('cfg-cb-key');
-  if(!_login||!_pass||!_license_key){
-    showCbResult('❌ Заповніть логін, пароль і ключ ліцензії','err');return;
-  }
-  showCbResult('⏳ Перевіряю з\'єднання з Checkbox...','info');
-  try{
-    const r=await cbCall('verify_all',{_login,_pass,_license_key});
-    if(r.ok){
-      const shStatus=r.shift_status||'?';
-      const shText=shStatus==='OPENED'?'✅ Відкрита':shStatus==='CLOSED'?'⚪ Закрита':shStatus;
-      showCbResult(`✅ З'єднання успішне<br><span style="font-size:11px;color:var(--m2)">Логін, пароль і ключ ліцензії правильні. Статус зміни: <b style="color:var(--w)">${shText}</b></span>`,'ok');
-      updateCfgShiftLock(shStatus==='OPENED');
-    } else {
-      const where=r.step==='login'?'логін або пароль':r.step==='license'?'ключ ліцензії':'параметри';
-      showCbResult(`❌ Невірний ${where}<br><span style="font-size:11px;color:var(--m2)">${r.message||''}</span>`,'err');
-    }
-  }catch(e){showCbResult('❌ Помилка: '+e.message,'err');}
-}
-
-async function openCbShiftManual(){
-  if(!confirm('Відкрити нову зміну в Checkbox?'))return;
-  showCbResult('⏳ Відкриваю зміну в Checkbox...','info');
-  try{
-    const lr=await cbCall('login');
-    if(!lr.access_token){
-      showCbResult('❌ Не вдалося авторизуватися: '+(lr.message||'перевірте логін/пароль'),'err');return;
-    }
-    const r=await cbCall('open_shift',{token:lr.access_token});
-    if(r.id||r.serial){
-      showCbResult('✅ Зміну відкрито в Checkbox','ok');
-      updateCfgShiftLock(true);
-      const badge=document.getElementById('kasa-status-badge');
-      if(badge){badge.textContent='ВІДКРИТО';badge.style.background='#22C55E20';badge.style.color='var(--gr)';}
-    } else {
-      showCbResult('❌ '+(r.message||r.error||'Не вдалося відкрити зміну'),'err');
-    }
-  }catch(e){showCbResult('❌ '+e.message,'err');}
-}
-
-async function closeCbShiftManual(){
-  if(!confirm('Закрити поточну зміну в Checkbox? Буде сформовано Z-звіт.'))return;
-  showCbResult('⏳ Закриваю зміну...','info');
-  try{
-    const lr=await cbCall('login');
-    if(!lr.access_token){showCbResult('❌ Не вдалося авторизуватися','err');return;}
-    await cbCall('close_shift',{token:lr.access_token});
-    showCbResult('✅ Зміну закрито','ok');
-    updateCfgShiftLock(false);
-    const badge=document.getElementById('kasa-status-badge');
-    if(badge){badge.textContent='ЗАЧИНЕНО';badge.style.background='';badge.style.color='';}
-  }catch(e){showCbResult('❌ '+e.message,'err');}
-}
-
 function admTab(id,btn){
   document.querySelectorAll('.adm-tab').forEach(t=>t.classList.remove('on'));btn.classList.add('on');
   document.querySelectorAll('.adm-page').forEach(p=>p.classList.remove('on'));
@@ -3443,6 +3285,36 @@ function kasaSaveShift(){
 
 async function kasaOpenShift(){
   if(!confirm('Відкрити нову зміну?\nГотівка на початок буде скопійована автоматично з кінця попередньої зміни.'))return;
+
+  // === ПЕРЕВІРКА CHECKBOX ===
+  // Якщо хоч один тип оплати помічений як фіскалізований - обов'язково відкриваємо зміну в Checkbox.
+  // Якщо не вдається - взагалі не відкриваємо зміну (ні локально, ні в Checkbox).
+  let cbS={};
+  try{ cbS=await loadCbSettings(); }catch(e){ cbS={}; }
+  const fiskCash=cbS.cb_fiscalize_cash==='true';
+  const fiskCard=cbS.cb_fiscalize_card==='true';
+  const needCheckbox=fiskCash||fiskCard;
+
+  if(needCheckbox){
+    if(!cbS.cb_login||!cbS.cb_pass||!cbS.cb_key){
+      alert('❌ Включена фіскалізація, але немає налаштувань Checkbox.\nЗверніться до власника — Налаштування → Інтеграція Checkbox.');
+      return;
+    }
+    const lr=await cbCall('login');
+    if(!lr||!lr.access_token){
+      alert('❌ Не вдалося авторизуватися в Checkbox.\n'+(lr&&lr.message?lr.message:'Перевірте логін, пароль і ключ ліцензії в налаштуваннях.')+'\n\nЗміну не відкрито.');
+      return;
+    }
+    const sh=await cbCall('shift_status',{token:lr.access_token});
+    if(sh&&sh.status!=='OPENED'){
+      const r=await cbCall('open_shift',{token:lr.access_token});
+      if(!r||(!r.id&&!r.serial)){
+        alert('❌ Не вдалося відкрити зміну в Checkbox:\n'+((r&&(r.message||r.error))||'Невідома помилка')+'\n\nЗміну не відкрито.');
+        return;
+      }
+    }
+  }
+
   // Автоматично копіюємо суму з кінця попередньої зміни — без питань
   let prevCashEnd=0;
   try{
@@ -3465,7 +3337,8 @@ async function kasaOpenShift(){
   kasaUpdateShiftUI(true);
   kasaLoadTx();
   const t=new Date().toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
-  alert(`✅ Зміну відкрито о ${t}\n💵 Готівка на початок: ${amt.toLocaleString('uk-UA')} ₴\n(скопійовано з кінця попередньої зміни)`);
+  const cbInfo=needCheckbox?'\n📋 Зміну також відкрито в Checkbox':'\n⚪ Локальна зміна (фіскалізація вимкнена)';
+  alert(`✅ Зміну відкрито о ${t}\n💵 Готівка на початок: ${amt.toLocaleString('uk-UA')} ₴${cbInfo}`);
 }
 
 function kasaUpdateShiftUI(open){
@@ -3942,4 +3815,176 @@ function admCloseMoD(id){
   }
 }
 
+
+
+// ============================================================
+// CHECKBOX INTEGRATION - повна реалізація
+// ============================================================
+const CB_PROXY_URL='https://rkknbltiylsvmycbbyde.supabase.co/functions/v1/checkbox-proxy';
+let _cbSettings={};
+
+async function loadCbSettings(){
+  try{
+    const rows=await sb.get('settings','?key=in.(cb_login,cb_pass,cb_key,cb_prro_name,cb_prro_num,cb_fiscalize_cash,cb_fiscalize_card)');
+    const map={};(rows||[]).forEach(r=>map[r.key]=r.value);
+    _cbSettings=map;
+    return map;
+  }catch(e){console.warn('loadCbSettings:',e);_cbSettings={};return{};}
+}
+
+async function cbCall(action,data){
+  data=data||{};
+  try{
+    const r=await fetch(CB_PROXY_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SB_KEY},
+      body:JSON.stringify({action:action,data:data})
+    });
+    return await r.json();
+  }catch(e){
+    console.warn('cbCall '+action+':',e.message);
+    return {error:e.message};
+  }
+}
+
+function applyCbSettingsToForm(){
+  // Не заповнюємо поля автоматично - користувач вводить сам
+  // Функція залишена для сумісності
+}
+
+function updateCfgShiftLock(opened){
+  const banner=document.getElementById('cfg-shift-warn');
+  if(banner) banner.style.display=opened?'block':'none';
+  const openBtn=document.getElementById('cfg-open-shift-btn');
+  const closeBtn=document.getElementById('cfg-close-shift-btn');
+  if(openBtn) openBtn.style.display=opened?'none':'inline-flex';
+  if(closeBtn) closeBtn.style.display=opened?'inline-flex':'none';
+  ['cfg-cb-login','cfg-cb-pass','cfg-cb-key','cfg-prro-name','cfg-prro-num','cfg-fisk-cash','cfg-fisk-card','cfg-save-btn'].forEach(function(id){
+    const el=document.getElementById(id);if(!el)return;
+    if(opened){el.setAttribute('disabled','disabled');el.style.opacity='0.5';}
+    else{el.removeAttribute('disabled');el.style.opacity='';}
+  });
+}
+
+function toggleCfgPass(){
+  const inp=document.getElementById('cfg-cb-pass');
+  if(!inp)return;
+  inp.type=inp.type==='password'?'text':'password';
+}
+
+function updateFiskRow(kind,el){
+  const row=document.getElementById('fisk-'+kind+'-row');
+  if(!row)return;
+  if(el.checked){row.style.borderColor='var(--y)';row.style.background='rgba(255,211,0,0.06)';}
+  else{row.style.borderColor='';row.style.background='';}
+}
+
+function showCbResult(html,kind){
+  const el=document.getElementById('cfg-cb-result');
+  if(!el)return;
+  el.style.display='block';
+  el.innerHTML=html;
+  if(kind==='ok'){el.style.color='#22C55E';el.style.background='rgba(34,197,94,0.08)';el.style.borderColor='rgba(34,197,94,0.25)';}
+  else if(kind==='err'){el.style.color='#EF4444';el.style.background='rgba(239,68,68,0.08)';el.style.borderColor='rgba(239,68,68,0.25)';}
+  else{el.style.color='var(--m2)';el.style.background='var(--p2)';el.style.borderColor='var(--bd2)';}
+}
+
+async function saveCbSettings(){
+  const btn=document.getElementById('cfg-save-btn');
+  const oldHTML=btn?btn.innerHTML:'';
+  if(btn){btn.innerHTML='⏳ Збереження...';btn.disabled=true;}
+  const get=function(id){return (document.getElementById(id)?.value||'').trim();};
+  const updates=[
+    {key:'cb_login',value:get('cfg-cb-login')},
+    {key:'cb_pass',value:get('cfg-cb-pass')},
+    {key:'cb_key',value:get('cfg-cb-key')},
+    {key:'cb_prro_name',value:get('cfg-prro-name')},
+    {key:'cb_prro_num',value:get('cfg-prro-num')},
+    {key:'cb_fiscalize_cash',value:document.getElementById('cfg-fisk-cash')?.checked?'true':'false'},
+    {key:'cb_fiscalize_card',value:document.getElementById('cfg-fisk-card')?.checked?'true':'false'}
+  ];
+  try{
+    for(let i=0;i<updates.length;i++){
+      await fetch(SB_URL+'/rest/v1/settings',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'resolution=merge-duplicates'},
+        body:JSON.stringify(updates[i])
+      });
+    }
+    await loadCbSettings();
+    showCbResult('✅ Налаштування збережено','ok');
+  }catch(e){
+    showCbResult('❌ Помилка збереження: '+e.message,'err');
+  }finally{
+    if(btn){btn.innerHTML=oldHTML||'💾 Зберегти налаштування';btn.disabled=false;}
+  }
+}
+
+async function testCbConnection(){
+  const get=function(id){return (document.getElementById(id)?.value||'').trim();};
+  const _login=get('cfg-cb-login');
+  const _pass=get('cfg-cb-pass');
+  const _license_key=get('cfg-cb-key');
+  if(!_login||!_pass||!_license_key){
+    showCbResult('❌ Заповніть логін, пароль і ключ ліцензії','err');
+    return;
+  }
+  showCbResult('⏳ Перевіряю з\'єднання з Checkbox...','info');
+  try{
+    const r=await cbCall('verify_all',{_login:_login,_pass:_pass,_license_key:_license_key});
+    if(r.ok){
+      const shStatus=r.shift_status||'?';
+      const shText=shStatus==='OPENED'?'✅ Відкрита':shStatus==='CLOSED'?'⚪ Закрита':shStatus;
+      showCbResult('✅ З\'єднання успішне<br><span style="font-size:11px;color:var(--m2)">Логін, пароль і ключ ліцензії правильні. Статус зміни: <b style="color:var(--w)">'+shText+'</b></span>','ok');
+      updateCfgShiftLock(shStatus==='OPENED');
+    } else {
+      const where=r.step==='login'?'логін або пароль':r.step==='license'?'ключ ліцензії':'параметри';
+      showCbResult('❌ Невірний '+where+'<br><span style="font-size:11px;color:var(--m2)">'+(r.message||'')+'</span>','err');
+    }
+  }catch(e){
+    showCbResult('❌ Помилка: '+e.message,'err');
+  }
+}
+
+async function openCbShiftManual(){
+  if(!confirm('Відкрити нову зміну в Checkbox?'))return;
+  showCbResult('⏳ Відкриваю зміну в Checkbox...','info');
+  try{
+    const lr=await cbCall('login');
+    if(!lr.access_token){
+      showCbResult('❌ Не вдалося авторизуватися: '+(lr.message||'перевірте логін/пароль'),'err');
+      return;
+    }
+    const r=await cbCall('open_shift',{token:lr.access_token});
+    if(r.id||r.serial){
+      showCbResult('✅ Зміну відкрито в Checkbox','ok');
+      updateCfgShiftLock(true);
+      const badge=document.getElementById('kasa-status-badge');
+      if(badge){badge.textContent='ВІДКРИТО';badge.style.background='#22C55E20';badge.style.color='var(--gr)';}
+    } else {
+      showCbResult('❌ '+(r.message||r.error||'Не вдалося відкрити зміну'),'err');
+    }
+  }catch(e){
+    showCbResult('❌ '+e.message,'err');
+  }
+}
+
+async function closeCbShiftManual(){
+  if(!confirm('Закрити поточну зміну в Checkbox? Буде сформовано Z-звіт.'))return;
+  showCbResult('⏳ Закриваю зміну...','info');
+  try{
+    const lr=await cbCall('login');
+    if(!lr.access_token){
+      showCbResult('❌ Не вдалося авторизуватися','err');
+      return;
+    }
+    await cbCall('close_shift',{token:lr.access_token});
+    showCbResult('✅ Зміну закрито','ok');
+    updateCfgShiftLock(false);
+    const badge=document.getElementById('kasa-status-badge');
+    if(badge){badge.textContent='ЗАЧИНЕНО';badge.style.background='';badge.style.color='';}
+  }catch(e){
+    showCbResult('❌ '+e.message,'err');
+  }
+}
 
