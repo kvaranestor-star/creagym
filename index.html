@@ -439,7 +439,7 @@ tr:hover td{background:#ffffff03;cursor:pointer}
         <div class="ni" data-tip="Абонементи" onclick="gp('subs',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><rect x="2" y="5" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M6 5v10M2 8h4M2 12h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div><span class="nl">Абонементи</span></div>
         <div class="sg">Склад і продажі</div>
         <div class="ni" data-tip="Товари" onclick="gp('goods',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><path d="M3 3h2l2.5 9h7L17 6H7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="17" r="1.2" stroke="currentColor" stroke-width="1.4"/><circle cx="14" cy="17" r="1.2" stroke="currentColor" stroke-width="1.4"/></svg></div><span class="nl">Товари</span><span class="nbg r" id="goods-badge">0</span></div>
-        <div class="ni" data-tip="Фінанси" onclick="gp('fin',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.4"/><path d="M10 6v1m0 6v1m-2-4h3a1 1 0 010 2H9a1 1 0 000 2h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div><span class="nl">Фінанси</span></div>
+        <div class="ni" data-tip="Каса" onclick="gp('fin',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><rect x="2" y="5" width="16" height="11" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M2 9h16" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="13" r="1" fill="currentColor"/><circle cx="10" cy="13" r="1" fill="currentColor"/><circle cx="14" cy="13" r="1" fill="currentColor"/></svg></div><span class="nl">Каса</span></div>
         <div class="sg">Зростання</div>
         <div class="ni" data-tip="Маркетинг" onclick="gp('mkt',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><path d="M3 10c0-1 .5-2 2-3l8-4v14l-8-4c-1.5-1-2-2-2-3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></div><span class="nl">Маркетинг</span></div>
         <div class="sg">Команда</div>
@@ -545,7 +545,88 @@ tr:hover td{background:#ffffff03;cursor:pointer}
           </div>
         </div>
         <div class="sec" id="sec-goods"><div class="cs"><div class="cs-ic"><svg viewBox="0 0 28 28" fill="none"><path d="M4 4h3l3.5 12h10L24 8H9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="cs-t">Товари</div><div class="cs-s">Склад, прихід, продажі — в розробці</div></div></div>
-        <div class="sec" id="sec-fin"><div class="cs"><div class="cs-ic"><svg viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="11" stroke="currentColor" stroke-width="1.6"/></svg></div><div class="cs-t">Фінанси</div><div class="cs-s">Транзакції, Чекбокс РРО — в розробці</div></div></div>
+        <div class="sec" id="sec-fin">
+          <div style="padding:16px;display:flex;flex-direction:column;gap:14px;flex:1">
+
+            <!-- SHIFT STATUS -->
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <div style="flex:1;background:var(--p1);border:1px solid var(--bd2);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:14px">
+                <div id="ok-shift-dot" style="width:10px;height:10px;border-radius:50%;background:var(--rd);flex-shrink:0"></div>
+                <div style="flex:1">
+                  <div style="font-size:13px;font-weight:700" id="ok-shift-title">Зміна не відкрита</div>
+                  <div style="font-size:11px;color:var(--m2);margin-top:2px" id="ok-shift-sub">Відкрийте зміну щоб розпочати роботу</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:7px">
+                <button id="ok-open-btn" onclick="okOpenShift()" style="display:flex;align-items:center;gap:6px;padding:9px 16px;border-radius:9px;border:none;background:var(--gr);color:#fff;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">▶ Відкрити зміну</button>
+                <button id="ok-x-btn" onclick="okXReport()" style="display:none;align-items:center;gap:6px;padding:9px 16px;border-radius:9px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">📊 X-звіт</button>
+                <button id="ok-z-btn" onclick="okCloseShift()" style="display:none;align-items:center;gap:6px;padding:9px 16px;border-radius:9px;border:none;background:var(--rd);color:#fff;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">⏹ Закрити (Z)</button>
+              </div>
+            </div>
+
+            <!-- STATS -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+              <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:11px;padding:14px 16px;position:relative;overflow:hidden">
+                <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--y)"></div>
+                <div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--m2);margin-bottom:6px">Готівка</div>
+                <div style="font-size:9px;color:var(--m);margin-bottom:2px">На початок: <span id="ok-cash-start">0 ₴</span></div>
+                <div style="font-size:20px;font-weight:800;color:var(--y)" id="ok-cash-total">0 ₴</div>
+                <div style="font-size:10px;color:var(--m2);margin-top:3px">Оборот: <span id="ok-cash-turn">0 ₴</span></div>
+              </div>
+              <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:11px;padding:14px 16px;position:relative;overflow:hidden">
+                <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--bl)"></div>
+                <div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--m2);margin-bottom:6px">Картка</div>
+                <div style="font-size:9px;color:var(--m);margin-bottom:2px">На початок: 0 ₴</div>
+                <div style="font-size:20px;font-weight:800;color:var(--bl)" id="ok-card-total">0 ₴</div>
+                <div style="font-size:10px;color:var(--m2);margin-top:3px">Оборот: <span id="ok-card-turn">0 ₴</span></div>
+              </div>
+              <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:11px;padding:14px 16px;position:relative;overflow:hidden">
+                <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--gr)"></div>
+                <div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--m2);margin-bottom:6px">Загальний оборот</div>
+                <div style="font-size:9px;color:var(--m);margin-bottom:2px">За зміну</div>
+                <div style="font-size:20px;font-weight:800;color:var(--gr)" id="ok-total">0 ₴</div>
+                <div style="font-size:10px;color:var(--m2);margin-top:3px">Транзакцій: <span id="ok-tx-cnt">0</span></div>
+              </div>
+            </div>
+
+            <!-- FILTERS + ACTIONS -->
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <div style="font-size:12px;font-weight:600;color:var(--m2)">Транзакції</div>
+              <div style="display:flex;background:var(--p1);border:1px solid var(--bd2);border-radius:8px;padding:3px;gap:2px">
+                <button class="okper-btn on" onclick="okSetPeriod('today',this)">Сьогодні</button>
+                <button class="okper-btn" onclick="okSetPeriod('week',this)">Тиждень</button>
+                <button class="okper-btn" onclick="okSetPeriod('month',this)">Місяць</button>
+                <button class="okper-btn" onclick="okSetPeriod('all',this)">Всі</button>
+              </div>
+              <div style="display:flex;background:var(--p1);border:1px solid var(--bd2);border-radius:8px;padding:3px;gap:2px">
+                <button class="oktype-btn on" onclick="okSetType('all',this)">Всі</button>
+                <button class="oktype-btn" onclick="okSetType('cash',this)">💵 Готівка</button>
+                <button class="oktype-btn" onclick="okSetType('card',this)">💳 Картка</button>
+              </div>
+              <div style="display:flex;gap:6px;margin-left:auto">
+                <button onclick="okManualOp('income')" style="display:flex;align-items:center;gap:5px;padding:6px 13px;border-radius:8px;border:1px solid #22C55E40;background:#22C55E14;color:var(--gr);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">⬇ Внесення</button>
+                <button onclick="okManualOp('outcome')" style="display:flex;align-items:center;gap:5px;padding:6px 13px;border-radius:8px;border:1px solid #EF444440;background:#EF444414;color:var(--rd);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">⬆ Винесення</button>
+              </div>
+            </div>
+
+            <!-- TRANSACTIONS TABLE -->
+            <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;overflow:hidden;flex:1">
+              <table style="width:100%;border-collapse:collapse">
+                <thead><tr style="background:var(--p2)">
+                  <th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600">Час</th>
+                  <th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600">Касир</th>
+                  <th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600">Клієнт</th>
+                  <th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600">Операція</th>
+                  <th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600">Оплата</th>
+                  <th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:right;font-weight:600">Сума</th>
+                </tr></thead>
+                <tbody id="ok-tx-body">
+                  <tr><td colspan="6" style="padding:30px;text-align:center;font-size:12px;color:var(--m2)">Відкрийте зміну або оберіть період</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
         <div class="sec" id="sec-mkt"><div class="cs"><div class="cs-ic"><svg viewBox="0 0 28 28" fill="none"><path d="M4 14c0-1.5.7-3 3-4.5L18 4v20L7 18.5C4.7 17 4 15.5 4 14z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div><div class="cs-t">Маркетинг</div><div class="cs-s">SMS/Viber, промокоди — в розробці</div></div></div>
         <div class="sec" id="sec-staff"><div class="cs"><div class="cs-ic"><svg viewBox="0 0 28 28" fill="none"><path d="M4 22c0-3.5 2.8-5.5 6-5.5h8c3.2 0 6 2 6 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="14" cy="10" r="5" stroke="currentColor" stroke-width="1.6"/></svg></div><div class="cs-t">Персонал</div><div class="cs-s">Акаунти, ролі, доступи — в розробці</div></div></div>
         <div class="sec" id="sec-cfg"><div class="cs"><div class="cs-ic"><svg viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M14 3v3m0 16v3M3 14h3m16 0h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div><div class="cs-t">Налаштування</div><div class="cs-s">Профіль залу, інтеграції — в розробці</div></div></div>
@@ -873,7 +954,7 @@ function toggleSb(){
 }
 
 // ===== PAGES =====
-const PC={stats:{t:'Статистика',s:'Огляд ключових показників',a:'Оновити'},clients:{t:'Клієнти',s:'База клієнтів залу',a:'Новий клієнт'},subs:{t:'Абонементи',s:'Типи та класи абонементів',a:'Новий абонемент'},goods:{t:'Товари',s:'Склад та залишки',a:''},fin:{t:'Фінанси',s:'Доходи і витрати',a:''},mkt:{t:'Маркетинг',s:'Розсилки та акції',a:''},staff:{t:'Персонал',s:'Команда та доступи',a:''},cfg:{t:'Налаштування',s:'Конфігурація системи',a:''}};
+const PC={stats:{t:'Статистика',s:'Огляд ключових показників',a:'Оновити'},clients:{t:'Клієнти',s:'База клієнтів залу',a:'Новий клієнт'},subs:{t:'Абонементи',s:'Типи та класи абонементів',a:'Новий абонемент'},goods:{t:'Товари',s:'Склад та залишки',a:''},fin:{t:'Каса',s:'Операції з касою і транзакції',a:''},mkt:{t:'Маркетинг',s:'Розсилки та акції',a:''},staff:{t:'Персонал',s:'Команда та доступи',a:''},cfg:{t:'Налаштування',s:'Конфігурація системи',a:''}};
 let curPage='stats';
 function gp(id,el){
   curPage=id;
@@ -889,6 +970,7 @@ function gp(id,el){
   if(id==='clients') loadClients();
   if(id==='stats') loadStats();
   if(id==='subs') loadSubs();
+  if(id==='fin'){okUpdateShiftUI(!!okShift);okLoadTx();}
 }
 function handleTopAction(){
   if(curPage==='clients') openMo('mo-cl');
@@ -1327,6 +1409,197 @@ function filterCl(v){filterTxt=v;renderClients()}
 function filterClSt(v){filterSt=v;renderClients()}
 function filterClG(v){filterGn=v;renderClients()}
 
+// ===== OWNER KASA =====
+let okShift=null, okPeriod='today', okTypeFilter='all', okTxAll=[], okOpType='income';
+
+function okUpdateShiftUI(open){
+  const dot=document.getElementById('ok-shift-dot');
+  const title=document.getElementById('ok-shift-title');
+  const sub=document.getElementById('ok-shift-sub');
+  const openBtn=document.getElementById('ok-open-btn');
+  const xBtn=document.getElementById('ok-x-btn');
+  const zBtn=document.getElementById('ok-z-btn');
+  if(!dot)return;
+  if(open&&okShift){
+    dot.style.background='var(--gr)';
+    title.textContent='Зміна відкрита';
+    const t=new Date(okShift.opened_at);
+    sub.textContent='Відкрита о '+t.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})+' · '+okShift.opened_by;
+    openBtn.style.display='none';xBtn.style.display='flex';zBtn.style.display='flex';
+  } else {
+    dot.style.background='var(--rd)';
+    title.textContent='Зміна не відкрита';
+    sub.textContent='Відкрийте зміну щоб розпочати роботу';
+    openBtn.style.display='flex';xBtn.style.display='none';zBtn.style.display='none';
+  }
+}
+
+async function okOpenShift(){
+  if(!confirm('Відкрити нову зміну?\nСума буде скопійована з попереднього закриття.'))return;
+  let prevCashEnd=0;
+  try{const ps=await sb.get('shifts','?status=eq.closed&order=closed_at.desc&limit=1');if(ps&&ps.length)prevCashEnd=ps[0].cash_end||0;}catch(e){}
+  const cs=prompt('Готівка на початок зміни (₴):',prevCashEnd||'0');
+  if(cs===null)return;
+  const amt=parseFloat(cs)||0;
+  try{
+    const r=await sb.post('shifts',{opened_by:curUser?.name||'owner',cash_start:amt,status:'open'});
+    okShift=Array.isArray(r)?r[0]:r;
+    if(!okShift||okShift.code)okShift={id:'demo-ok-'+Date.now(),opened_by:curUser?.name||'owner',cash_start:amt,opened_at:new Date().toISOString(),status:'open'};
+  }catch(e){okShift={id:'demo-ok-'+Date.now(),opened_by:curUser?.name||'owner',cash_start:amt,opened_at:new Date().toISOString(),status:'open'};}
+  okUpdateShiftUI(true);okLoadTx();
+  alert('✅ Зміну відкрито\n💵 На початок: '+amt.toLocaleString('uk-UA')+' ₴');
+}
+
+async function okLoadTx(){
+  const el=document.getElementById('ok-tx-body');if(!el)return;
+  el.innerHTML='<tr><td colspan="6" style="padding:20px;text-align:center"><div class="spin" style="margin:0 auto"></div></td></tr>';
+  try{
+    const today=new Date().toISOString().split('T')[0];
+    let filter='?order=created_at.desc&limit=300';
+    if(okPeriod==='today')filter=`?created_at=gte.${today}T00:00:00&order=created_at.desc`;
+    else if(okPeriod==='week'){const w=new Date();w.setDate(w.getDate()-7);filter=`?created_at=gte.${w.toISOString()}&order=created_at.desc`;}
+    else if(okPeriod==='month'){const m=new Date();m.setMonth(m.getMonth()-1);filter=`?created_at=gte.${m.toISOString()}&order=created_at.desc`;}
+    okTxAll=await sb.get('sales',filter);
+    okRenderTx();okUpdateStats();
+  }catch(e){el.innerHTML='<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--rd)">Помилка завантаження</td></tr>';}
+}
+
+function okSetPeriod(p,btn){document.querySelectorAll('.okper-btn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');okPeriod=p;okLoadTx();}
+function okSetType(t,btn){document.querySelectorAll('.oktype-btn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');okTypeFilter=t;okRenderTx();okUpdateStats();}
+
+function okRenderTx(){
+  const el=document.getElementById('ok-tx-body');if(!el)return;
+  const list=okTypeFilter==='all'?okTxAll:okTxAll.filter(x=>x.payment_method===okTypeFilter);
+  const typeLabel={subscription:'Оплата абонементу',product:'Продаж товару',service:'Послуга',income:'💚 Внесення',outcome:'🔴 Винесення',return:'🔁 Повернення',manual:'Ручна операція'};
+  const payLabel={cash:'💵 Готівка',card:'💳 Картка'};
+  const clMap=Object.fromEntries((allClients||[]).map(c=>[c.id,c.last_name+' '+c.first_name]));
+  if(!list.length){el.innerHTML='<tr><td colspan="6" style="padding:30px;text-align:center;font-size:12px;color:var(--m2)">Транзакцій немає</td></tr>';return;}
+  el.innerHTML=list.map(tx=>{
+    const t=new Date(tx.created_at);
+    const time=t.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
+    const date=t.toLocaleDateString('uk-UA',{day:'2-digit',month:'2-digit'});
+    const isNeg=tx.type==='outcome'||tx.type==='return';
+    const canDel=tx.type==='outcome'||tx.type==='return';
+    const canRet=tx.type==='product'&&!tx.is_return&&!tx.is_deleted;
+    return `<tr style="border-top:1px solid var(--bd)">
+      <td style="padding:9px 13px;font-size:11px;color:var(--m2);white-space:nowrap">${date} ${time}</td>
+      <td style="padding:9px 13px;font-size:12px">${tx.created_by||'—'}</td>
+      <td style="padding:9px 13px;font-size:12px">${tx.client_id?clMap[tx.client_id]||'—':'—'}</td>
+      <td style="padding:9px 13px;font-size:12px">${typeLabel[tx.type]||tx.type}${tx.item_name?' · '+tx.item_name:''}${tx.return_reason?' ('+tx.return_reason+')':''}</td>
+      <td style="padding:9px 13px;font-size:11px">${payLabel[tx.payment_method]||'—'}</td>
+      <td style="padding:9px 13px;text-align:right;white-space:nowrap">
+        <span style="font-size:13px;font-weight:700;color:${isNeg?'var(--rd)':'var(--y)'}">${isNeg?'−':'+'} ${(tx.amount||0).toLocaleString('uk-UA')} ₴</span>
+        ${canRet?`<button onclick="ownerReturnProduct('${tx.id}',${tx.amount},'${(tx.item_name||'').replace(/'/g,"&#39;")}','${tx.payment_method||'cash'}')" style="margin-left:5px;padding:2px 7px;border-radius:5px;background:#F9731614;border:1px solid #F9731628;color:var(--or);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer">🔁 Повернення</button>`:''}
+        ${canDel?`<button onclick="okDeleteTx('${tx.id}',${tx.amount},'${tx.type}')" style="margin-left:4px;padding:2px 7px;border-radius:5px;background:#EF444414;border:1px solid #EF444428;color:var(--rd);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer">✕</button>`:''}
+        <button onclick="okShowReceipt(${JSON.stringify(tx).replace(/"/g,'&quot;')})" style="margin-left:4px;padding:2px 7px;border-radius:5px;background:var(--p3);border:1px solid var(--bd2);color:var(--m2);font-family:var(--f);font-size:10px;cursor:pointer">🧾</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function okUpdateStats(){
+  const list=okTypeFilter==='all'?okTxAll:okTxAll.filter(x=>x.payment_method===okTypeFilter);
+  const cashIn=okTxAll.filter(x=>x.payment_method==='cash'&&x.type!=='outcome'&&x.type!=='return').reduce((s,x)=>s+x.amount,0);
+  const cashOut=okTxAll.filter(x=>x.payment_method==='cash'&&(x.type==='outcome'||x.type==='return')).reduce((s,x)=>s+x.amount,0);
+  const cardIn=okTxAll.filter(x=>x.payment_method==='card'&&x.type!=='outcome'&&x.type!=='return').reduce((s,x)=>s+x.amount,0);
+  const cashStart=okShift?.cash_start||0;
+  const s=id=>document.getElementById(id);
+  if(s('ok-cash-start'))s('ok-cash-start').textContent=cashStart.toLocaleString('uk-UA')+' ₴';
+  if(s('ok-cash-total'))s('ok-cash-total').textContent=(cashStart+cashIn-cashOut).toLocaleString('uk-UA')+' ₴';
+  if(s('ok-cash-turn'))s('ok-cash-turn').textContent=(cashIn-cashOut).toLocaleString('uk-UA')+' ₴';
+  if(s('ok-card-total'))s('ok-card-total').textContent=cardIn.toLocaleString('uk-UA')+' ₴';
+  if(s('ok-card-turn'))s('ok-card-turn').textContent=cardIn.toLocaleString('uk-UA')+' ₴';
+  const total=list.filter(x=>x.type!=='outcome'&&x.type!=='return').reduce((s2,x)=>s2+x.amount,0);
+  if(s('ok-total'))s('ok-total').textContent=total.toLocaleString('uk-UA')+' ₴';
+  if(s('ok-tx-cnt'))s('ok-tx-cnt').textContent=list.length;
+}
+
+function okManualOp(type){
+  okOpType=type;
+  // Використовуємо існуючу модалку каси адміна але з окремим колбеком
+  document.getElementById('kop-title').textContent=type==='income'?'💚 Внесення коштів':'🔴 Винесення коштів';
+  document.getElementById('kop-desc').textContent=type==='income'?'Внесення готівки в касу':'Винесення готівки з каси';
+  document.getElementById('kop-confirm').textContent=type==='income'?'✅ Внести':'✅ Винести';
+  document.getElementById('kop-amount').value='';
+  document.getElementById('kop-note').value='';
+  document.getElementById('kop-category').value='';
+  document.getElementById('kop-confirm').onclick=okConfirmOp;
+  admOpenMo('kasa-op-mo');
+}
+
+async function okConfirmOp(){
+  const amt=parseFloat(document.getElementById('kop-amount').value);
+  const note=document.getElementById('kop-note').value.trim();
+  const cat=document.getElementById('kop-category').value;
+  if(!amt||amt<=0){alert('Введіть коректну суму');return}
+  const desc=(cat||note||(okOpType==='income'?'Внесення':'Винесення'))+(note&&cat?' · '+note:'');
+  try{
+    const r=await sb.post('sales',{type:okOpType,item_name:desc,amount:amt,payment_method:'cash',created_by:curUser?.name||'owner'});
+    if(r&&!Array.isArray(r)&&r.code){alert('❌ '+r.message);return;}
+    admCloseMoD('kasa-op-mo');
+    okLoadTx();
+    alert(`✅ ${okOpType==='income'?'Внесено':'Винесено'}: ${amt.toLocaleString('uk-UA')} ₴`);
+  }catch(e){alert('❌ '+e.message)}
+}
+
+async function okDeleteTx(id,amount,type){
+  if(!confirm(`Видалити ${type==='outcome'?'винесення':'повернення'} на ${amount.toLocaleString('uk-UA')} ₴?\nСума повернеться до каси.`))return;
+  try{await sb.del('sales',`id=eq.${id}`);okLoadTx();alert('✅ Видалено');}catch(e){alert('❌ '+e.message)}
+}
+
+function okShowReceipt(tx){
+  const clMap=Object.fromEntries((allClients||[]).map(c=>[c.id,c.last_name+' '+c.first_name]));
+  const cl=tx.client_id?clMap[tx.client_id]:'';
+  const items=[{name:tx.item_name||tx.type,qty:1,price:tx.amount,total:tx.amount}];
+  const text=buildReceiptText(items,tx.amount,tx.payment_method,tx.created_by)+(cl?'\nКлієнт: '+cl:'');
+  document.getElementById('receipt-content').textContent=text;
+  admOpenMo('receipt-mo');
+}
+
+function okXReport(){
+  const cashIn=okTxAll.filter(x=>x.payment_method==='cash'&&x.type!=='outcome'&&x.type!=='return').reduce((s,x)=>s+x.amount,0);
+  const cashOut=okTxAll.filter(x=>x.payment_method==='cash'&&(x.type==='outcome'||x.type==='return')).reduce((s,x)=>s+x.amount,0);
+  const cardIn=okTxAll.filter(x=>x.payment_method==='card').reduce((s,x)=>s+x.amount,0);
+  showShiftReport('xreport',cashIn-cashOut,cardIn,okShift?.cash_start||0,okTxAll);
+}
+
+async function okCloseShift(){
+  if(!okShift||!confirm('Закрити зміну? Буде сформовано Z-звіт.'))return;
+  const cashIn=okTxAll.filter(x=>x.payment_method==='cash'&&x.type!=='outcome'&&x.type!=='return').reduce((s,x)=>s+x.amount,0);
+  const cashOut=okTxAll.filter(x=>x.payment_method==='cash'&&(x.type==='outcome'||x.type==='return')).reduce((s,x)=>s+x.amount,0);
+  const cardIn=okTxAll.filter(x=>x.payment_method==='card').reduce((s,x)=>s+x.amount,0);
+  const cashEnd=(okShift.cash_start||0)+cashIn-cashOut;
+  try{if(!okShift.id.startsWith('demo-ok'))await sb.patch('shifts',`id=eq.${okShift.id}`,{status:'closed',closed_at:new Date().toISOString(),cash_end:cashEnd,total_cash:cashIn-cashOut,total_card:cardIn});}catch(e){}
+  showShiftReport('zreport',cashIn-cashOut,cardIn,okShift.cash_start||0,okTxAll);
+  okShift=null;okTxAll=[];
+  okUpdateShiftUI(false);
+  const el=document.getElementById('ok-tx-body');
+  if(el)el.innerHTML='<tr><td colspan="6" style="padding:30px;text-align:center;font-size:12px;color:var(--m2)">Зміну закрито</td></tr>';
+  ['ok-cash-total','ok-card-total','ok-total'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent='0 ₴'});
+}
+
+// ===== ПОВЕРНЕННЯ ТОВАРУ (з причиною) =====
+async function ownerReturnProduct(saleId,amount,itemName,payMethod){
+  const reason=prompt(`Повернення: "${itemName}"\nСума: ${amount.toLocaleString('uk-UA')} ₴\n\nВкажіть причину повернення:`);
+  if(reason===null)return;
+  if(!reason.trim()){alert('Вкажіть причину повернення');return}
+  try{
+    await sb.post('sales',{
+      type:'return',
+      item_name:'Повернення: '+itemName,
+      amount,
+      payment_method:payMethod,
+      return_reason:reason.trim(),
+      original_sale_id:saleId,
+      is_return:true,
+      created_by:curUser?.name||'owner'
+    });
+    // Оновлюємо відповідний список
+    okLoadTx();
+    alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴`);
+  }catch(e){alert('❌ '+e.message)}
+}
+
 // ===== DOSSIER =====
 async function openDos(id){
   const c=allClients.find(x=>x.id===id);
@@ -1587,6 +1860,9 @@ async function createClient(){
 .kper-btn,.ktype-btn{padding:5px 11px;border-radius:6px;border:none;background:transparent;color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer;transition:all .12s}
 .kper-btn:hover,.ktype-btn:hover{color:var(--w)}
 .kper-btn.on,.ktype-btn.on{background:var(--y);color:var(--bg)}
+.okper-btn,.oktype-btn{padding:5px 11px;border-radius:6px;border:none;background:transparent;color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer;transition:all .12s}
+.okper-btn:hover,.oktype-btn:hover{color:var(--w)}
+.okper-btn.on,.oktype-btn.on{background:var(--y);color:var(--bg)}
 .mo2{position:fixed;inset:0;background:#00000080;z-index:400;display:none;align-items:center;justify-content:center;padding:20px}
 .mo2.sh{display:flex}
 .mo2-box{background:var(--p1);border:1px solid var(--bd2);border-radius:14px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;animation:fadeUp .2s ease}
@@ -2195,19 +2471,20 @@ function kasaRenderTx(){
     const time=t.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
     const date=t.toLocaleDateString('uk-UA',{day:'2-digit',month:'2-digit'});
     const isNeg=tx.type==='outcome'||tx.type==='return';
-    // Outcome і return можна видалити (повернення суми)
     const canDelete=tx.type==='outcome'||tx.type==='return';
-    const txJson=JSON.stringify({id:tx.id,amount:tx.amount,type:tx.type,item_name:tx.item_name}).replace(/"/g,'&quot;');
+    const canReturn=tx.type==='product'&&!tx.is_return&&!tx.is_deleted;
+    const txJson=JSON.stringify({id:tx.id,amount:tx.amount,type:tx.type,item_name:tx.item_name,payment_method:tx.payment_method,created_by:tx.created_by,created_at:tx.created_at,client_id:tx.client_id}).replace(/"/g,'&quot;');
     return `<tr style="border-top:1px solid var(--bd);background:${isNeg?'#EF444406':'transparent'}">
       <td style="padding:9px 13px;font-size:11px;color:var(--m2);white-space:nowrap">${date} ${time}</td>
       <td style="padding:9px 13px;font-size:12px">${tx.created_by||'—'}</td>
       <td style="padding:9px 13px;font-size:12px">${tx.client_id?cl[tx.client_id]||'—':'—'}</td>
-      <td style="padding:9px 13px;font-size:12px">${typeLabel[tx.type]||tx.type}${tx.item_name?' · '+tx.item_name:''}</td>
+      <td style="padding:9px 13px;font-size:12px">${typeLabel[tx.type]||tx.type}${tx.item_name?' · '+tx.item_name:''}${tx.return_reason?' ('+tx.return_reason+')':''}</td>
       <td style="padding:9px 13px;font-size:11px">${payLabel[tx.payment_method]||tx.payment_method||'—'}</td>
-      <td style="padding:9px 13px;font-size:13px;font-weight:700;color:${isNeg?'var(--rd)':'var(--y)'};text-align:right;white-space:nowrap">
-        ${isNeg?'−':'+'} ${(tx.amount||0).toLocaleString('uk-UA')} ₴
+      <td style="padding:9px 13px;text-align:right;white-space:nowrap">
+        <span style="font-size:13px;font-weight:700;color:${isNeg?'var(--rd)':'var(--y)'}">${isNeg?'−':'+'} ${(tx.amount||0).toLocaleString('uk-UA')} ₴</span>
+        ${canReturn?`<button onclick="admReturnProduct('${tx.id}',${tx.amount},'${(tx.item_name||'').replace(/'/g,"&#39;")}','${tx.payment_method||'cash'}')" style="margin-left:5px;padding:2px 7px;border-radius:5px;background:#F9731614;border:1px solid #F9731628;color:var(--or);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer">🔁 Повернення</button>`:''}
+        ${canDelete?`<button onclick="deleteTx('${tx.id}',${tx.amount},'${tx.type}')" style="margin-left:4px;padding:2px 6px;background:#EF444414;border:1px solid #EF444428;border-radius:5px;font-size:10px;color:var(--rd);cursor:pointer;font-family:var(--f)">✕</button>`:''}
         <button onclick="showTxReceipt(${txJson})" style="margin-left:4px;background:var(--p3);border:1px solid var(--bd2);border-radius:5px;padding:2px 6px;font-size:10px;color:var(--m2);cursor:pointer;font-family:var(--f)">🧾</button>
-        ${canDelete?`<button onclick="deleteTx('${tx.id}',${tx.amount},'${tx.type}')" style="margin-left:2px;background:#EF444414;border:1px solid #EF444428;border-radius:5px;padding:2px 6px;font-size:10px;color:var(--rd);cursor:pointer;font-family:var(--f)">✕</button>`:''}
       </td>
     </tr>`;
   }).join('');
@@ -2276,7 +2553,28 @@ async function deleteTx(id, amount, type){
   try{
     await sb.del('sales',`id=eq.${id}`);
     kasaLoadTx();
-    alert(`✅ Транзакцію видалено. ${amount.toLocaleString('uk-UA')} ₴ повернуто до каси.`);
+    alert(`✅ Транзакцію видалено. ${amount.toLocaleString('uk-UA')} ₴ повернуто.`);
+  }catch(e){alert('❌ '+e.message)}
+}
+
+// ПОВЕРНЕННЯ товару (адмін) з причиною
+async function admReturnProduct(saleId, amount, itemName, payMethod){
+  const reason=prompt(`Повернення: "${itemName}"\nСума: ${amount.toLocaleString('uk-UA')} ₴\n\nВкажіть причину повернення:`);
+  if(reason===null)return;
+  if(!reason.trim()){alert('Вкажіть причину повернення');return}
+  try{
+    await sb.post('sales',{
+      type:'return',
+      item_name:'Повернення: '+itemName,
+      amount,
+      payment_method:payMethod,
+      return_reason:reason.trim(),
+      original_sale_id:saleId,
+      is_return:true,
+      created_by:curUser?.name||'admin'
+    });
+    kasaLoadTx();
+    alert(`✅ Повернення оформлено\nПричина: ${reason}\nСума: ${amount.toLocaleString('uk-UA')} ₴`);
   }catch(e){alert('❌ '+e.message)}
 }
 
