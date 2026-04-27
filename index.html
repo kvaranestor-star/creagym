@@ -3386,7 +3386,6 @@ async function testCbConnection(){
   if(txt) txt.textContent='Перевірка...';
   if(res){res.style.display='block';res.innerHTML='<div style="color:var(--m2)">⏳ Перевіряємо підключення...</div>';}
 
-  // Читаємо ПРЯМО З ПОЛІВ ФОРМИ — не з cbSettings!
   const formLogin=document.getElementById('cfg-cb-login')?.value.trim()||'';
   const formPass=document.getElementById('cfg-cb-pass')?.value.trim()||'';
   const formKey=document.getElementById('cfg-cb-key')?.value.trim()||'';
@@ -3399,44 +3398,45 @@ async function testCbConnection(){
   }
 
   try{
-    // Відправляємо дані з форми напряму в Edge Function
-    const r=await fetch(CB_PROXY,{
+    // Перевіряємо логін/пароль напряму
+    const lr=await fetch(CB_PROXY,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+CB_ANON},
-      body:JSON.stringify({action:'verify_all',data:{
-        _login:formLogin,
-        _pass:formPass,
-        _license_key:formKey
-      }})
+      body:JSON.stringify({action:'login',data:{_login:formLogin,_pass:formPass,_license_key:formKey}})
     }).then(r=>r.json());
 
-    if(!r.ok){
+    if(!lr.access_token){
       if(dot) dot.style.background='var(--rd)';
-      if(txt) txt.textContent='❌ Помилка';
-      const isLogin=r.step==='login';
+      if(txt) txt.textContent='❌ Невірний логін/пароль';
       res.innerHTML=`
-        ${!isLogin?'<div style="color:var(--or);font-size:12px;margin-bottom:6px">✅ Логін і пароль — вірні</div>':''}
-        <div style="color:var(--rd);font-size:13px;font-weight:700;margin-bottom:8px">
-          ${isLogin?'❌ Невірний логін або пароль':'❌ Невірний ключ ліцензії каси'}
-        </div>
-        <div style="color:var(--m2);font-size:12px">
-          ${isLogin?'Перевірте дані в my.checkbox.ua → Касири':'Перевірте ключ в my.checkbox.ua → Каси → "Ключ ліцензії"'}
-        </div>
-        ${!isLogin?`<div style="color:var(--m);font-size:11px;margin-top:4px">Введений ключ: <code style="background:var(--p3);padding:2px 6px;border-radius:4px">${formKey}</code></div>
-        ${r.available?`<div style="color:var(--m2);font-size:11px;margin-top:4px">Доступні ключі: <b style="color:var(--w)">${r.available}</b></div>`:''}`:''}`
+        <div style="color:var(--rd);font-size:13px;font-weight:700;margin-bottom:8px">❌ Невірний логін або пароль</div>
+        <div style="color:var(--m2);font-size:12px">Перевірте дані в my.checkbox.ua → Касири</div>
+        <div style="color:var(--m);font-size:11px;margin-top:4px">${lr.message||''}</div>`;
       return;
     }
 
-    const shiftOpen=r.shift_status==='OPENED';
+    // Логін/пароль правильні. Ключ ліцензії перевіряємо при відкритті зміни
+    // Перевіряємо стан зміни
+    const sh=await fetch(CB_PROXY,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+CB_ANON},
+      body:JSON.stringify({action:'shift_status',data:{token:lr.access_token,_login:formLogin,_pass:formPass,_license_key:formKey}})
+    }).then(r=>r.json());
+
+    const shiftOpen=sh?.status==='OPENED';
     const fCash=document.getElementById('cfg-fisk-cash')?.checked;
     const fCard=document.getElementById('cfg-fisk-card')?.checked;
+
     if(dot) dot.style.background='var(--gr)';
     if(txt) txt.textContent='✅ Підключено';
     res.innerHTML=`
-      <div style="color:var(--gr);font-size:13px;font-weight:700;margin-bottom:10px">✅ Всі дані правильні</div>
-      <div style="display:flex;flex-direction:column;gap:5px">
-        <div style="font-size:12px">✅ Логін: <b style="color:var(--w)">${formLogin}</b></div>
-        <div style="font-size:12px">✅ Ключ ліцензії: <b style="color:var(--gr)">Валідний</b></div>
+      <div style="color:var(--gr);font-size:13px;font-weight:700;margin-bottom:10px">✅ Логін і пароль правильні</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-size:12px">✅ Касир: <b style="color:var(--w)">${formLogin}</b></div>
+        <div style="font-size:12px;padding:6px 10px;background:var(--p3);border-radius:7px;color:var(--or)">
+          ⚠️ Ключ ліцензії перевіряється при відкритті зміни.<br>
+          <span style="font-size:11px;color:var(--m2)">Натисніть "Відкрити зміну" щоб перевірити ключ.</span>
+        </div>
         <div style="font-size:12px">${shiftOpen?'✅':'⚠️'} Зміна: <b style="color:${shiftOpen?'var(--gr)':'var(--or)'}">${shiftOpen?'Відкрита':'Закрита'}</b></div>
         <div style="font-size:12px">💳 Фіскалізація: <b style="color:var(--w)">${fCash?'Готівка ':''}${fCard?'Картка':''}</b></div>
       </div>`;
