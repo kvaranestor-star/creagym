@@ -542,7 +542,7 @@ tr:hover td{background:#ffffff03;cursor:pointer}
                 </button>
               </div>
             </div>
-            <div id="subs-table-wrap"><div class="loading"><div class="spin"></div>Завантаження...</div></div>
+            <div id="subs-table-wrap" style="max-height:calc(100vh - 220px);overflow-y:auto;border-radius:0 0 12px 12px"><div class="loading"><div class="spin"></div>Завантаження...</div></div>
           </div>
         </div>
         <div class="sec" id="sec-goods"><div class="cs"><div class="cs-ic"><svg viewBox="0 0 28 28" fill="none"><path d="M4 4h3l3.5 12h10L24 8H9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="cs-t">Товари</div><div class="cs-s">Склад, прихід, продажі — в розробці</div></div></div>
@@ -1291,7 +1291,7 @@ function renderSubs(){
     document.getElementById('subs-table-wrap').innerHTML='<div class="loading" style="color:var(--m2)">Абонементів не знайдено. Створіть перший!</div>';
     return;
   }
-  const header=`<div class="sub-row header">
+  const header=`<div class="sub-row header" style="position:sticky;top:0;z-index:10;background:var(--p2)">
     <div></div>
     <div class="sh">Назва / Клас</div>
     <div class="sh">Термін</div>
@@ -3505,15 +3505,32 @@ function updateCfgShiftLock(isOpen){
 }
 
 async function openCbShiftManual(){
+  // Читаємо з полів форми — не з cbSettings
+  const formLogin=document.getElementById('cfg-cb-login')?.value.trim()||getCbLogin();
+  const formPass=document.getElementById('cfg-cb-pass')?.value.trim()||getCbPass();
+  const formKey=document.getElementById('cfg-cb-key')?.value.trim()||cbSettings.cb_key||'';
+
   try{
-    const lr=await cbCall('login');
-    if(!lr.access_token){alert('❌ Помилка авторизації Checkbox');return;}
-    const res=await cbCall('open_shift',{token:lr.access_token});
+    const lr=await fetch(CB_PROXY,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+CB_ANON},
+      body:JSON.stringify({action:'login',data:{_login:formLogin,_pass:formPass,_license_key:formKey}})
+    }).then(r=>r.json());
+
+    if(!lr.access_token){alert('❌ Помилка авторизації Checkbox\n'+( lr.message||'Перевірте логін і пароль'));return;}
+
+    const res=await fetch(CB_PROXY,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+CB_ANON},
+      body:JSON.stringify({action:'open_shift',data:{token:lr.access_token,_login:formLogin,_pass:formPass,_license_key:formKey}})
+    }).then(r=>r.json());
+
     if(res.id||res.status==='CREATING'||res.status==='OPENED'){
       alert('✅ Зміну в Checkbox відкрито!');
       updateCfgShiftLock(true);
     } else {
-      alert('❌ Помилка відкриття зміни:\n'+(res.message||JSON.stringify(res)));
+      const err=res.message||res.detail?.[0]?.msg||JSON.stringify(res);
+      alert('❌ Помилка відкриття зміни:\n'+err);
     }
   }catch(e){alert('❌ '+e.message);}
 }
