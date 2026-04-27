@@ -3970,18 +3970,40 @@ function showCbResult(html,kind){
 async function saveCbSettings(){
   const btn=document.getElementById('cfg-save-btn');
   const oldHTML=btn?btn.innerHTML:'';
-  if(btn){btn.innerHTML='⏳ Збереження...';btn.disabled=true;}
   const get=function(id){return (document.getElementById(id)?.value||'').trim();};
-  const updates=[
-    {key:'cb_login',value:get('cfg-cb-login')},
-    {key:'cb_pass',value:get('cfg-cb-pass')},
-    {key:'cb_key',value:get('cfg-cb-key')},
-    {key:'cb_prro_name',value:get('cfg-prro-name')},
-    {key:'cb_prro_num',value:get('cfg-prro-num')},
-    {key:'cb_fiscalize_cash',value:document.getElementById('cfg-fisk-cash')?.checked?'true':'false'},
-    {key:'cb_fiscalize_card',value:document.getElementById('cfg-fisk-card')?.checked?'true':'false'}
-  ];
+  const _login=get('cfg-cb-login');
+  const _pass=get('cfg-cb-pass');
+  const _license_key=get('cfg-cb-key');
+
+  // ВАЛІДАЦІЯ: спочатку перевіряємо в Checkbox, тільки потім зберігаємо в БД
+  if(!_login||!_pass||!_license_key){
+    showCbResult('❌ Заповніть логін, пароль і ключ ліцензії','err');
+    return;
+  }
+
+  if(btn){btn.innerHTML='⏳ Перевіряю в Checkbox...';btn.disabled=true;}
+  showCbResult('⏳ Перевіряю дані через Checkbox перед збереженням...','info');
+
   try{
+    // 1. Перевіряємо логін/пароль/ключ через Checkbox
+    const r=await cbCall('verify_all',{_login:_login,_pass:_pass,_license_key:_license_key});
+    if(!r.ok){
+      const where=r.step==='login'?'логін або пароль':r.step==='license'?'ключ ліцензії':'параметри';
+      showCbResult('❌ Неможливо зберегти: невірний '+where+'<br><span style="font-size:11px;color:var(--m2)">'+(r.message||'')+'<br>Дані не збережено в БД.</span>','err');
+      return;
+    }
+
+    // 2. Дані валідні в Checkbox - зберігаємо в БД
+    if(btn) btn.innerHTML='⏳ Збереження...';
+    const updates=[
+      {key:'cb_login',value:_login},
+      {key:'cb_pass',value:_pass},
+      {key:'cb_key',value:_license_key},
+      {key:'cb_prro_name',value:get('cfg-prro-name')},
+      {key:'cb_prro_num',value:get('cfg-prro-num')},
+      {key:'cb_fiscalize_cash',value:document.getElementById('cfg-fisk-cash')?.checked?'true':'false'},
+      {key:'cb_fiscalize_card',value:document.getElementById('cfg-fisk-card')?.checked?'true':'false'}
+    ];
     for(let i=0;i<updates.length;i++){
       await fetch(SB_URL+'/rest/v1/settings',{
         method:'POST',
@@ -3990,9 +4012,13 @@ async function saveCbSettings(){
       });
     }
     await loadCbSettings();
-    showCbResult('✅ Налаштування збережено','ok');
+
+    const shStatus=r.shift_status||'?';
+    const shText=shStatus==='OPENED'?'✅ Відкрита':shStatus==='CLOSED'?'⚪ Закрита':'⚪ Немає';
+    showCbResult('✅ Налаштування перевірено та збережено<br><span style="font-size:11px;color:var(--m2)">Статус зміни в Checkbox: <b style="color:var(--w)">'+shText+'</b></span>','ok');
+    updateCfgShiftLock(shStatus==='OPENED');
   }catch(e){
-    showCbResult('❌ Помилка збереження: '+e.message,'err');
+    showCbResult('❌ Помилка: '+e.message+'<br><span style="font-size:11px;color:var(--m2)">Дані не збережено в БД.</span>','err');
   }finally{
     if(btn){btn.innerHTML=oldHTML||'💾 Зберегти налаштування';btn.disabled=false;}
   }
