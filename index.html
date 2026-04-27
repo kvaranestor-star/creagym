@@ -1,4 +1,140 @@
 <!DOCTYPE html>
+<!--
+================================================================================
+CREAGYM CRM — Система управління фітнес-клубом з фіскалізацією через Checkbox.ua
+================================================================================
+
+📋 ДЛЯ ІНШОГО AI / РОЗРОБНИКА:
+Цей файл — повна single-file CRM для фітнес-клубу. Розгорнуто на GitHub Pages.
+Користувач не технічний, спілкується російською/українською. Працюй охайно.
+
+🌐 РОЗГОРТАННЯ:
+- Frontend: https://kvaranestor-star.github.io/creagym/ (single index.html)
+- Backend: Supabase project rkknbltiylsvmycbbyde
+  URL: https://rkknbltiylsvmycbbyde.supabase.co
+- Edge function: checkbox-proxy
+  URL: https://rkknbltiylsvmycbbyde.supabase.co/functions/v1/checkbox-proxy
+  Вихідний код у користувача: ~/supabase/functions/checkbox-proxy/index.ts
+- Деплой edge function: supabase functions deploy checkbox-proxy --no-verify-jwt --project-ref rkknbltiylsvmycbbyde
+
+🔐 CHECKBOX.UA CREDENTIALS (працюючі реальні дані):
+- Login: creagym1
+- Password: creagym02
+- License key: 2fb5132d5ee52270bf3c0094
+- Fiscal number: 4001398848
+- ПРРО name: ПРРО2
+- Зберігаються в таблиці settings (cb_login, cb_pass, cb_key, cb_prro_name, cb_prro_num, cb_fiscalize_cash, cb_fiscalize_card)
+- Також є в Supabase env vars: CHECKBOX_LOGIN, CHECKBOX_PASSWORD, CHECKBOX_LICENSE
+- ПРАВИЛО: БД є джерелом правди, не env vars! Всі cbCall передають _license_key з _cbSettings.cb_key
+
+👤 ДЕМО ЛОГІНИ:
+- owner@creagym.com / admin123
+- admin@creagym.com / admin123
+
+🏗️ АРХІТЕКТУРА UI:
+Дві окремі панелі в одному файлі:
+- #app (власник, owner) — повний доступ, бачить аналітику, налаштування
+- #app-admin (адмін, касир) — каса, продажі, повернення, клієнти
+Перемикач setupOwnerApp / setupAdminApp при логіні.
+
+📊 БАЗА ДАНИХ (database_v9.sql):
+Таблиці: users, clients, subscription_types, subscriptions, visits, products,
+product_movements, sales (з fiscal_receipt_id, is_return, return_reason, original_sale_id),
+shifts, expenses, settings.
+RLS включено з "allow all" політиками.
+
+🔌 EDGE FUNCTION ACTIONS (checkbox-proxy):
+- login — авторизація касира → {access_token}
+- verify_all — повна перевірка login+pass+key+fiscal_number
+- shift_status — GET /cashier/shift
+- open_shift — POST /shifts
+- close_shift — POST /shifts/close → повертає {z_report:{id}}
+- create_receipt — POST /receipts/sell
+- return_receipt — POST /receipts/sell with is_return:true
+- get_receipt — GET /receipts/{id}
+- get_receipt_html — GET /receipts/{id}/html (HTML чека продажу/повернення з QR)
+- get_receipt_qr — GET /receipts/{id}/qrcode
+- get_report_html — GET /reports/{id}/html (404 для Z/X-звітів — НЕ ПРАЦЮЄ)
+- get_report_png — GET /reports/{id}/png ⭐ ЄДИНИЙ робочий формат для Z/X-звітів
+- get_report_text — GET /reports/{id}/text (текстовий звіт)
+- x_report — POST /reports → створює фіскальний X-звіт
+- cash_register_info — GET /cash-registers/info
+
+🔑 КРИТИЧНІ ПРАВИЛА API:
+1. Чек продажу/повернення: HTML є → /receipts/{id}/html → відкривається в iframe
+2. Z/X-звіт: HTML НЕМАЄ → /reports/{id}/html=404 → використовуй PNG /reports/{id}/png
+   PNG приходить як arrayBuffer, конвертується в base64 dataURL
+3. ID Z-звіту в close_shift response: closeRes.z_report.id
+4. ID X-звіту в x_report response: r.id (це report з is_z_report=false)
+5. ВСІ cbCall передають _license_key:_cbSettings.cb_key (БД як джерело правди)
+
+🎨 МОДАЛКИ ДЛЯ ЧЕКІВ:
+- showFiscalReceipt(id) — для чеків продажу/повернення (iframe з /receipts/{id}/html)
+- showFiscalReport(id) — для Z/X-звітів (img з PNG /reports/{id}/png)
+- printFiscalReceipt() — друк через iframe.contentWindow.print()
+- printFiscalReport() — відкриває новий window з картинкою + window.print()
+- Стиль як LuckyFit: модалка поверх сторінки з blur, біла карточка, кнопки Закрити/Друкувати
+- НЕ використовуй window.open для основного відображення — тільки модалки
+
+📍 КЛЮЧОВІ ФУНКЦІЇ ТА ЇХ РОЗТАШУВАННЯ:
+| Функція                  | Призначення                                                     |
+|--------------------------|-----------------------------------------------------------------|
+| cbCall(action,data)      | Wrapper edge function. Login без params → бере з _cbSettings    |
+| loadCbSettings()         | Витягує налаштування з БД у _cbSettings                          |
+| applyCbSettingsToForm()  | Заповнює поля Налаштувань з _cbSettings                          |
+| updateCfgShiftLock(opened)| Блокує/розблоковує форму Налаштувань                            |
+| saveCbSettings()         | Validate via verify_all → save to DB only on Checkbox success   |
+| testCbConnection()       | Validate form values via verify_all                             |
+| ownerCheckCheckboxStatus()| При вході owner перевіряє Checkbox і блокує форму якщо OPENED  |
+| cbCreateReceipt(...)     | Повертає fiscal_receipt_id, зберігає в останньому продажу        |
+| cbReturnReceipt(...)     | Повертає fiscal_receipt_id повернення                            |
+| showFiscalReceipt(id)    | Модалка з iframe HTML чека                                       |
+| showFiscalReport(id)     | Модалка з PNG-картинкою Z/X-звіту                                |
+| kasaCloseShift()         | Adm: close in Checkbox first → patch local → showFiscalReport   |
+| okCloseShift()           | Owner: те саме                                                   |
+| kasaXReport() / okXReport() | Створюють X-звіт через Checkbox + showFiscalReport            |
+
+⚠️ ВАЖЛИВІ ПРАВИЛА КОРИСТУВАЧА:
+1. ❌ НІКОЛИ не давай SQL частинами — завжди повний файл
+2. ❌ НІЯКИХ автоматичних дій зі зміною при заході на сторінки — тільки читання статусу
+3. ❌ НІЯКИХ fallback на локальні чеки коли фіскалізація включена — блокуй замість цього
+4. ✅ Checkbox = source of truth для credentials, не БД
+5. ✅ БД зберігає тільки Checkbox-validated значення (verify_all має повернути ok:true)
+6. ✅ ВСІ чеки/звіти — фіскальні (з QR-кодами з Checkbox), якщо фіскалізація увімкнена
+7. ✅ Стиль модалок як LuckyFit (не нове вікно/вкладка)
+8. ✅ Чек на: кожний продаж, кожне повернення; Z-звіт при закритті зміни; X-звіт окремою кнопкою
+9. ✅ ТІЛЬКИ фіскальні Z/X — ніяких локальних "зведених" звітів
+
+🐛 ВИПРАВЛЕНІ БАГИ (історія):
+- [FIX] Файл обрізався без закр. тегів script/body/html — кілька раз
+- [FIX] Функції використовували Supabase env vars замість БД → передаємо _license_key
+- [FIX] Логін проходив коли shift_status=null → if(!sh || sh.status !== 'OPENED')
+- [FIX] Збереження в БД без Checkbox валідації → saveCbSettings викликає verify_all
+- [FIX] Поля не auto-populate коли зміна відкрита → форсимо applyCbSettingsToForm + lock
+- [FIX] Modal buttons обрізались → max-height 85vh + flex-shrink:0 на header/footer
+- [FIX] Z-report failed "Receipt not found" → /reports/{id}/html не існує
+- [FIX] Z-report HTML 404 → ТІЛЬКИ PNG працює: /reports/{id}/png
+- [FIX] Returns не показували чек → всі 4 точки повернення викликають showFiscalReceipt
+- [FIX] Sale не показувала чек → admCheckout/admConfirmSell викликають showFiscalReceipt
+- [FIX] cbCall('login') без параметрів брав env замість БД → перевіряє _cbSettings первым
+
+📂 ФАЙЛИ В /mnt/user-data/outputs/:
+- index.html — production-ready (~285KB)
+- checkbox-proxy-index.ts — edge function source
+- database_v9.sql — schema (вже застосована до Supabase)
+
+🚧 ВИДАЛЕНІ/СКАСОВАНІ ФУНКЦІЇ:
+- Categories management with deletion safety (зламало фіскалізацію — скасовано)
+- Suppliers management with ON DELETE SET NULL (так само)
+- Auto-order feature
+- showLocalShiftReport — локальна зведена сводка зі свого Z-звіту (юзер хоче ТІЛЬКИ фіскальний)
+
+🌐 GITHUB:
+Repo: https://github.com/kvaranestor-star/creagym
+Деплой: користувач редагує index.html через GitHub web UI (Edit → Cmd+A → Delete → paste → Commit)
+
+================================================================================
+-->
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
