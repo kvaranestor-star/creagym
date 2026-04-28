@@ -3980,16 +3980,18 @@ async function addLockers(){
   }
   if(!numbers.length){alert('Не вдалось розпізнати номери. Приклад: 1-20 або 1,2,5');return;}
 
+  // Читаємо групу ДО використання
+  const lockerGrp=document.getElementById('locker-add-group')?.value||'Загальна';
+
   // Фільтруємо вже існуючі в ЦІЙ ЖЕ групі
-  const existing=new Set(_lockers.filter(l=>l.locker_group===group).map(l=>l.number));
+  const existing=new Set(_lockers.filter(l=>l.locker_group===lockerGrp).map(l=>l.number));
   const toAdd=numbers.filter(n=>!existing.has(n));
   if(!toAdd.length){alert('Всі вказані номери вже існують');return;}
 
-  const group=document.getElementById('locker-add-group')?.value||'Загальна';
   let added=0;
   for(const num of toAdd){
     try{
-      const r=await sb.post('lockers',{branch_id:_lockersCurrentBranch.id,number:num,locker_group:group});
+      const r=await sb.post('lockers',{branch_id:_lockersCurrentBranch.id,number:num,locker_group:lockerGrp});
       const created=Array.isArray(r)?r[0]:r;
       if(created?.id){_lockers.push(created);added++;}
     }catch(e){console.warn('add locker:',e);}
