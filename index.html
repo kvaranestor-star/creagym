@@ -1499,13 +1499,21 @@ function switchBranch(id){
   if(nm) nm.textContent=b.name;
   const dd=document.getElementById('branch-dropdown');
   if(dd) dd.remove();
-  console.log('Перемкнено на філію:',b.name);
-  // Скидаємо фільтр статистики на "поточна" щоб дані оновились до нової філії
+  // Скидаємо зміну — вона може бути від іншої філії
+  okShift=null;
+  okUpdateShiftUI(false);
+  okTxAll=[];
   _statsBranchFilter='current';
   // Перезавантажуємо дані поточної сторінки
   if(curPage==='goods') loadGoods();
   else if(curPage==='subs') loadSubs();
-  else if(curPage==='fin'){okSyncShiftFromCheckbox();okUpdateShiftUI(!!okShift);okLoadTx();}
+  else if(curPage==='fin'){
+    // Синхронізуємо зміну з Checkbox нової філії
+    okSyncShiftFromCheckbox().then(()=>{
+      okUpdateShiftUI(!!okShift);
+      okLoadTx();
+    });
+  }
   else if(curPage==='stats') loadStats();
   else if(curPage==='clients') loadClients();
   else if(curPage==='branches') loadBranches();
@@ -2201,13 +2209,19 @@ function okUpdateShiftUI(open){
 // Синхронізація owner shift з Checkbox - перевіряємо реальний стан касси
 async function okSyncShiftFromCheckbox(){
   try{
+    // Беремо credentials поточної філії
+    await loadCbSettings();
+    if(!_cbSettings.cb_login||!_cbSettings.cb_key){
+      // Немає Checkbox для цієї філії — скидаємо зміну
+      if(okShift) okShift=null;
+      return;
+    }
     const lr=await cbCall('login');
-    if(!lr||!lr.access_token)return;
-    const sh=await cbCall("shift_status", {token:lr.access_token, _license_key:_cbSettings.cb_key});
+    if(!lr||!lr.access_token) return;
+    const sh=await cbCall('shift_status',{token:lr.access_token,_license_key:_cbSettings.cb_key});
     const isOpenInCb=sh?.status==='OPENED';
 
     if(isOpenInCb){
-      // Checkbox каже що відкрита - відновлюємо локально якщо немає
       if(!okShift){
         try{
           const bf=_currentBranch?.id?`&branch_id=eq.${_currentBranch.id}`:'';
@@ -2216,12 +2230,13 @@ async function okSyncShiftFromCheckbox(){
         }catch(e){}
       }
     } else {
-      // Checkbox каже що закрита - скидаємо локально
+      // Checkbox каже закрита — скидаємо
       if(okShift){
-        console.log('⚠️ Checkbox: змiна закрита - скидаємо owner shift');
+        console.log('⚠️ Checkbox: зміна закрита для цієї філії');
         okShift=null;
       }
     }
+    okUpdateShiftUI(!!okShift);
   }catch(e){
     console.warn('okSyncShiftFromCheckbox:',e.message);
   }
@@ -2272,14 +2287,20 @@ async function okLoadTx(){
   const el=document.getElementById('ok-tx-body');if(!el)return;
   el.innerHTML='<tr><td colspan="6" style="padding:20px;text-align:center"><div class="spin" style="margin:0 auto"></div></td></tr>';
   try{
-    const today=new Date().toISOString().split('T')[0];
-    let filter='?order=created_at.desc&limit=300';
-    if(okPeriod==='today')filter=`?created_at=gte.${today}T00:00:00&order=created_at.desc`;
-    else if(okPeriod==='week'){const w=new Date();w.setDate(w.getDate()-7);filter=`?created_at=gte.${w.toISOString()}&order=created_at.desc`;}
-    else if(okPeriod==='month'){const m=new Date();m.setMonth(m.getMonth()-1);filter=`?created_at=gte.${m.toISOString()}&order=created_at.desc`;}
-    // Додаємо фільтр по філії
-    if(_currentBranch?.id){
-      filter+=(filter.includes('?')?'&':'?')+'branch_id=eq.'+_currentBranch.id;
+    let filter;
+    if(okShift?.id){
+      // Є відкрита зміна — тільки її транзакції
+      filter=`?shift_id=eq.${okShift.id}&order=created_at.desc`;
+    } else {
+      // Зміни немає — фільтр по часі + філії
+      const today=new Date().toISOString().split('T')[0];
+      filter='?order=created_at.desc&limit=300';
+      if(okPeriod==='today')filter=`?created_at=gte.${today}T00:00:00&order=created_at.desc`;
+      else if(okPeriod==='week'){const w=new Date();w.setDate(w.getDate()-7);filter=`?created_at=gte.${w.toISOString()}&order=created_at.desc`;}
+      else if(okPeriod==='month'){const m=new Date();m.setMonth(m.getMonth()-1);filter=`?created_at=gte.${m.toISOString()}&order=created_at.desc`;}
+      if(_currentBranch?.id){
+        filter+=(filter.includes('?')?'&':'?')+'branch_id=eq.'+_currentBranch.id;
+      }
     }
     okTxAll=await sb.get('sales',filter);
     okRenderTx();okUpdateStats();
