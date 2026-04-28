@@ -4253,7 +4253,7 @@ function generateAutoOrderPDF(data){
 .reg-body2{display:flex;gap:14px;padding:14px 18px;flex:1;overflow:hidden}
 .reg-main{flex:1;display:flex;flex-direction:column;gap:10px;min-width:0}
 .reg-panel{width:255px;flex-shrink:0;display:flex;flex-direction:column;gap:10px}
-.cl-card2{background:var(--p1);border:1px solid var(--bd2);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:11px}
+.cl-card2{background:var(--p1);border:1px solid var(--bd2);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:11px;position:relative}
 .cl-prof2{display:flex;align-items:center;gap:11px}
 .cl-ph2{width:80px;height:80px;border-radius:12px;flex-shrink:0;overflow:hidden;background:var(--p3);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;border:2px solid var(--bd2);color:var(--y)}
 .cl-ph2 img{width:100%;height:100%;object-fit:cover}
@@ -4717,7 +4717,9 @@ async function loadAdminData(){
       }
       document.getElementById('adm-cnt').textContent=admInClub.length;
     }catch(e){console.warn('in_club load:',e); admInClub=[];}
-    admRenderICP();admRenderShop();
+    // Рендер ПІСЛЯ завантаження in_club — щоб лічильники були правильні
+    admRenderICP();
+    admRenderShop();
     // Синхронізуємо статуси клієнтів
     await syncAdminClientStatuses();
     cbCheckExistingShift();
@@ -4796,7 +4798,8 @@ function admSwitchBranch(id){
   updateAdmBranchBadge(id);
   const dd=document.getElementById('adm-branch-dropdown');
   if(dd) dd.remove();
-  // Скидаємо UI миттєво (щоб не показувало стару філію)
+  // Скидаємо UI миттєво
+  clearAdmClient();
   admInClub=[];
   admCart=[];
   admSelSub=null;
@@ -4805,12 +4808,6 @@ function admSwitchBranch(id){
   const icp=document.getElementById('icp2-list');
   if(icp) icp.innerHTML='<div style="padding:12px;font-size:11px;color:var(--m2);text-align:center">Завантаження...</div>';
   const icpCnt=document.getElementById('icp2-cnt');if(icpCnt)icpCnt.textContent='0';
-  // Закриваємо досьє якщо відкрите
-  const main=document.getElementById('adm-main');
-  if(main) main.innerHTML='<div style="padding:30px;text-align:center;color:var(--m2);font-size:13px">Завантаження філії...</div>';
-  // Очищаємо пошук
-  const search=document.getElementById('adm-search');if(search)search.value='';
-  const sdrop=document.getElementById('adm-sdrop');if(sdrop)sdrop.classList.remove('sh');
   // Перезавантажуємо дані
   loadAdminData();
 }
@@ -4900,6 +4897,15 @@ async function reloadAdmClients(){
 }
 
 let admST=null;
+function clearAdmClient(){
+  const main=document.getElementById('adm-main');
+  if(main) main.innerHTML='';
+  const search=document.getElementById('adm-search');
+  if(search) search.value='';
+  const sdrop=document.getElementById('adm-sdrop');
+  if(sdrop) sdrop.classList.remove('sh');
+}
+
 function admSearch(v){
   const drop=document.getElementById('adm-sdrop');
   clearTimeout(admST);
@@ -5040,6 +5046,7 @@ async function admSelectClient(id){
 
   document.getElementById('adm-main').innerHTML=`
     <div class="cl-card2">
+      <button onclick="clearAdmClient()" title="Закрити" style="position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;border:1px solid var(--bd2);background:var(--p3);color:var(--m2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2">✕</button>
       <div class="cl-prof2"><div class="cl-ph2">${av}</div><div><div class="cl-nm2">${c.last_name} ${c.first_name}</div><div style="font-size:11px;color:var(--m2);margin-top:2px">${c.phone||'—'}</div><div style="font-size:10px;color:var(--m);margin-top:1px">${c.id} · Відвідувань: <b style="color:var(--y)">${branchVisits}</b> у цій філії · ${totalVisits} всього</div></div></div>
       ${inOtherBranch?`<div style="margin:8px 0;padding:8px 12px;background:#F9731614;border:1px solid #F9731630;border-radius:8px;font-size:11px;color:var(--or);display:flex;align-items:center;gap:8px">
         <span style="font-size:14px">⚠️</span>
