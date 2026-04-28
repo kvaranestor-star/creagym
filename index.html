@@ -4950,7 +4950,7 @@ async function loadAdminData(){
         const inClubRows=await sb.get('in_club',`?branch_id=eq.${admBranchId}&order=checked_in_at.asc`)||[];
         admInClub=inClubRows.map(r=>{
           const cl=admClients.find(c=>c.id===r.client_id);
-          return cl?{...cl,key:r.key_number||0,_inClubId:r.id}:null;
+          return cl?{...cl,key:r.key_number||0,keyGroup:r.locker_group||'',_inClubId:r.id}:null;
         }).filter(Boolean);
       } else {
         admInClub=[];
@@ -5413,14 +5413,25 @@ async function admCheckIn(id){
   admInClub.push({...c,key,keyGroup});
   admRenderICP();
 
-  // Зберігаємо у БД (in_club по філії)
+  // Зберігаємо у БД (in_club по філії) — upsert щоб не губилось при повторному вході
   try{
     if(_currentBranch?.id){
-      await sb.post('in_club',{
-        client_id:id,
-        branch_id:_currentBranch.id,
-        key_number:key||0,
-        checked_in_by:curUser?.name||'admin'
+      // Використовуємо upsert через Prefer: resolution=merge-duplicates
+      await fetch(`${SB_URL}/rest/v1/in_club`,{
+        method:'POST',
+        headers:{
+          'apikey':SB_KEY,
+          'Authorization':'Bearer '+SB_KEY,
+          'Content-Type':'application/json',
+          'Prefer':'resolution=merge-duplicates'
+        },
+        body:JSON.stringify({
+          client_id:id,
+          branch_id:_currentBranch.id,
+          key_number:key||0,
+          locker_group:keyGroup||'',
+          checked_in_by:curUser?.name||'admin'
+        })
       });
     }
   }catch(e){console.warn('in_club post:',e);}
