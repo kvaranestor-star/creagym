@@ -2695,7 +2695,7 @@ async function openDos(id){
           <div style="font-size:16px;font-weight:800;color:var(--y)">${getStreakDiscount(c.streak||0)>0?`-${getStreakDiscount(c.streak||0)}%`:''}</div>
         </div>
         <div style="display:flex;gap:6px;align-items:center">
-          <input type="number" id="dos-streak-inp" min="0" max="50" value="${c.streak||0}"
+          <input type="number" id="dos-streak-inp" min="0" max="999" value="${c.streak||0}"
             style="width:70px;padding:6px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p3);color:var(--m);font-family:var(--f);font-size:13px;font-weight:700;text-align:center">
           <button onclick="ownerSetStreak('${id}',document.getElementById('dos-streak-inp').value)"
             style="padding:7px 14px;border-radius:6px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">
@@ -3751,6 +3751,7 @@ function renderBranches(){
         <div style="display:flex;gap:6px;margin-top:auto;padding-top:8px">
           <button onclick="editBranch('${b.id}')" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer">✏️ Редагувати</button>
           <button onclick="openLockers('${b.id}','${b.name.replace(/'/g,"&#39;")}')" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer">🔑 Шафки</button>
+          <button onclick="openBranchCb('${b.id}','${b.name.replace(/'/g,"&#39;")}')" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer">💳 Каса</button>
           <button onclick="deleteBranch('${b.id}','${b.name.replace(/'/g,"&#39;")}')" style="padding:6px 10px;border-radius:6px;border:1px solid #EF444430;background:#EF444410;color:var(--rd);font-family:var(--f);font-size:11px;cursor:pointer">🗑</button>
         </div>
       </div>`).join('')
@@ -3938,6 +3939,121 @@ function pickLocker(num, group){
 // ===== ШАФКИ / РОЗДЯГАЛЬНЯ =====
 let _lockers=[];
 let _lockersCurrentBranch=null;
+
+// ===== CHECKBOX ПЕР ФІЛІЯ =====
+async function openBranchCb(branchId, branchName){
+  // Завантажуємо поточні налаштування філії
+  const branch=_branches.find(b=>b.id===branchId)||{};
+
+  let mo=document.getElementById('mo-branch-cb');
+  if(!mo){
+    mo=document.createElement('div');
+    mo.id='mo-branch-cb';
+    mo.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)';
+    mo.onclick=e=>{if(e.target===mo)mo.remove();};
+    document.body.appendChild(mo);
+  } else {mo.style.display='flex';mo.innerHTML='';}
+
+  mo.innerHTML=`
+    <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;width:100%;max-width:560px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--bd2);display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--m)">💳 Checkbox — ${branchName}</div>
+          <div style="font-size:11px;color:var(--m2);margin-top:2px">Налаштування ПРРО для цієї філії</div>
+        </div>
+        <button onclick="document.getElementById('mo-branch-cb').remove()" style="width:28px;height:28px;background:var(--p3);border:1px solid var(--bd2);border-radius:6px;cursor:pointer;color:var(--m2)">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="ff" style="margin:0">
+            <label>Назва ПРРО</label>
+            <input class="fi2" id="bcb-prro-name" value="${branch.cb_prro_name||''}" placeholder="напр. ПРРО1">
+          </div>
+          <div class="ff" style="margin:0">
+            <label>Фіскальний номер</label>
+            <input class="fi2" id="bcb-fiscal" value="${branch.cb_fiscal_number||''}" placeholder="4001398848">
+          </div>
+        </div>
+        <div class="ff" style="margin:0">
+          <label>Логін касира *</label>
+          <input class="fi2" id="bcb-login" value="${branch.cb_login||''}" placeholder="creagym1">
+        </div>
+        <div class="ff" style="margin:0">
+          <label>Пароль касира *</label>
+          <input class="fi2" type="password" id="bcb-pass" value="${branch.cb_pass||''}" placeholder="••••••••">
+        </div>
+        <div class="ff" style="margin:0">
+          <label>Ключ ліцензії каси *</label>
+          <input class="fi2" id="bcb-key" value="${branch.cb_key||''}" placeholder="8f3b0bda72f889802cd21f7...">
+          <div style="font-size:10px;color:var(--m2);margin-top:3px">З my.checkbox.ua → Каси → колонка "Ключ ліцензії"</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <label style="font-size:11px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">Що фіскалізувати</label>
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--p2);border:1px solid var(--bd2);border-radius:8px;cursor:pointer">
+            <input type="checkbox" id="bcb-cash" ${branch.cb_fiscal_cash?'checked':''} style="width:16px;height:16px;accent-color:var(--y)">
+            <div><div style="font-size:12px;font-weight:600">💵 Готівкові платежі</div><div style="font-size:10px;color:var(--m2)">Фіскальний чек при оплаті готівкою</div></div>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--p2);border:1px solid var(--bd2);border-radius:8px;cursor:pointer">
+            <input type="checkbox" id="bcb-card" ${branch.cb_fiscal_card?'checked':''} style="width:16px;height:16px;accent-color:var(--y)">
+            <div><div style="font-size:12px;font-weight:600">💳 Безготівкові платежі</div><div style="font-size:10px;color:var(--m2)">Фіскальний чек при оплаті карткою</div></div>
+          </label>
+        </div>
+        <div id="bcb-result" style="display:none;padding:10px 12px;border-radius:8px;font-size:12px"></div>
+      </div>
+      <div style="padding:12px 18px;border-top:1px solid var(--bd2);display:flex;gap:8px;flex-shrink:0">
+        <button onclick="testBranchCb('${branchId}')" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">🔌 Перевірити</button>
+        <button onclick="saveBranchCb('${branchId}')" style="flex:1;padding:9px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">💾 Зберегти</button>
+      </div>
+    </div>`;
+}
+
+async function saveBranchCb(branchId){
+  const data={
+    cb_prro_name:document.getElementById('bcb-prro-name')?.value.trim()||null,
+    cb_fiscal_number:document.getElementById('bcb-fiscal')?.value.trim()||null,
+    cb_login:document.getElementById('bcb-login')?.value.trim()||null,
+    cb_pass:document.getElementById('bcb-pass')?.value.trim()||null,
+    cb_key:document.getElementById('bcb-key')?.value.trim()||null,
+    cb_fiscal_cash:document.getElementById('bcb-cash')?.checked||false,
+    cb_fiscal_card:document.getElementById('bcb-card')?.checked||false,
+  };
+  try{
+    await sb.patch('branches',`id=eq.${branchId}`,data);
+    // Оновлюємо локально
+    const b=_branches.find(x=>x.id===branchId);
+    if(b) Object.assign(b,data);
+    document.getElementById('mo-branch-cb').remove();
+    alert('✅ Налаштування Checkbox для філії збережено');
+  }catch(e){alert('❌ '+e.message);}
+}
+
+async function testBranchCb(branchId){
+  const login=document.getElementById('bcb-login')?.value.trim();
+  const pass=document.getElementById('bcb-pass')?.value.trim();
+  const key=document.getElementById('bcb-key')?.value.trim();
+  const fiscal=document.getElementById('bcb-fiscal')?.value.trim();
+  const res=document.getElementById('bcb-result');
+  if(!login||!pass||!key){
+    res.style.display='block';res.style.background='#EF444414';res.style.border='1px solid #EF444430';res.style.color='var(--rd)';
+    res.textContent='❌ Заповніть логін, пароль і ключ ліцензії';
+    return;
+  }
+  res.style.display='block';res.style.background='var(--p2)';res.style.border='1px solid var(--bd)';res.style.color='var(--m2)';
+  res.textContent='⏳ Перевіряю...';
+  try{
+    const r=await cbCall('verify_all',{_login:login,_pass:pass,_license_key:key,_fiscal_number:fiscal});
+    if(r.ok){
+      res.style.background='#22C55E14';res.style.border='1px solid #22C55E30';res.style.color='var(--gr)';
+      res.innerHTML=`✅ З'єднання успішне<br><span style="font-size:11px;color:var(--m2)">Статус: ${r.shift_status==='OPENED'?'✅ Відкрита':'⚪ Закрита'}${r.fiscal_number?'<br>Фіскальний номер: '+r.fiscal_number:''}${r.cash_register_title?'<br>Каса: '+r.cash_register_title:''}</span>`;
+    } else {
+      res.style.background='#EF444414';res.style.border='1px solid #EF444430';res.style.color='var(--rd)';
+      res.textContent='❌ '+r.message;
+    }
+  }catch(e){
+    res.style.background='#EF444414';res.style.border='1px solid #EF444430';res.style.color='var(--rd)';
+    res.textContent='❌ '+e.message;
+  }
+}
 
 async function openLockers(branchId, branchName){
   _lockersCurrentBranch={id:branchId, name:branchName};
@@ -6708,8 +6824,27 @@ let _cbSettings={};
 
 async function loadCbSettings(){
   try{
+    // Спочатку перевіряємо налаштування Checkbox поточної філії
+    if(_currentBranch?.id){
+      const br=_branches.find(b=>b.id===_currentBranch.id);
+      if(br&&br.cb_key&&br.cb_login&&br.cb_pass){
+        _cbSettings={
+          cb_login:br.cb_login,
+          cb_pass:br.cb_pass,
+          cb_key:br.cb_key,
+          cb_prro_name:br.cb_prro_name||'',
+          cb_prro_num:br.cb_fiscal_number||'',
+          cb_fiscalize_cash:br.cb_fiscal_cash?'true':'',
+          cb_fiscalize_card:br.cb_fiscal_card?'true':'',
+          _source:'branch'
+        };
+        return _cbSettings;
+      }
+    }
+    // Fallback — глобальні налаштування
     const rows=await sb.get('settings','?key=in.(cb_login,cb_pass,cb_key,cb_prro_name,cb_prro_num,cb_fiscalize_cash,cb_fiscalize_card)');
     const map={};(rows||[]).forEach(r=>map[r.key]=r.value);
+    map._source='global';
     _cbSettings=map;
     return map;
   }catch(e){console.warn('loadCbSettings:',e);_cbSettings={};return{};}
