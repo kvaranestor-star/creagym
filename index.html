@@ -3126,36 +3126,55 @@ async function saveIncomeDoc(){
       branch_id:_currentBranch?.id||null
     });
     const doc=Array.isArray(docResult)?docResult[0]:docResult;
-    if(!doc?.id) throw new Error('Не вдалося створити документ');
+    if(!doc?.id||doc.code) throw new Error('Не вдалося створити документ: '+(doc?.message||JSON.stringify(doc)));
     // 2. Створюємо позиції + оновлюємо склад + рух
+    let errors=[];
     for(const it of _incomeItems){
-      // Позиція
-      await sb.post('income_items',{
-        document_id:doc.id,
-        product_id:it.product_id,
-        product_name:it.product_name,
-        quantity:it.quantity,
-        unit_price:it.unit_price,
-        total_price:it.total_price
-      });
-      // Оновлення складу
-      const prod=gProducts.find(p=>p.id===it.product_id);
-      if(prod){
-        const newStock=(prod.stock||0)+it.quantity;
-        await sb.patch('products',`id=eq.${prod.id}`,{stock:newStock});
-        prod.stock=newStock;
+      try{
+        // Позиція
+        const itemRes=await sb.post('income_items',{
+          document_id:doc.id,
+          product_id:it.product_id,
+          product_name:it.product_name,
+          quantity:it.quantity,
+          unit_price:it.unit_price,
+          total_price:it.total_price
+        });
+        if(itemRes&&itemRes.code) console.warn('income_items error:',itemRes);
+        // Оновлення складу
+        const prod=gProducts.find(p=>p.id===it.product_id);
+        if(prod){
+          const newStock=(prod.stock||0)+Number(it.quantity);
+          const patchRes=await sb.patch('products',`id=eq.${prod.id}`,{stock:newStock});
+          if(patchRes&&patchRes.code){
+            console.error('products patch error:',patchRes);
+            errors.push(`${prod.name}: ${patchRes.message||'не оновлено'}`);
+          } else {
+            prod.stock=newStock;
+          }
+        } else {
+          errors.push(`${it.product_name}: товар не знайдено в gProducts`);
+        }
+        // Рух товару (qty має бути integer згідно схеми)
+        const mvRes=await sb.post('product_movements',{
+          product_id:it.product_id,
+          product_name:it.product_name,
+          type:'income',
+          qty:Math.round(Number(it.quantity)),
+          reason:`Накладна №${docNumber||'—'}${supplier?' від '+supplier.name:''}`,
+          created_by:curUser?.name||'owner'
+        });
+        if(mvRes&&mvRes.code) console.warn('movement error:',mvRes);
+      }catch(e2){
+        console.error('item error:',it,e2);
+        errors.push(`${it.product_name}: ${e2.message}`);
       }
-      // Рух товару
-      await sb.post('product_movements',{
-        product_id:it.product_id,
-        product_name:it.product_name,
-        type:'income',
-        qty:it.quantity,
-        reason:`Накладна №${docNumber||'—'}${supplier?' від '+supplier.name:''}`,
-        created_by:curUser?.name||'owner'
-      });
     }
-    alert(`✅ Накладну збережено!\n${_incomeItems.length} позицій на суму ${total.toLocaleString('uk-UA')} ₴`);
+    if(errors.length){
+      alert(`⚠️ Накладну створено, але є проблеми:\n\n${errors.join('\n')}`);
+    } else {
+      alert(`✅ Накладну збережено!\n${_incomeItems.length} позицій на суму ${total.toLocaleString('uk-UA')} ₴`);
+    }
     closeIncomeMo();
     renderIncomeDocs();
     renderAssortment();
