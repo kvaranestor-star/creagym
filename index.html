@@ -5322,6 +5322,19 @@ async function admSelectClient(id){
     <div class="cl-card2">
       <button onclick="clearAdmClient()" title="Закрити" style="position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;border:1px solid var(--bd2);background:var(--p3);color:var(--m2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2">✕</button>
       <div class="cl-prof2"><div class="cl-ph2">${av}</div><div><div class="cl-nm2">${c.last_name} ${c.first_name}</div><div style="font-size:11px;color:var(--m2);margin-top:2px">${c.phone||'—'}</div><div style="font-size:10px;color:var(--m);margin-top:1px">${c.id} · Відвідувань: <b style="color:var(--y)">${branchVisits}</b> у цій філії · ${totalVisits} всього</div></div></div>
+      ${(()=>{
+        const sl=getStreakLabel(c.streak||0);
+        if(!sl) return '';
+        const nextDisc=getStreakDiscount(sl.streak+1);
+        return `<div style="padding:8px 12px;background:linear-gradient(135deg,#1a1a0a,#2a1f00);border:1px solid #F9731640;border-radius:8px;display:flex;align-items:center;gap:10px">
+          <div style="font-size:22px">${sl.emoji}</div>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:var(--y)">Серія x${sl.streak} ${sl.disc?`· Знижка ${sl.disc}%`:''}</div>
+            <div style="font-size:10px;color:var(--m2);margin-top:2px">${nextDisc>sl.disc?`Наступний абонемент: -${nextDisc}%`:'Максимальна знижка досягнута!'}</div>
+          </div>
+          ${sl.disc?`<div style="font-size:16px;font-weight:800;color:var(--y)">-${sl.disc}%</div>`:''}
+        </div>`;
+      })()}
       ${inOtherBranch?`<div style="margin:8px 0;padding:8px 12px;background:#F9731614;border:1px solid #F9731630;border-radius:8px;font-size:11px;color:var(--or);display:flex;align-items:center;gap:8px">
         <span style="font-size:14px">⚠️</span>
         <span>Зараз у залі <b>"${inOtherBranch.branchName}"</b>${inOtherBranch.key?` · 🔑 ключ №${inOtherBranch.key}`:''}</span>
@@ -5580,11 +5593,21 @@ function admOpenSell(id){
   document.getElementById('adm-sell-btn').style.display='none';
   document.getElementById('adm-pm-cash').classList.add('on');
   document.getElementById('adm-pm-card').classList.remove('on');
+  const clientStreak=admSellCl?.streak||0;
+  const nextStreak=clientStreak+1;
   document.getElementById('adm-sub-opts').innerHTML=admSubTypes.length?admSubTypes.map(s=>{
     const networkBadge=s.is_network
       ?`<span style="font-size:9px;padding:2px 6px;border-radius:10px;background:#60A5FA20;color:#60A5FA;font-weight:700;margin-left:4px">🌐 Мережевий</span>`
       :`<span style="font-size:9px;padding:2px 6px;border-radius:10px;background:var(--ym);color:var(--y);font-weight:700;margin-left:4px">🏢 Локальний</span>`;
-    return `<div class="soi" id="asoi-${s.id}" onclick="admSelSub2('${s.id}')"><div style="flex:1"><div class="soi-nm">${s.name}${networkBadge}</div><div class="soi-meta">${s.days} ${s.duration_unit||'дн.'} · ${s.class_name||''}</div></div><div class="soi-p">${(s.price||0).toLocaleString('uk-UA')} ₴</div></div>`;
+    let priceHtml=`${(s.price||0).toLocaleString('uk-UA')} ₴`;
+    if(s.is_network&&clientStreak>=1){
+      const disc=getStreakDiscount(nextStreak);
+      if(disc>0){
+        const discPrice=Math.round(s.price*(1-disc/100));
+        priceHtml=`<div style="text-align:right"><div style="text-decoration:line-through;color:var(--m2);font-size:10px">${(s.price||0).toLocaleString('uk-UA')} ₴</div><div style="color:var(--y);font-weight:700">${discPrice.toLocaleString('uk-UA')} ₴ <span style="font-size:9px;color:var(--or)">-${disc}%</span></div></div>`;
+      }
+    }
+    return `<div class="soi" id="asoi-${s.id}" onclick="admSelSub2('${s.id}')"><div style="flex:1"><div class="soi-nm">${s.name}${networkBadge}</div><div class="soi-meta">${s.days} ${s.duration_unit||'дн.'} · ${s.class_name||''}</div></div><div class="soi-p">${priceHtml}</div></div>`;
   }).join(''):'<div style="font-size:12px;color:var(--m2)">Немає активних абонементів. Додайте їх у панелі власника.</div>';
   admOpenMo('adm-sell');
 }
@@ -5602,7 +5625,6 @@ function admSelPM(m){
 }
 async function admConfirmSell(){
   if(!admSelSub||!admSellCl)return;
-  // Перевіряємо чи відкрита зміна
   if(!kasaShift){
     admCloseMoD('adm-sell');
     alert('⚠️ Зміна не відкрита!\n\nПерейдіть в розділ "Каса" і відкрийте зміну перед продажем абонементу.');
@@ -5612,33 +5634,142 @@ async function admConfirmSell(){
   const today=new Date();
   const startDate=today.toISOString().split('T')[0];
   const numDays=parseInt(s.days)||30;
-  // Якщо старт "з першого відвідування" — end_date буде перераховано при активації
-  // Якщо "з дати продажу" — рахуємо одразу
   const isFromSale=(s.start_type||'з дати продажу')==='з дати продажу';
   const endDate=isFromSale
     ? new Date(today.getFullYear(),today.getMonth(),today.getDate()+numDays).toISOString().split('T')[0]
-    : null; // буде встановлено при першому вході
+    : null;
+
+  // ===== ЛОГІКА СЕРІЇ =====
+  // Серія діє тільки для мережевих абонементів
+  let newStreak=1;
+  let discountPct=0;
+  let finalPrice=s.price;
+
+  if(s.is_network){
+    // Перевіряємо останній абонемент клієнта
+    let lastSub=null;
+    try{
+      const prevSubs=await sb.get('subscriptions',
+        `?client_id=eq.${admSellCl.id}&status=in.(active,expired)&order=end_date.desc&limit=1`
+      )||[];
+      lastSub=prevSubs[0]||null;
+    }catch(e){}
+
+    const currentStreak=admSellCl.streak||0;
+
+    if(lastSub&&lastSub.end_date){
+      const endD=new Date(lastSub.end_date+'T00:00:00');
+      const daysSinceEnd=Math.floor((today-endD)/(1000*60*60*24));
+      // Якщо куплено протягом 14 днів після закінчення — серія продовжується
+      if(daysSinceEnd<=14){
+        newStreak=currentStreak+1;
+      } else {
+        newStreak=1; // серія скинулась
+      }
+    } else if(currentStreak>0){
+      newStreak=currentStreak+1;
+    } else {
+      newStreak=1;
+    }
+
+    // Розрахунок знижки
+    discountPct=getStreakDiscount(newStreak);
+    if(discountPct>0){
+      finalPrice=Math.round(s.price*(1-discountPct/100));
+    }
+  }
+
+  // Показуємо підтвердження зі знижкою якщо є
+  if(discountPct>0){
+    const saved=s.price-finalPrice;
+    const confirmed=confirm(
+      `🔥 Серія x${newStreak}!\n\n`+
+      `Знижка: ${discountPct}%\n`+
+      `Ціна: ${s.price} ₴ → ${finalPrice} ₴\n`+
+      `Економія: ${saved} ₴\n\n`+
+      `Підтвердити продаж?`
+    );
+    if(!confirmed)return;
+  }
+
   try{
-    await sb.post('subscriptions',{client_id:admSellCl.id,type_id:s.id,type_name:s.name,price:s.price,start_date:startDate,end_date:endDate,status:'active',payment_method:admPayM,start_type:s.start_type||'з дати продажу'});
-    const saleResult=await sb.post('sales',{client_id:admSellCl.id,type:'subscription',item_name:s.name,amount:s.price,payment_method:admPayM,created_by:curUser?.name||'admin'});
-    await sb.patch('clients',`id=eq.${admSellCl.id}`,{status:'active'});
-    const cl=admClients.find(x=>x.id===admSellCl.id);if(cl)cl.status='active';
+    // Зберігаємо абонемент з інформацією про серію
+    await sb.post('subscriptions',{
+      client_id:admSellCl.id,
+      type_id:s.id,
+      type_name:s.name,
+      price:finalPrice,
+      start_date:startDate,
+      end_date:endDate,
+      status:'active',
+      payment_method:admPayM,
+      start_type:s.start_type||'з дати продажу',
+      streak_at_purchase:newStreak,
+      discount_pct:discountPct,
+      original_price:s.price
+    });
+
+    // Оновлюємо серію клієнта
+    if(s.is_network){
+      await sb.patch('clients',`id=eq.${admSellCl.id}`,{
+        streak:newStreak,
+        streak_updated_at:new Date().toISOString(),
+        status:'active'
+      });
+      const cl=admClients.find(x=>x.id===admSellCl.id);
+      if(cl){cl.status='active';cl.streak=newStreak;}
+    } else {
+      await sb.patch('clients',`id=eq.${admSellCl.id}`,{status:'active'});
+      const cl=admClients.find(x=>x.id===admSellCl.id);
+      if(cl) cl.status='active';
+    }
+
+    const saleResult=await sb.post('sales',{
+      client_id:admSellCl.id,
+      type:'subscription',
+      item_name:s.name+(discountPct?` (-${discountPct}%)` :''),
+      amount:finalPrice,
+      payment_method:admPayM,
+      created_by:curUser?.name||'admin'
+    });
+
     if(kasaShift)kasaLoadTx();
     admCloseMoD('adm-sell');
     admSelectClient(admSellCl.id);
-    // Фіскальний чек через Checkbox
-    const fiscalId=await cbCreateReceipt([{name:s.name,price:s.price,code:'SUB001'}],s.price,admPayM,admSellCl);
+
+    // Фіскальний чек
+    const fiscalId=await cbCreateReceipt([{name:s.name+(discountPct?` (-${discountPct}%)`:''),price:finalPrice,code:'SUB001'}],finalPrice,admPayM,admSellCl);
     if(fiscalId){
-      // Справжній фіскальний чек з Checkbox (з QR-кодом)
       await showFiscalReceipt(fiscalId);
     } else {
-      // Локальний чек
-      const items=[{name:s.name,qty:1,price:s.price,total:s.price}];
-      const text=buildReceiptText(items,s.price,admPayM,curUser?.name||'admin')+'\nКлієнт: '+admSellCl.last_name+' '+admSellCl.first_name;
+      const items=[{name:s.name+(discountPct?` (-${discountPct}%)`:''),qty:1,price:finalPrice,total:finalPrice}];
+      const text=buildReceiptText(items,finalPrice,admPayM,curUser?.name||'admin')+'\nКлієнт: '+admSellCl.last_name+' '+admSellCl.first_name+(discountPct?`\n🔥 Серія x${newStreak}, знижка ${discountPct}%`:'');
       document.getElementById('receipt-content').textContent=text;
       admOpenMo('receipt-mo');
     }
   }catch(e){alert('❌ Помилка: '+e.message)}
+}
+
+// ===== СЕРІЯ / СТАЖ =====
+function getStreakDiscount(streak){
+  if(streak<=1) return 0;
+  // Кожна серія дає +3%, максимум 33% (при x12+)
+  return Math.min((streak-1)*3, 33);
+}
+
+function getStreakEmoji(streak){
+  if(streak<=1) return '';
+  if(streak<=3) return '🔥';
+  if(streak<=6) return '🔥🔥';
+  if(streak<=9) return '🔥🔥🔥';
+  return '🔥🔥🔥🔥';
+}
+
+function getStreakLabel(streak){
+  if(!streak||streak<=0) return null;
+  const disc=getStreakDiscount(streak);
+  const emoji=getStreakEmoji(streak);
+  return {streak, disc, emoji};
 }
 
 // ===== KASA =====
