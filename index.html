@@ -4765,6 +4765,21 @@ function admSwitchBranch(id){
   document.getElementById('adm-current-branch').textContent=b.name;
   const dd=document.getElementById('adm-branch-dropdown');
   if(dd) dd.remove();
+  // Скидаємо UI миттєво (щоб не показувало стару філію)
+  admInClub=[];
+  admCart=[];
+  admSelSub=null;
+  admSellCl=null;
+  document.getElementById('adm-cnt').textContent='0';
+  const icp=document.getElementById('icp2-list');
+  if(icp) icp.innerHTML='<div style="padding:12px;font-size:11px;color:var(--m2);text-align:center">Завантаження...</div>';
+  const icpCnt=document.getElementById('icp2-cnt');if(icpCnt)icpCnt.textContent='0';
+  // Закриваємо досьє якщо відкрите
+  const main=document.getElementById('adm-main');
+  if(main) main.innerHTML='<div style="padding:30px;text-align:center;color:var(--m2);font-size:13px">Завантаження філії...</div>';
+  // Очищаємо пошук
+  const search=document.getElementById('adm-search');if(search)search.value='';
+  const sdrop=document.getElementById('adm-sdrop');if(sdrop)sdrop.classList.remove('sh');
   // Перезавантажуємо дані
   loadAdminData();
 }
@@ -4888,6 +4903,7 @@ async function admSelectClient(id){
   // Підраховуємо візити: загалом і у поточній філії
   let totalVisits=c.visits||0;
   let branchVisits=0;
+  let inOtherBranch=null; // якщо клієнт зараз у іншій філії
   try{
     if(_currentBranch?.id){
       const visList=await sb.get('visits',`?client_id=eq.${id}&branch_id=eq.${_currentBranch.id}&select=id`);
@@ -4897,6 +4913,16 @@ async function admSelectClient(id){
     const allVisList=await sb.get('visits',`?client_id=eq.${id}&select=id`);
     const realTotal=(allVisList||[]).length;
     if(realTotal>totalVisits) totalVisits=realTotal;
+    // Перевіряємо чи клієнт зараз у будь-якій філії
+    const inClubRows=await sb.get('in_club',`?client_id=eq.${id}&select=branch_id,key_number,checked_in_at`)||[];
+    if(inClubRows.length){
+      // Якщо є в іншій філії (не поточній) — показуємо
+      const otherRow=inClubRows.find(r=>r.branch_id!==_currentBranch?.id);
+      if(otherRow){
+        const branchName=(_branches||[]).find(b=>b.id===otherRow.branch_id)?.name||'іншій філії';
+        inOtherBranch={branchName,key:otherRow.key_number,since:otherRow.checked_in_at};
+      }
+    }
   }catch(e){}
   const isIn=admInClub.find(x=>x.id===id);
   const today=new Date().toISOString().split('T')[0];
@@ -4984,10 +5010,19 @@ async function admSelectClient(id){
   document.getElementById('adm-main').innerHTML=`
     <div class="cl-card2">
       <div class="cl-prof2"><div class="cl-ph2">${av}</div><div><div class="cl-nm2">${c.last_name} ${c.first_name}</div><div style="font-size:11px;color:var(--m2);margin-top:2px">${c.phone||'—'}</div><div style="font-size:10px;color:var(--m);margin-top:1px">${c.id} · Відвідувань: <b style="color:var(--y)">${branchVisits}</b> у цій філії · ${totalVisits} всього</div></div></div>
+      ${inOtherBranch?`<div style="margin:8px 0;padding:8px 12px;background:#F9731614;border:1px solid #F9731630;border-radius:8px;font-size:11px;color:var(--or);display:flex;align-items:center;gap:8px">
+        <span style="font-size:14px">⚠️</span>
+        <span>Зараз у залі <b>"${inOtherBranch.branchName}"</b>${inOtherBranch.key?` · 🔑 ключ №${inOtherBranch.key}`:''}</span>
+      </div>`:''}
       ${subBlock}
       ${purchasesHtml}
       <div class="cl-acts" style="margin-top:8px">
-        ${isIn?`<button class="ca rd" onclick="admCheckOut('${c.id}')">🔑 Здати ключ №${isIn.key}</button>`:`<button class="ca gr" onclick="admCheckIn('${c.id}')">✅ Зареєструвати вхід</button>`}
+        ${isIn
+          ?`<button class="ca rd" onclick="admCheckOut('${c.id}')">🔑 Здати ключ №${isIn.key}</button>`
+          :inOtherBranch
+            ?`<button class="ca" disabled style="opacity:0.4;cursor:not-allowed" title="Клієнт зараз у «${inOtherBranch.branchName}»">⛔ Зараз в іншому залі</button>`
+            :`<button class="ca gr" onclick="admCheckIn('${c.id}')">✅ Зареєструвати вхід</button>`
+        }
         <button class="ca pr" onclick="admOpenSell('${c.id}')">🎫 Продати абонемент</button>
         <button class="ca" onclick="admShopFor('${c.id}')">🛒 Магазин</button>
       </div>
@@ -4997,16 +5032,71 @@ async function admSelectClient(id){
 async function admCheckIn(id){
   const c=admClients.find(x=>x.id===id);if(!c)return;
 
-  // Перевіряємо чи є активний або не активований абонемент
+  // 1. Перевіряємо чи клієнт вже в іншому залі
+  try{
+    const inClubRows=await sb.get('in_club',`?client_id=eq.${id}`)||[];
+    const inOtherBranch=inClubRows.find(r=>r.branch_id!==_currentBranch?.id);
+    if(inOtherBranch){
+      // Знаходимо назву філії
+      let branchName='іншому залі';
+      try{
+        const br=await sb.get('branches',`?id=eq.${inOtherBranch.branch_id}&select=name`);
+        if(br&&br.length) branchName=`"${br[0].name}"`;
+      }catch(e){}
+      alert(`⛔ Вхід заборонено!\n\n${c.last_name} ${c.first_name} вже знаходиться у ${branchName}.\nСпочатку клієнт має вийти з того залу.`);
+      return;
+    }
+    // Вже тут
+    if(inClubRows.find(r=>r.branch_id===_currentBranch?.id)){
+      alert(`ℹ️ ${c.last_name} ${c.first_name} вже зареєстрований у цьому залі.`);
+      return;
+    }
+  }catch(e){console.warn('in_club check:',e);}
+
+  // 2. Перевіряємо активний абонемент
   let hasSub=false;
   let subForActivation=null;
   try{
-    const subs=await sb.get('subscriptions',`?client_id=eq.${id}&status=eq.active&limit=1`);
-    if(subs&&subs.length){
-      hasSub=true;
-      subForActivation=subs[0];
+    const subs=await sb.get('subscriptions',`?client_id=eq.${id}&status=eq.active&order=end_date.desc&limit=5`)||[];
+    if(subs.length){
+      // Шукаємо абонемент підходящий для цієї філії:
+      // - мережевий (is_network=true або branch_id null)
+      // - або локальний цієї філії (branch_id = поточна)
+      // Для цього треба дізнатись тип абонементу
+      for(const sub of subs){
+        if(!sub.type_id){hasSub=true;subForActivation=sub;break;}
+        try{
+          const types=await sb.get('subscription_types',`?id=eq.${sub.type_id}&select=is_network,branch_id`);
+          const t=types&&types[0];
+          if(!t){hasSub=true;subForActivation=sub;break;}
+          if(t.is_network||!t.branch_id){
+            // Мережевий — підходить будь-якій філії
+            hasSub=true;subForActivation=sub;break;
+          }
+          if(t.branch_id===_currentBranch?.id){
+            // Локальний цієї філії — підходить
+            hasSub=true;subForActivation=sub;break;
+          }
+          // Локальний іншої філії — не підходить, шукаємо далі
+        }catch(e){hasSub=true;subForActivation=sub;break;}
+      }
+      if(!hasSub&&subs.length){
+        // Є абонементи але всі локальні іншої філії
+        const wrongBranchSub=subs[0];
+        let subBranchName='іншої філії';
+        try{
+          const types=await sb.get('subscription_types',`?id=eq.${wrongBranchSub.type_id}&select=branch_id`);
+          const bid=types&&types[0]?.branch_id;
+          if(bid){
+            const br=await sb.get('branches',`?id=eq.${bid}&select=name`);
+            if(br&&br[0]) subBranchName=`"${br[0].name}"`;
+          }
+        }catch(e){}
+        alert(`⛔ Вхід заборонено!\n\n${c.last_name} ${c.first_name} має абонемент ${subBranchName}.\nЦей абонемент не діє у поточній філії.\n\nКупіть мережевий абонемент або абонемент цієї філії.`);
+        return;
+      }
     }
-  }catch(e){}
+  }catch(e){console.warn('sub check:',e);}
 
   if(!hasSub){
     alert(`⛔ Вхід заборонено!\n\n${c.last_name} ${c.first_name} не має активного абонементу.\nСпочатку продайте абонемент.`);
