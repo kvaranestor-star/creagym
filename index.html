@@ -2850,6 +2850,7 @@ async function renderIncomeDocs(){
       <div style="color:var(--m2);font-size:11px">${d.created_by||'—'}</div>
       <div style="display:flex;gap:4px;justify-content:flex-end">
         <button onclick="viewIncomeDoc('${d.id}')" style="padding:4px 9px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-size:11px;cursor:pointer" title="Переглянути">👁</button>
+        <button onclick="deleteIncomeDoc('${d.id}')" style="padding:4px 9px;border-radius:6px;border:1px solid #EF444430;background:#EF444410;color:var(--rd);font-size:11px;cursor:pointer" title="Видалити накладну">🗑</button>
       </div>
     </div>`).join('')}
   </div>`;
@@ -3206,6 +3207,61 @@ async function viewIncomeDoc(id){
         <div style="font-size:14px;font-weight:700;color:var(--y)">Разом: ${(doc.total_amount||0).toLocaleString('uk-UA')} ₴</div>
       </div>
     </div>`;
+}
+
+async function deleteIncomeDoc(id){
+  const doc=_incomeDocs.find(d=>d.id===id);
+  if(!doc)return;
+  // Завантажуємо позиції
+  let items=[];
+  try{items=await sb.get('income_items',`?document_id=eq.${id}`)||[];}catch(e){}
+  if(!items.length){
+    // Все одно дозволяємо видалити документ навіть якщо позицій нема
+    if(!confirm(`Точно видалити накладну ${doc.doc_number?'№'+doc.doc_number:'від '+new Date(doc.doc_date).toLocaleDateString('uk-UA')}?\n\nПозицій не знайдено - буде видалено лише сам документ.`))return;
+  } else {
+    const list=items.map(it=>`• ${it.product_name}: −${it.quantity}`).join('\n');
+    if(!confirm(`⚠️ Точно видалити накладну ${doc.doc_number?'№'+doc.doc_number:'від '+new Date(doc.doc_date).toLocaleDateString('uk-UA')}?\n\nЗ СКЛАДУ БУДЕ ВІДНЯТО:\n${list}\n\nЦю дію не можна скасувати.`))return;
+  }
+  try{
+    // 1. Віднімаємо товари зі складу
+    for(const it of items){
+      if(!it.product_id) continue;
+      const prod=gProducts.find(p=>p.id===it.product_id);
+      if(prod){
+        const newStock=(prod.stock||0)-Number(it.quantity||0);
+        await sb.patch('products',`id=eq.${prod.id}`,{stock:newStock});
+        prod.stock=newStock;
+      }
+      // Запис руху - повернення накладної
+      try{
+        await sb.post('product_movements',{
+          product_id:it.product_id,
+          product_name:it.product_name,
+          type:'writeoff',
+          qty:-Number(it.quantity||0),
+          reason:`Видалення накладної ${doc.doc_number?'№'+doc.doc_number:''}`,
+          created_by:curUser?.name||'owner'
+        });
+      }catch(e){console.warn('movement on delete:',e);}
+    }
+    // 2. Видаляємо позиції (cascade на FK мав би це зробити, але робимо явно)
+    try{
+      await fetch(`${SB_URL}/rest/v1/income_items?document_id=eq.${id}`,{
+        method:'DELETE',
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+      });
+    }catch(e){console.warn('delete items:',e);}
+    // 3. Видаляємо документ
+    const resp=await fetch(`${SB_URL}/rest/v1/income_documents?id=eq.${id}`,{
+      method:'DELETE',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    });
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    _incomeDocs=_incomeDocs.filter(d=>d.id!==id);
+    renderIncomeDocs();
+    renderAssortment();
+    alert('✅ Накладну видалено, товари знято зі складу');
+  }catch(e){alert('❌ '+(e.message||'Не вдалося видалити'));}
 }
 
 async function openAddWriteoff(){
