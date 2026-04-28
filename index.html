@@ -3848,7 +3848,6 @@ let _lockersCurrentBranch=null;
 
 // ===== CHECKBOX ПЕР ФІЛІЯ =====
 async function openBranchCb(branchId, branchName){
-  // Завантажуємо поточні налаштування філії
   const branch=_branches.find(b=>b.id===branchId)||{};
 
   let mo=document.getElementById('mo-branch-cb');
@@ -3860,12 +3859,33 @@ async function openBranchCb(branchId, branchName){
     document.body.appendChild(mo);
   } else {mo.style.display='flex';mo.innerHTML='';}
 
+  // Перевіряємо статус зміни якщо є налаштування
+  let shiftStatus=null; // null = не перевіряли, 'OPENED', 'CLOSED'
+  if(branch.cb_key&&branch.cb_login&&branch.cb_pass){
+    try{
+      const r=await cbCallWithCreds(branch.cb_login,branch.cb_pass,branch.cb_key,'verify_all',{
+        _login:branch.cb_login,_pass:branch.cb_pass,_license_key:branch.cb_key
+      });
+      if(r.ok) shiftStatus=r.shift_status||'CLOSED';
+    }catch(e){}
+  }
+  const isShiftOpen=shiftStatus==='OPENED';
+  const shiftBadge=branch.cb_key
+    ? (shiftStatus===null
+        ? `<span style="padding:3px 8px;border-radius:20px;font-size:10px;background:var(--p3);color:var(--m2)">⏳ Перевіряємо...</span>`
+        : isShiftOpen
+          ? `<span style="padding:3px 8px;border-radius:20px;font-size:10px;background:#22C55E14;color:var(--gr);font-weight:700">🟢 Зміна відкрита</span>`
+          : `<span style="padding:3px 8px;border-radius:20px;font-size:10px;background:var(--p3);color:var(--m2);font-weight:600">⚪ Зміна закрита</span>`)
+    : '';
   mo.innerHTML=`
     <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;width:100%;max-width:560px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
       <div style="padding:14px 18px;border-bottom:1px solid var(--bd2);display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
         <div>
-          <div style="font-size:14px;font-weight:700;color:var(--m)">💳 Checkbox — ${branchName}</div>
-          <div style="font-size:11px;color:var(--m2);margin-top:2px">Налаштування ПРРО для цієї філії</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <div style="font-size:14px;font-weight:700;color:var(--m)">💳 Checkbox — ${branchName}</div>
+            ${shiftBadge}
+          </div>
+          <div style="font-size:11px;color:var(--m2);margin-top:2px">${isShiftOpen?'⚠️ Редагування заблоковано — закрийте зміну спочатку':'Налаштування ПРРО для цієї філії'}</div>
         </div>
         <button onclick="document.getElementById('mo-branch-cb').remove()" style="width:28px;height:28px;background:var(--p3);border:1px solid var(--bd2);border-radius:6px;cursor:pointer;color:var(--m2)">✕</button>
       </div>
@@ -3907,30 +3927,109 @@ async function openBranchCb(branchId, branchName){
         <div id="bcb-result" style="display:none;padding:10px 12px;border-radius:8px;font-size:12px"></div>
       </div>
       <div style="padding:12px 18px;border-top:1px solid var(--bd2);display:flex;gap:8px;flex-shrink:0">
-        <button onclick="testBranchCb('${branchId}')" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">🔌 Перевірити</button>
-        <button onclick="saveBranchCb('${branchId}')" style="flex:1;padding:9px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">💾 Зберегти</button>
+        <button id="bcb-test-btn" onclick="testBranchCb('${branchId}')" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">🔌 Перевірити</button>
+        <button id="bcb-save-btn" onclick="saveBranchCb('${branchId}')" style="flex:1;padding:9px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">💾 Зберегти</button>
       </div>
     </div>`;
+  // Якщо у філії вже є збережені налаштування або зміна відкрита — блокуємо поля
+  if(isShiftOpen||(branch.cb_key&&branch.cb_login)) setTimeout(()=>{
+    lockBranchCbFields(branchId);
+    if(isShiftOpen){
+      // Якщо зміна відкрита — ховаємо кнопку Змінити теж
+      const editBtn=document.getElementById('bcb-edit-btn')||document.getElementById('bcb-save-btn');
+      if(editBtn) editBtn.style.display='none';
+      // Показуємо пояснення
+      const res=document.getElementById('bcb-result');
+      if(res){
+        res.style.display='block';
+        res.style.background='#F9731614';res.style.border='1px solid #F9731630';res.style.color='var(--or)';
+        res.textContent='⚠️ Закрийте зміну в касі щоб редагувати налаштування';
+      }
+    }
+  },50);
 }
 
 async function saveBranchCb(branchId){
+  const cash=document.getElementById('bcb-cash')?.checked||false;
+  const card=document.getElementById('bcb-card')?.checked||false;
+  if(!cash&&!card){
+    const res=document.getElementById('bcb-result');
+    if(res){
+      res.style.display='block';
+      res.style.background='#EF444414';res.style.border='1px solid #EF444430';res.style.color='var(--rd)';
+      res.textContent='❌ Оберіть хоча б один тип фіскалізації: Готівка або Картка';
+    }
+    return;
+  }
   const data={
     cb_prro_name:document.getElementById('bcb-prro-name')?.value.trim()||null,
     cb_fiscal_number:document.getElementById('bcb-fiscal')?.value.trim()||null,
     cb_login:document.getElementById('bcb-login')?.value.trim()||null,
     cb_pass:document.getElementById('bcb-pass')?.value.trim()||null,
     cb_key:document.getElementById('bcb-key')?.value.trim()||null,
-    cb_fiscal_cash:document.getElementById('bcb-cash')?.checked||false,
-    cb_fiscal_card:document.getElementById('bcb-card')?.checked||false,
+    cb_fiscal_cash:cash,
+    cb_fiscal_card:card,
   };
+  const saveBtn=document.getElementById('bcb-save-btn');
+  if(saveBtn){saveBtn.textContent='Збереження...';saveBtn.disabled=true;}
   try{
     await sb.patch('branches',`id=eq.${branchId}`,data);
-    // Оновлюємо локально
     const b=_branches.find(x=>x.id===branchId);
     if(b) Object.assign(b,data);
-    document.getElementById('mo-branch-cb').remove();
-    alert('✅ Налаштування Checkbox для філії збережено');
-  }catch(e){alert('❌ '+e.message);}
+    // Блокуємо поля після збереження
+    lockBranchCbFields(branchId);
+    const res=document.getElementById('bcb-result');
+    if(res){
+      res.style.display='block';
+      res.style.background='#22C55E14';res.style.border='1px solid #22C55E30';res.style.color='var(--gr)';
+      res.textContent='✅ Збережено';
+      setTimeout(()=>{if(res)res.style.display='none';},3000);
+    }
+  }catch(e){
+    alert('❌ '+e.message);
+    if(saveBtn){saveBtn.textContent='💾 Зберегти';saveBtn.disabled=false;}
+  }
+}
+
+function lockBranchCbFields(branchId){
+  ['bcb-prro-name','bcb-fiscal','bcb-login','bcb-pass','bcb-key'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.disabled=true;el.style.opacity='0.5';el.style.cursor='not-allowed';}
+  });
+  ['bcb-cash','bcb-card'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.disabled=true;el.closest('label').style.opacity='0.5';}
+  });
+  const saveBtn=document.getElementById('bcb-save-btn');
+  const testBtn=document.getElementById('bcb-test-btn');
+  if(saveBtn){
+    saveBtn.id='bcb-edit-btn';
+    saveBtn.textContent='✏️ Змінити';
+    saveBtn.style.background='var(--ym)';
+    saveBtn.style.color='var(--y)';
+    saveBtn.style.border='1px solid var(--y)30';
+    saveBtn.onclick=()=>unlockBranchCbFields(branchId);
+  }
+}
+
+function unlockBranchCbFields(branchId){
+  ['bcb-prro-name','bcb-fiscal','bcb-login','bcb-pass','bcb-key'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.disabled=false;el.style.opacity='1';el.style.cursor='';}
+  });
+  ['bcb-cash','bcb-card'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.disabled=false;el.closest('label').style.opacity='1';}
+  });
+  const editBtn=document.getElementById('bcb-edit-btn');
+  if(editBtn){
+    editBtn.id='bcb-save-btn';
+    editBtn.textContent='💾 Зберегти';
+    editBtn.style.background='var(--y)';
+    editBtn.style.color='var(--bg)';
+    editBtn.style.border='none';
+    editBtn.onclick=()=>saveBranchCb(branchId);
+  }
 }
 
 async function testBranchCb(branchId){
@@ -5028,6 +5127,29 @@ async function loadAdminData(){
     _admAllowedBranches=allowedBranches;
     // Оновлюємо плашку філії в шапці
     updateAdmBranchBadge(admBranchId);
+    // Перевіряємо статус зміни через Checkbox для цієї філії
+    const branchData=(_branches||[]).find(b=>b.id===admBranchId);
+    if(branchData?.cb_key&&branchData?.cb_login&&branchData?.cb_pass){
+      try{
+        const shiftCheck=await cbCallWithCreds(branchData.cb_login,branchData.cb_pass,branchData.cb_key,'verify_all',{});
+        if(shiftCheck.ok){
+          const isOpen=shiftCheck.shift_status==='OPENED';
+          const badge=document.getElementById('kasa-status-badge');
+          if(badge){
+            badge.textContent=isOpen?'ВІДКРИТО':'ЗАЧИНЕНО';
+            badge.style.background=isOpen?'#22C55E20':'var(--p3)';
+            badge.style.color=isOpen?'var(--gr)':'var(--m2)';
+          }
+          if(isOpen&&!kasaShift){
+            try{
+              const bf2=admBranchId?`&branch_id=eq.${admBranchId}`:'';
+              const shifts=await sb.get('shifts',`?status=eq.open${bf2}&order=opened_at.desc&limit=1`);
+              if(shifts&&shifts.length>0){kasaShift=shifts[0];kasaSaveShift();kasaUpdateShiftUI(true);}
+            }catch(e2){}
+          }
+        }
+      }catch(e){console.warn('shift check on login:',e);}
+    }
     const bf=admBranchId?`&branch_id=eq.${admBranchId}`:'';
     [admClients,admProducts,admSubTypes]=await Promise.all([
       sb.get('clients','?order=last_name.asc'),
@@ -6754,6 +6876,19 @@ async function loadCbSettings(){
     _cbSettings=map;
     return map;
   }catch(e){console.warn('loadCbSettings:',e);_cbSettings={};return{};}
+}
+
+// cbCallWithCreds - викликає cbCall з конкретними credentials (для перевірки налаштувань філії)
+async function cbCallWithCreds(login,pass,key,action,extraData){
+  const data=Object.assign({_login:login,_pass:pass,_license_key:key},extraData||{});
+  try{
+    const r=await fetch(CB_PROXY_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SB_KEY},
+      body:JSON.stringify({action,data})
+    });
+    return await r.json();
+  }catch(e){return {error:e.message};}
 }
 
 async function cbCall(action,data){
