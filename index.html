@@ -1630,6 +1630,30 @@ function setupAdminApp(u){
   document.getElementById('adm-role').textContent='ADMIN';
 }
 
+async function updateAdmBranchBadge(branchId){
+  const badge=document.getElementById('adm-branch-badge');
+  const nameEl=document.getElementById('adm-branch-badge-name');
+  if(!badge||!nameEl)return;
+  if(!branchId){badge.style.display='none';return;}
+  // Шукаємо назву в _branches або беремо з БД
+  let name='';
+  const found=(_branches||[]).find(b=>b.id===branchId);
+  if(found){
+    name=found.name;
+  } else {
+    try{
+      const br=await sb.get('branches',`?id=eq.${branchId}&select=name`);
+      if(br&&br[0]) name=br[0].name;
+    }catch(e){}
+  }
+  if(name){
+    nameEl.textContent=name;
+    badge.style.display='inline-flex';
+  } else {
+    badge.style.display='none';
+  }
+}
+
 function logout(){
   if(!confirm('Вийти з системи?'))return;
   document.getElementById('app').classList.remove('sh');
@@ -4331,6 +4355,10 @@ function generateAutoOrderPDF(data){
 <div id="app-admin">
   <div class="adm-hdr">
     <div class="adm-logo">CREAGYM</div>
+    <div id="adm-branch-badge" style="display:none;align-items:center;gap:5px;padding:4px 10px;border-radius:7px;background:var(--ym);border:1px solid var(--y)30;flex-shrink:0">
+      <span style="font-size:11px">🏢</span>
+      <span id="adm-branch-badge-name" style="font-size:11px;font-weight:700;color:var(--y);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</span>
+    </div>
     <div class="adm-sep"></div>
     <div class="adm-tabs">
       <button class="adm-tab on" onclick="admTab('reg',this)">
@@ -4667,6 +4695,8 @@ async function loadAdminData(){
     }
     _currentBranch={id:admBranchId};
     _admAllowedBranches=allowedBranches;
+    // Оновлюємо плашку філії в шапці
+    updateAdmBranchBadge(admBranchId);
     const bf=admBranchId?`&branch_id=eq.${admBranchId}`:'';
     [admClients,admProducts,admSubTypes]=await Promise.all([
       sb.get('clients','?order=last_name.asc'),
@@ -4763,6 +4793,7 @@ function admSwitchBranch(id){
   _currentBranch=b;
   localStorage.setItem('current_branch_id',id);
   document.getElementById('adm-current-branch').textContent=b.name;
+  updateAdmBranchBadge(id);
   const dd=document.getElementById('adm-branch-dropdown');
   if(dd) dd.remove();
   // Скидаємо UI миттєво (щоб не показувало стару філію)
