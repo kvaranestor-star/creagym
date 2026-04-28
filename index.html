@@ -1346,7 +1346,7 @@ const SB_URL = 'https://rkknbltiylsvmycbbyde.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJra25ibHRpeWxzdm15Y2JieWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNzkyMTksImV4cCI6MjA5Mjc1NTIxOX0.SrXSluAh8TMcXoCqVZLk_mylTSwzBu8tJDuUSudD-mA';
 
 // Таблиці які автоматично отримують branch_id поточної філії при створенні записів
-const _BRANCH_TABLES=['products','sales','shifts','product_movements','subscriptions'];
+const _BRANCH_TABLES=['products','sales','shifts','product_movements','subscriptions','visits'];
 
 const sb = {
   async get(table, params=''){
@@ -2207,7 +2207,8 @@ async function okSyncShiftFromCheckbox(){
       // Checkbox каже що відкрита - відновлюємо локально якщо немає
       if(!okShift){
         try{
-          const shifts=await sb.get('shifts','?status=eq.open&order=opened_at.desc&limit=1');
+          const bf=_currentBranch?.id?`&branch_id=eq.${_currentBranch.id}`:'';
+          const shifts=await sb.get('shifts',`?status=eq.open${bf}&order=opened_at.desc&limit=1`);
           if(shifts&&shifts.length>0) okShift=shifts[0];
         }catch(e){}
       }
@@ -2504,6 +2505,18 @@ async function openDos(id){
     const subs=await sb.get('subscriptions',`?client_id=eq.${id}&status=eq.active&order=end_date.desc&limit=1`);
     activeSub=subs&&subs.length?subs[0]:null;
   }catch(e){}
+  // Підраховуємо візити: загалом і у поточній філії
+  let totalVisits=c.visits||0;
+  let branchVisits=0;
+  try{
+    if(_currentBranch?.id){
+      const visList=await sb.get('visits',`?client_id=eq.${id}&branch_id=eq.${_currentBranch.id}&select=id`);
+      branchVisits=(visList||[]).length;
+    }
+    const allVisList=await sb.get('visits',`?client_id=eq.${id}&select=id`);
+    const realTotal=(allVisList||[]).length;
+    if(realTotal>totalVisits) totalVisits=realTotal;
+  }catch(e){}
 
   // Блок абонементу
   let subBlock='';
@@ -2545,7 +2558,7 @@ async function openDos(id){
       <div class="dos-st">Особисті дані</div>
       <div class="ir"><span class="il">Дата народження</span><span class="iv">${c.birth_date||'—'}</span></div>
       <div class="ir"><span class="il">Статус</span><span class="st ${st.cls}">${st.l}</span></div>
-      <div class="ir"><span class="il">Всього візитів</span><span class="iv" style="color:var(--y)">${c.visits||0}</span></div>
+      <div class="ir"><span class="il">Всього візитів</span><span class="iv" style="color:var(--y)">${branchVisits} у цій філії · ${totalVisits} всього</span></div>
       ${c.note?`<div class="ir"><span class="il">Примітка</span><span class="iv">${c.note}</span></div>`:''}
     </div>
     ${subBlock}
@@ -3141,16 +3154,22 @@ async function saveIncomeDoc(){
           total_price:it.total_price
         });
         if(itemRes&&itemRes.code) console.warn('income_items error:',itemRes);
-        // Оновлення складу
+        // Оновлення складу + собівартість з останньої накладної (якщо вказана ціна)
         const prod=gProducts.find(p=>p.id===it.product_id);
         if(prod){
           const newStock=(prod.stock||0)+Number(it.quantity);
-          const patchRes=await sb.patch('products',`id=eq.${prod.id}`,{stock:newStock});
+          const updateData={stock:newStock};
+          // Якщо в накладній вказана ціна одиниці — оновлюємо собівартість
+          if(it.unit_price&&Number(it.unit_price)>0){
+            updateData.cost=Math.round(Number(it.unit_price));
+          }
+          const patchRes=await sb.patch('products',`id=eq.${prod.id}`,updateData);
           if(patchRes&&patchRes.code){
             console.error('products patch error:',patchRes);
             errors.push(`${prod.name}: ${patchRes.message||'не оновлено'}`);
           } else {
             prod.stock=newStock;
+            if(updateData.cost!==undefined) prod.cost=updateData.cost;
           }
         } else {
           errors.push(`${it.product_name}: товар не знайдено в gProducts`);
@@ -3299,7 +3318,20 @@ async function openAddWriteoff(){
 }
 
 async function deleteProduct(id,name){
-  if(!confirm(`Видалити товар "${name}"?`))return;
+  const prod=gProducts.find(p=>p.id===id);
+  if(!prod){alert('Товар не знайдено');return;}
+  // Перевірка залишку
+  const stock=Number(prod.stock||0);
+  if(stock!==0){
+    const unit=prod.unit||'шт';
+    if(stock>0){
+      alert(`❌ Не можна видалити товар "${name}"\n\nНа складі залишилось ${stock} ${unit}.\nСпочатку спишіть або продайте залишок.`);
+    } else {
+      alert(`❌ Не можна видалити товар "${name}"\n\nЗалишок мінусовий: ${stock} ${unit}.\nСпочатку оприбуткуйте товар (через Прихід) щоб довести залишок до 0.`);
+    }
+    return;
+  }
+  if(!confirm(`Видалити товар "${name}"?\nЗалишок: 0 ${prod.unit||'шт'}.`))return;
   await sb.del('products',`id=eq.${id}`);
   gProducts=gProducts.filter(p=>p.id!==id);
   renderAssortment();
@@ -4392,7 +4424,8 @@ async function cbCheckExistingShift(){
       // Checkbox відкрита — відновлюємо якщо немає локально
       if(!kasaShift){
         try{
-          const shifts=await sb.get('shifts','?status=eq.open&order=opened_at.desc&limit=1');
+          const bf=_currentBranch?.id?`&branch_id=eq.${_currentBranch.id}`:'';
+          const shifts=await sb.get('shifts',`?status=eq.open${bf}&order=opened_at.desc&limit=1`);
           if(shifts&&shifts.length>0){ kasaShift=shifts[0]; kasaSaveShift(); kasaUpdateShiftUI(true); kasaLoadTx(); }
         }catch(e2){}
       }
@@ -4462,6 +4495,19 @@ async function admSelectClient(id){
   try{subs=await sb.get('subscriptions',`?client_id=eq.${id}&order=end_date.desc&limit=3`)}catch(e){}
   const activeSub=subs.find(x=>x.status==='active')||null;
   const av=c.photo_url?`<img src="${c.photo_url}" style="width:100%;height:100%;object-fit:cover">`:`${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}`;
+  // Підраховуємо візити: загалом і у поточній філії
+  let totalVisits=c.visits||0;
+  let branchVisits=0;
+  try{
+    if(_currentBranch?.id){
+      const visList=await sb.get('visits',`?client_id=eq.${id}&branch_id=eq.${_currentBranch.id}&select=id`);
+      branchVisits=(visList||[]).length;
+    }
+    // Якщо визитов в БД больше ніж в clients.visits — оновлюємо клієнта
+    const allVisList=await sb.get('visits',`?client_id=eq.${id}&select=id`);
+    const realTotal=(allVisList||[]).length;
+    if(realTotal>totalVisits) totalVisits=realTotal;
+  }catch(e){}
   const isIn=admInClub.find(x=>x.id===id);
   const today=new Date().toISOString().split('T')[0];
 
@@ -4547,7 +4593,7 @@ async function admSelectClient(id){
 
   document.getElementById('adm-main').innerHTML=`
     <div class="cl-card2">
-      <div class="cl-prof2"><div class="cl-ph2">${av}</div><div><div class="cl-nm2">${c.last_name} ${c.first_name}</div><div style="font-size:11px;color:var(--m2);margin-top:2px">${c.phone||'—'}</div><div style="font-size:10px;color:var(--m);margin-top:1px">${c.id} · Відвідувань: ${c.visits||0}</div></div></div>
+      <div class="cl-prof2"><div class="cl-ph2">${av}</div><div><div class="cl-nm2">${c.last_name} ${c.first_name}</div><div style="font-size:11px;color:var(--m2);margin-top:2px">${c.phone||'—'}</div><div style="font-size:10px;color:var(--m);margin-top:1px">${c.id} · Відвідувань: <b style="color:var(--y)">${branchVisits}</b> у цій філії · ${totalVisits} всього</div></div></div>
       ${subBlock}
       ${purchasesHtml}
       <div class="cl-acts" style="margin-top:8px">
@@ -4581,6 +4627,18 @@ async function admCheckIn(id){
   admInClub.push({...c,key});
   document.getElementById('adm-cnt').textContent=admInClub.length;
   admRenderICP();
+
+  // Записуємо візит у таблицю visits (branch_id автоматично через _BRANCH_TABLES)
+  try{
+    await sb.post('visits',{
+      client_id:id,
+      created_by:curUser?.name||'admin'
+    });
+    // Збільшуємо лічильник у клієнта
+    const newVisits=(c.visits||0)+1;
+    await sb.patch('clients',`id=eq.${id}`,{visits:newVisits});
+    c.visits=newVisits;
+  }catch(e){console.warn('visit record:',e);}
 
   // Якщо абонемент не активований — питаємо
   const today=new Date().toISOString().split('T')[0];
@@ -4816,6 +4874,10 @@ async function kasaLoadTx(){
     if(kasaPeriod==='today') filter=`?created_at=gte.${today}T00:00:00&order=created_at.desc`;
     else if(kasaPeriod==='week'){const w=new Date();w.setDate(w.getDate()-7);filter=`?created_at=gte.${w.toISOString()}&order=created_at.desc`;}
     else if(kasaPeriod==='month'){const m=new Date();m.setMonth(m.getMonth()-1);filter=`?created_at=gte.${m.toISOString()}&order=created_at.desc`;}
+    // Фільтр по філії адміна
+    if(_currentBranch?.id){
+      filter+=(filter.includes('?')?'&':'?')+'branch_id=eq.'+_currentBranch.id;
+    }
     kasaTxAll=await sb.get('sales',filter);
     kasaRenderTx();kasaUpdateStats();
   }catch(e){
