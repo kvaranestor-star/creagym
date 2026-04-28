@@ -4669,6 +4669,11 @@ let admClients=[],admProducts=[],admSubTypes=[],admInClub=[],admCart=[],admSelSu
 
 async function loadAdminData(){
   try{
+    // Одразу скидаємо UI від попереднього сеансу
+    clearAdmClient();
+    admInClub=[];
+    admCart=[];
+    admRenderICP();
     await loadCbSettings();
     if(kasaShift) kasaUpdateShiftUI(true);
     // Визначаємо доступні філії адміна з user_branches
