@@ -985,110 +985,16 @@ tr:hover td{background:#ffffff03;cursor:pointer}
         <div class="sec" id="sec-cfg">
           <div style="display:flex;flex-direction:column;gap:16px;max-width:720px">
 
-            <!-- CHECKBOX CARD -->
-            <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:14px;overflow:hidden">
-              <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--bd)">
-                <div style="width:40px;height:40px;background:#22C55E14;border:1px solid #22C55E28;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px">🔗</div>
-                <div style="flex:1">
-                  <div style="font-size:14px;font-weight:700">Checkbox ПРРО</div>
-                  <div style="font-size:11px;color:var(--m2);margin-top:2px">Програмний реєстратор розрахункових операцій</div>
+            <!-- CHECKBOX НАЛАШТУВАННЯ ПЕРЕНЕСЕНО ДО ФІЛІЙ -->
+            <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:14px;padding:20px;display:flex;gap:14px;align-items:flex-start">
+              <div style="width:40px;height:40px;background:#60A5FA14;border:1px solid #60A5FA28;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">💳</div>
+              <div>
+                <div style="font-size:14px;font-weight:700;color:var(--m);margin-bottom:4px">Checkbox ПРРО</div>
+                <div style="font-size:12px;color:var(--m2);line-height:1.6">
+                  Налаштування фіскалізації тепер налаштовуються <b style="color:var(--m)">окремо для кожної філії</b>.<br>
+                  Перейдіть в розділ <b style="color:var(--y)">Команда → Філії</b> і натисніть кнопку <b style="color:var(--y)">💳 Каса</b> навпроти потрібної філії.
                 </div>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <div id="cb-status-dot" style="width:8px;height:8px;border-radius:50%;background:var(--m)"></div>
-                  <span id="cb-status-text" style="font-size:11px;color:var(--m2)">Не перевірено</span>
-                </div>
-              </div>
-
-              <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
-
-                <!-- ПРРО -->
-                <div>
-                  <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--m2);margin-bottom:10px">ПРРО / Каса</div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                    <div class="ff">
-                      <label>Назва ПРРО</label>
-                      <input class="fi2" type="text" id="cfg-prro-name" placeholder="ПРРО2">
-                    </div>
-                    <div class="ff">
-                      <label>Фіскальний номер</label>
-                      <input class="fi2" type="text" id="cfg-prro-num" placeholder="4001020534">
-                      <div style="font-size:10px;color:var(--m);margin-top:3px">З кабінету Checkbox → Каси</div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- КАСИР -->
-                <div>
-                  <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--m2);margin-bottom:10px">Параметри касира</div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                    <div class="ff">
-                      <label>Логін касира *</label>
-                      <input class="fi2" type="text" id="cfg-cb-login" placeholder="creagym1">
-                      <div style="font-size:10px;color:var(--m);margin-top:3px">З my.checkbox.ua → Інтеграції → Касири</div>
-                    </div>
-                    <div class="ff">
-                      <label>Пароль касира *</label>
-                      <div style="position:relative">
-                        <input class="fi2" type="password" id="cfg-cb-pass" placeholder="••••••••" style="width:100%;padding-right:36px">
-                        <button onclick="toggleCfgPass()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--m2);font-size:13px">👁</button>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="ff" style="margin-top:4px">
-                    <label>Ключ ліцензії каси *</label>
-                    <input class="fi2" type="text" id="cfg-cb-key" placeholder="2fb5132d5ee52270bf3c0094">
-                    <div style="font-size:10px;color:var(--m);margin-top:3px">З my.checkbox.ua → Каси → колонка "Ключ ліцензії"</div>
-                  </div>
-                </div>
-
-                <!-- ФІСКАЛІЗАЦІЯ -->
-                <div>
-                  <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--m2);margin-bottom:10px">Що фіскалізувати</div>
-                  <div style="display:flex;flex-direction:column;gap:8px">
-                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 13px;background:var(--p2);border:1px solid var(--bd2);border-radius:8px;transition:border-color .15s" id="fisk-cash-row">
-                      <input type="checkbox" id="cfg-fisk-cash" onchange="updateFiskRow('cash',this)" style="width:16px;height:16px;accent-color:var(--y);cursor:pointer">
-                      <div>
-                        <div style="font-size:12px;font-weight:600">💵 Готівкові платежі</div>
-                        <div style="font-size:10px;color:var(--m2);margin-top:1px">Видавати фіскальний чек при оплаті готівкою</div>
-                      </div>
-                    </label>
-                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 13px;background:var(--p2);border:1px solid var(--bd2);border-radius:8px;transition:border-color .15s" id="fisk-card-row">
-                      <input type="checkbox" id="cfg-fisk-card" onchange="updateFiskRow('card',this)" style="width:16px;height:16px;accent-color:var(--y);cursor:pointer">
-                      <div>
-                        <div style="font-size:12px;font-weight:600">💳 Безготівкові платежі</div>
-                        <div style="font-size:10px;color:var(--m2);margin-top:1px">Видавати фіскальний чек при оплаті карткою</div>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
-                <!-- RESULT -->
-                <div id="cfg-cb-result" style="display:none;background:var(--p2);border:1px solid var(--bd2);border-radius:9px;padding:12px 14px;font-size:12px"></div>
-
-                <!-- ACTIONS -->
-                <div style="display:flex;gap:8px;flex-wrap:wrap">
-                  <button id="cfg-save-btn" onclick="saveCbSettings()" style="padding:9px 18px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">💾 Зберегти налаштування</button>
-                  <button onclick="testCbConnection()" style="padding:9px 18px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">🔌 Перевірити з'єднання</button>
-                  <button id="cfg-open-shift-btn" onclick="openCbShiftManual()" style="padding:9px 18px;border-radius:8px;border:1px solid #22C55E40;background:#22C55E14;color:var(--gr);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">▶ Відкрити зміну</button>
-                  <button id="cfg-close-shift-btn" onclick="closeCbShiftManual()" style="display:none;padding:9px 18px;border-radius:8px;border:1px solid #EF444440;background:#EF444414;color:var(--rd);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">⏹ Закрити зміну</button>
-                </div>
-                <div id="cfg-shift-warn" style="display:none;margin-top:10px;padding:10px 14px;background:#F9731614;border:1px solid #F9731640;border-radius:8px;font-size:12px;color:var(--or)">
-                  🔒 Зміна відкрита — зміна налаштувань заблокована.<br>
-                  <span style="color:var(--m2);font-size:11px">Закрийте зміну щоб змінити логін, пароль, ключ або фіскалізацію.</span>
-                </div>
-                </div>
-
-              </div>
-            </div>
-
-            <!-- INSTRUCTIONS -->
-            <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:14px;padding:16px 20px">
-              <div style="font-size:12px;font-weight:700;margin-bottom:10px">📋 Як знайти логін і пароль касира</div>
-              <div style="font-size:12px;color:var(--m2);line-height:1.8">
-                1. Зайдіть в <a href="https://my.lucky.fitness" target="_blank" style="color:var(--y)">my.lucky.fitness</a> (LuckyFit) або вашу CRM<br>
-                2. Розділ <b style="color:var(--w)">Інтеграції → Онлайн РРО → Checkbox</b><br>
-                3. Знайдіть касира → <b style="color:var(--w)">Ім'я користувача</b> (логін) і <b style="color:var(--w)">Пароль</b><br>
-                4. Введіть вище → Зберегти → Перевірити з'єднання ✅
+                <button onclick="gp('branches',document.querySelector('.ni[data-tip=Філії]'))" style="margin-top:10px;padding:8px 16px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">🏢 Перейти до Філій</button>
               </div>
             </div>
 
