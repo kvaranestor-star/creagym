@@ -4715,9 +4715,8 @@ async function loadAdminData(){
       } else {
         admInClub=[];
       }
-      document.getElementById('adm-cnt').textContent=admInClub.length;
     }catch(e){console.warn('in_club load:',e); admInClub=[];}
-    // Рендер ПІСЛЯ завантаження in_club — щоб лічильники були правильні
+    // admRenderICP оновить ОБИДВА лічильники (adm-cnt і icp2-cnt)
     admRenderICP();
     admRenderShop();
     // Синхронізуємо статуси клієнтів
@@ -4804,10 +4803,10 @@ function admSwitchBranch(id){
   admCart=[];
   admSelSub=null;
   admSellCl=null;
-  document.getElementById('adm-cnt').textContent='0';
+  // Скидаємо обидва лічильники одразу через admRenderICP
+  admRenderICP();
   const icp=document.getElementById('icp2-list');
   if(icp) icp.innerHTML='<div style="padding:12px;font-size:11px;color:var(--m2);text-align:center">Завантаження...</div>';
-  const icpCnt=document.getElementById('icp2-cnt');if(icpCnt)icpCnt.textContent='0';
   // Перезавантажуємо дані
   loadAdminData();
 }
@@ -5143,8 +5142,7 @@ async function admCheckIn(id){
 
   const key=Math.floor(Math.random()*99)+1;
   admInClub.push({...c,key});
-  document.getElementById('adm-cnt').textContent=admInClub.length;
-  admRenderICP();
+  admRenderICP(); // оновлює adm-cnt і icp2-cnt разом
 
   // Зберігаємо у БД (in_club по філії)
   try{
@@ -5207,7 +5205,6 @@ async function activateSubscription(subId, clientId, silent=false){
 async function admCheckOut(id){
   const c=admInClub.find(x=>x.id===id);if(!c)return;
   admInClub=admInClub.filter(x=>x.id!==id);
-  document.getElementById('adm-cnt').textContent=admInClub.length;
   admRenderICP();admSelectClient(id);
   // Видаляємо з БД
   try{
@@ -5221,9 +5218,15 @@ async function admCheckOut(id){
   alert(`👋 ${c.last_name} ${c.first_name} вийшов\n🔑 Ключ №${c.key} повернуто`);
 }
 function admRenderICP(){
-  document.getElementById('icp2-cnt').textContent=admInClub.length;
+  // Завжди оновлюємо ОБИДВА лічильники синхронно
+  const cnt=admInClub.length;
+  const cntEl=document.getElementById('adm-cnt');
+  if(cntEl) cntEl.textContent=cnt;
+  const cntEl2=document.getElementById('icp2-cnt');
+  if(cntEl2) cntEl2.textContent=cnt;
   const el=document.getElementById('icp2-list');
-  if(!admInClub.length){el.innerHTML='<div style="padding:12px;font-size:11px;color:var(--m2);text-align:center">Нікого немає</div>';return}
+  if(!el)return;
+  if(!cnt){el.innerHTML='<div style="padding:12px;font-size:11px;color:var(--m2);text-align:center">Нікого немає</div>';return}
   el.innerHTML=admInClub.map(c=>{
     const av=c.photo_url
       ?`<img src="${c.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:6px">`
