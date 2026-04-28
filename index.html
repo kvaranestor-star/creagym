@@ -5979,64 +5979,66 @@ function kasaSaveShift(){
 }
 
 async function kasaOpenShift(){
-  if(!confirm('Відкрити нову зміну?\nГотівка на початок буде скопійована автоматично з кінця попередньої зміни.'))return;
-
-  // === ПЕРЕВІРКА CHECKBOX ===
-  // Якщо хоч один тип оплати помічений як фіскалізований - обов'язково відкриваємо зміну в Checkbox.
-  // Якщо не вдається - взагалі не відкриваємо зміну (ні локально, ні в Checkbox).
+  // 1. Перевіряємо налаштування Checkbox для поточної філії
   let cbS={};
-  try{ cbS=await loadCbSettings(); }catch(e){ cbS={}; }
-  const fiskCash=cbS.cb_fiscalize_cash==='true';
-  const fiskCard=cbS.cb_fiscalize_card==='true';
-  const needCheckbox=fiskCash||fiskCard;
+  try{cbS=await loadCbSettings();}catch(e){cbS={};}
 
-  if(needCheckbox){
-    if(!cbS.cb_login||!cbS.cb_pass||!cbS.cb_key){
-      alert('❌ Включена фіскалізація, але немає налаштувань Checkbox.\nЗверніться до власника — Налаштування → Інтеграція Checkbox.');
+  const hasCbSettings=cbS.cb_login&&cbS.cb_pass&&cbS.cb_key;
+  const fiskCash=cbS.cb_fiscalize_cash==='true'||cbS.cb_fiscal_cash===true;
+  const fiskCard=cbS.cb_fiscalize_card==='true'||cbS.cb_fiscal_card===true;
+  const hasFisk=fiskCash||fiskCard;
+
+  // Якщо немає налаштувань Checkbox — блокуємо
+  if(!hasCbSettings){
+    alert('❌ Не налаштовано Checkbox для цієї філії!\n\nВласник має налаштувати ПРРО:\nФілії → 💳 Каса → заповнити дані Checkbox.');
+    return;
+  }
+
+  // Якщо немає жодного типу фіскалізації — блокуємо
+  if(!hasFisk){
+    alert('❌ Не вибрано тип фіскалізації!\n\nВласник має обрати хоча б один:\nФілії → 💳 Каса → Готівка або Картка.');
+    return;
+  }
+
+  if(!confirm('Відкрити нову зміну?\nОборот попередньої зміни не переноситься.'))return;
+
+  // 2. Авторизуємось у Checkbox і відкриваємо зміну
+  const lr=await cbCall('login');
+  if(!lr||!lr.access_token){
+    alert('❌ Не вдалося авторизуватися в Checkbox.\n'+(lr?.message||'Перевірте дані в налаштуваннях філії.')+'\\n\nЗміну не відкрито.');
+    return;
+  }
+
+  // Перевіряємо чи вже відкрита
+  const sh=await cbCall('shift_status',{token:lr.access_token,_license_key:cbS.cb_key});
+  if(!sh||sh.status!=='OPENED'){
+    const r=await cbCall('open_shift',{token:lr.access_token,_license_key:cbS.cb_key});
+    if(!r||(!r.id&&!r.serial)){
+      alert('❌ Не вдалося відкрити зміну в Checkbox:\n'+((r&&(r.message||r.error))||'Невідома помилка')+'\n\nЗміну не відкрито.');
       return;
-    }
-    const lr=await cbCall('login');
-    if(!lr||!lr.access_token){
-      alert('❌ Не вдалося авторизуватися в Checkbox.\n'+(lr&&lr.message?lr.message:'Перевірте логін, пароль і ключ ліцензії в налаштуваннях.')+'\n\nЗміну не відкрито.');
-      return;
-    }
-    const sh=await cbCall("shift_status", {token:lr.access_token, _license_key:_cbSettings.cb_key});
-    // sh === null означає що зміни взагалі немає — треба відкрити
-    // sh.status === 'CLOSED' — попередня закрита, треба відкрити нову
-    // sh.status === 'OPENED' — вже відкрита, нічого не робимо
-    if(!sh||sh.status!=='OPENED'){
-      const r=await cbCall("open_shift", {token:lr.access_token, _license_key:_cbSettings.cb_key});
-      if(!r||(!r.id&&!r.serial)){
-        alert('❌ Не вдалося відкрити зміну в Checkbox:\n'+((r&&(r.message||r.error))||'Невідома помилка')+'\n\nЗміну не відкрито.');
-        return;
-      }
     }
   }
 
-  // Автоматично копіюємо суму з кінця попередньої зміни — без питань
-  let prevCashEnd=0;
-  try{
-    const prevShifts=await sb.get('shifts','?status=eq.closed&order=closed_at.desc&limit=1');
-    if(prevShifts&&prevShifts.length>0) prevCashEnd=prevShifts[0].cash_end||0;
-  }catch(e){}
-  const amt=prevCashEnd;
+  // 3. Зберігаємо зміну в БД (оборот завжди з нуля — cash_start=0)
   try{
     const result=await sb.post('shifts',{
       opened_by:curUser?.name||'admin',
-      cash_start:amt,
+      cash_start:0,
       status:'open'
     });
     kasaShift=Array.isArray(result)?result[0]:result;
-    if(!kasaShift||kasaShift.code) kasaShift={id:'demo-'+Date.now(),opened_by:curUser?.name||'admin',cash_start:amt,opened_at:new Date().toISOString(),status:'open'};
+    if(!kasaShift||kasaShift.code){
+      kasaShift={id:'local-'+Date.now(),opened_by:curUser?.name||'admin',cash_start:0,opened_at:new Date().toISOString(),status:'open'};
+    }
   }catch(e){
-    kasaShift={id:'demo-'+Date.now(),opened_by:curUser?.name||'admin',cash_start:amt,opened_at:new Date().toISOString(),status:'open'};
+    kasaShift={id:'local-'+Date.now(),opened_by:curUser?.name||'admin',cash_start:0,opened_at:new Date().toISOString(),status:'open'};
   }
+
   kasaSaveShift();
   kasaUpdateShiftUI(true);
   kasaLoadTx();
   const t=new Date().toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
-  const cbInfo=needCheckbox?'\n📋 Зміну також відкрито в Checkbox':'\n⚪ Локальна зміна (фіскалізація вимкнена)';
-  alert(`✅ Зміну відкрито о ${t}\n💵 Готівка на початок: ${amt.toLocaleString('uk-UA')} ₴${cbInfo}`);
+  alert(`✅ Зміну відкрито о ${t}\n📋 Зміну відкрито в Checkbox\n💵 Оборот: 0 ₴ (нова зміна)`);
 }
 
 function kasaUpdateShiftUI(open){
@@ -6065,14 +6067,18 @@ function kasaUpdateShiftUI(open){
 
 async function kasaLoadTx(){
   try{
-    const today=new Date().toISOString().split('T')[0];
+    // Тільки транзакції ПОТОЧНОЇ зміни (якщо зміна відкрита)
     let filter='?order=created_at.desc&limit=200';
-    if(kasaPeriod==='today') filter=`?created_at=gte.${today}T00:00:00&order=created_at.desc`;
-    else if(kasaPeriod==='week'){const w=new Date();w.setDate(w.getDate()-7);filter=`?created_at=gte.${w.toISOString()}&order=created_at.desc`;}
-    else if(kasaPeriod==='month'){const m=new Date();m.setMonth(m.getMonth()-1);filter=`?created_at=gte.${m.toISOString()}&order=created_at.desc`;}
-    // Фільтр по філії адміна
-    if(_currentBranch?.id){
-      filter+=(filter.includes('?')?'&':'?')+'branch_id=eq.'+_currentBranch.id;
+    if(kasaShift?.id&&!kasaShift.id.startsWith('local-')){
+      // Є реальна зміна — показуємо тільки її транзакції
+      filter=`?shift_id=eq.${kasaShift.id}&order=created_at.desc`;
+    } else {
+      // Немає зміни — фільтр по часі
+      const today=new Date().toISOString().split('T')[0];
+      if(kasaPeriod==='today') filter=`?created_at=gte.${today}T00:00:00&order=created_at.desc`;
+      else if(kasaPeriod==='week'){const w=new Date();w.setDate(w.getDate()-7);filter=`?created_at=gte.${w.toISOString()}&order=created_at.desc`;}
+      else if(kasaPeriod==='month'){const m=new Date();m.setMonth(m.getMonth()-1);filter=`?created_at=gte.${m.toISOString()}&order=created_at.desc`;}
+      if(_currentBranch?.id) filter+='&branch_id=eq.'+_currentBranch.id;
     }
     kasaTxAll=await sb.get('sales',filter);
     kasaRenderTx();kasaUpdateStats();
@@ -6134,9 +6140,9 @@ function kasaUpdateStats(){
   const cashOut=kasaTxAll.filter(x=>x.payment_method==='cash'&&(x.type==='outcome'||x.type==='return')).reduce((s,x)=>s+x.amount,0);
   const cashTurn=cashIn-cashOut;
   const cardTurn=kasaTxAll.filter(x=>x.payment_method==='card'&&x.type!=='return').reduce((s,x)=>s+x.amount,0);
-  const cashStart=kasaShift?.cash_start||0;
-  document.getElementById('k-cash-start').textContent=cashStart.toLocaleString('uk-UA')+' ₴';
-  document.getElementById('k-cash-total').textContent=(cashStart+cashTurn).toLocaleString('uk-UA')+' ₴';
+  // Оборот завжди з нуля — без перенесення з попередньої зміни
+  document.getElementById('k-cash-start').textContent='0 ₴';
+  document.getElementById('k-cash-total').textContent=cashTurn.toLocaleString('uk-UA')+' ₴';
   document.getElementById('k-cash-turn').textContent=cashTurn.toLocaleString('uk-UA')+' ₴';
   document.getElementById('k-card-start').textContent='0 ₴';
   document.getElementById('k-card-total').textContent=cardTurn.toLocaleString('uk-UA')+' ₴';
