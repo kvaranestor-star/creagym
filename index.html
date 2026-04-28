@@ -1594,12 +1594,16 @@ function switchBranch(id){
   const dd=document.getElementById('branch-dropdown');
   if(dd) dd.remove();
   console.log('Перемкнено на філію:',b.name);
+  // Скидаємо фільтр статистики на "поточна" щоб дані оновились до нової філії
+  _statsBranchFilter='current';
   // Перезавантажуємо дані поточної сторінки
   if(curPage==='goods') loadGoods();
   else if(curPage==='subs') loadSubs();
   else if(curPage==='fin'){okSyncShiftFromCheckbox();okUpdateShiftUI(!!okShift);okLoadTx();}
   else if(curPage==='stats') loadStats();
   else if(curPage==='clients') loadClients();
+  else if(curPage==='branches') loadBranches();
+  else if(curPage==='staff') loadStaff();
 }
 
 // Перевірка стану Checkbox для власника - викликається при вході та періодично
@@ -4670,6 +4674,19 @@ async function loadAdminData(){
       // Сетеві + локальні поточної філії
       sb.get('subscription_types',admBranchId?`?is_active=eq.true&or=(is_network.eq.true,branch_id.eq.${admBranchId})&order=price.asc`:'?is_active=eq.true&order=price.asc')
     ]);
+    // Підвантажуємо хто зараз у клубі (з БД, тільки поточна філія)
+    try{
+      if(admBranchId){
+        const inClubRows=await sb.get('in_club',`?branch_id=eq.${admBranchId}&order=checked_in_at.asc`)||[];
+        admInClub=inClubRows.map(r=>{
+          const cl=admClients.find(c=>c.id===r.client_id);
+          return cl?{...cl,key:r.key_number||0,_inClubId:r.id}:null;
+        }).filter(Boolean);
+      } else {
+        admInClub=[];
+      }
+      document.getElementById('adm-cnt').textContent=admInClub.length;
+    }catch(e){console.warn('in_club load:',e); admInClub=[];}
     admRenderICP();admRenderShop();
     // Синхронізуємо статуси клієнтів
     await syncAdminClientStatuses();
@@ -5001,6 +5018,18 @@ async function admCheckIn(id){
   document.getElementById('adm-cnt').textContent=admInClub.length;
   admRenderICP();
 
+  // Зберігаємо у БД (in_club по філії)
+  try{
+    if(_currentBranch?.id){
+      await sb.post('in_club',{
+        client_id:id,
+        branch_id:_currentBranch.id,
+        key_number:key,
+        checked_in_by:curUser?.name||'admin'
+      });
+    }
+  }catch(e){console.warn('in_club post:',e);}
+
   // Записуємо візит у таблицю visits (branch_id автоматично через _BRANCH_TABLES)
   try{
     await sb.post('visits',{
@@ -5047,11 +5076,20 @@ async function activateSubscription(subId, clientId, silent=false){
   }
 }
 
-function admCheckOut(id){
+async function admCheckOut(id){
   const c=admInClub.find(x=>x.id===id);if(!c)return;
   admInClub=admInClub.filter(x=>x.id!==id);
   document.getElementById('adm-cnt').textContent=admInClub.length;
   admRenderICP();admSelectClient(id);
+  // Видаляємо з БД
+  try{
+    if(_currentBranch?.id){
+      await fetch(`${SB_URL}/rest/v1/in_club?client_id=eq.${id}&branch_id=eq.${_currentBranch.id}`,{
+        method:'DELETE',
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+      });
+    }
+  }catch(e){console.warn('in_club delete:',e);}
   alert(`👋 ${c.last_name} ${c.first_name} вийшов\n🔑 Ключ №${c.key} повернуто`);
 }
 function admRenderICP(){
