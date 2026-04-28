@@ -5284,6 +5284,7 @@ async function admSelectClient(id){
       <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">${returnBtn}${activateBtn}</div>
       <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bd);display:flex;flex-direction:column;gap:4px">
         ${activeSub.created_at?`<div style="font-size:10px;color:var(--m2);display:flex;justify-content:space-between"><span>🛒 Куплено:</span><span style="color:var(--m);font-weight:600">${new Date(activeSub.created_at).toLocaleDateString('uk-UA')} о ${new Date(activeSub.created_at).toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})}</span></div>`:''}
+        ${activeSub.end_date?`<div style="font-size:10px;color:var(--m2);display:flex;justify-content:space-between"><span>📅 Діє до:</span><span style="color:${dl<=3&&!notStarted&&!isFrozen?'var(--rd)':dl<=7&&!notStarted&&!isFrozen?'var(--or)':'var(--gr)'};font-weight:700">${new Date(activeSub.end_date+'T00:00:00').toLocaleDateString('uk-UA',{day:'2-digit',month:'long',year:'numeric'})}</span></div>`:''}
         ${firstVisit?`<div style="font-size:10px;color:var(--m2);display:flex;justify-content:space-between"><span>🚪 Перший вхід:</span><span style="color:var(--m);font-weight:600">${firstVisit.toLocaleDateString('uk-UA')} о ${firstVisit.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})}</span></div>`:'<div style="font-size:10px;color:var(--m2)">🚪 Перший вхід: ще не відвідував</div>'}
       </div>
     </div>`;
@@ -5486,7 +5487,7 @@ async function activateSubscription(subId, clientId, silent=false){
     const today=new Date().toISOString().split('T')[0];
     // Перераховуємо end_date від сьогодні
     const endDate=new Date();
-    endDate.setDate(endDate.getDate()+sub.days||30);
+    endDate.setDate(endDate.getDate()+(sub.days||30));
     const endDateStr=endDate.toISOString().split('T')[0];
     await sb.patch('subscriptions',`id=eq.${subId}`,{
       started_at:today,
