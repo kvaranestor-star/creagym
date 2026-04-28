@@ -5209,8 +5209,8 @@ async function admSelectClient(id){
     const realTotal=(allVisList||[]).length;
     if(realTotal>totalVisits) totalVisits=realTotal;
     // Перший візит взагалі
-    const firstVisitRes=await sb.get('visits',`?client_id=eq.${id}&order=created_at.asc&limit=1&select=created_at`);
-    if(firstVisitRes&&firstVisitRes.length) firstVisit=new Date(firstVisitRes[0].created_at);
+    const firstVisitRes=await sb.get('visits',`?client_id=eq.${id}&order=visited_at.asc&limit=1&select=visited_at`);
+    if(firstVisitRes&&firstVisitRes.length) firstVisit=new Date(firstVisitRes[0].visited_at);
     // Перевіряємо чи клієнт зараз у будь-якій філії
     const inClubRows=await sb.get('in_club',`?client_id=eq.${id}&select=branch_id,key_number,checked_in_at`)||[];
     if(inClubRows.length){
@@ -5453,11 +5453,12 @@ async function admCheckIn(id){
     }
   }catch(e){console.warn('in_club post:',e);}
 
-  // Записуємо візит у таблицю visits (branch_id автоматично через _BRANCH_TABLES)
+  // Записуємо візит у таблицю visits
   try{
     await sb.post('visits',{
       client_id:id,
-      created_by:curUser?.name||'admin'
+      registered_by:curUser?.name||'admin',
+      visited_at:new Date().toISOString()
     });
     // Збільшуємо лічильник у клієнта
     const newVisits=(c.visits||0)+1;
