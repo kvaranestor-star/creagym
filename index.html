@@ -2793,20 +2793,17 @@ function renderStock(){
     ${sorted.map(p=>{
       const pct=Math.min(100,Math.round(p.stock/(p.min_stock*3||30)*100));
       const color=p.stock<=0?'var(--rd)':p.stock<=p.min_stock?'var(--or)':'var(--gr)';
-      return `<div style="padding:12px 16px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:36px 1fr 80px 60px;align-items:center;gap:12px">
+      const unit=p.unit||'шт';
+      return `<div style="padding:12px 16px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:36px 1fr 100px;align-items:center;gap:12px">
         <div style="font-size:22px;text-align:center">${p.emoji||'📦'}</div>
         <div>
           <div style="font-size:12px;font-weight:600">${p.name}</div>
           <div style="margin-top:5px;height:5px;background:var(--p3);border-radius:3px">
             <div style="width:${pct}%;height:100%;background:${color};border-radius:3px;transition:width .3s"></div>
           </div>
-          <div style="font-size:10px;color:var(--m2);margin-top:2px">Мін: ${p.min_stock} шт.</div>
+          <div style="font-size:10px;color:var(--m2);margin-top:2px">Мін: ${p.min_stock} ${unit}</div>
         </div>
-        <div style="text-align:right;font-size:14px;font-weight:700;color:${color}">${p.stock} шт.</div>
-        <div style="display:flex;gap:4px;justify-content:flex-end">
-          <button onclick="quickStock('${p.id}','${p.name}',${p.stock},1)" style="width:26px;height:26px;border-radius:6px;border:1px solid #22C55E40;background:#22C55E14;color:var(--gr);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
-          <button onclick="quickStock('${p.id}','${p.name}',${p.stock},-1)" style="width:26px;height:26px;border-radius:6px;border:1px solid #EF444430;background:#EF444410;color:var(--rd);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center">−</button>
-        </div>
+        <div style="text-align:right;font-size:14px;font-weight:700;color:${color}">${p.stock} ${unit}</div>
       </div>`;
     }).join('')}
   </div>`;
@@ -2825,20 +2822,55 @@ async function quickStock(id,name,current,dir){
   renderStock();
 }
 
+// ===== ПРИХІД (накладні) =====
+let _incomeDocs=[];
+let _incomeItems=[]; // позиції в поточній модалці
+
+async function renderIncomeDocs(){
+  const el=document.getElementById('g-income-list');
+  if(!el)return;
+  el.innerHTML='<div class="loading"><div class="spin"></div>Завантаження...</div>';
+  try{
+    const bf=_currentBranch?.id?`?branch_id=eq.${_currentBranch.id}&order=doc_date.desc,created_at.desc`:'?order=doc_date.desc,created_at.desc';
+    _incomeDocs=await sb.get('income_documents',bf)||[];
+  }catch(e){console.warn('renderIncomeDocs:',e); _incomeDocs=[];}
+  if(!_incomeDocs.length){
+    el.innerHTML='<div style="padding:40px;text-align:center;color:var(--m2);font-size:13px;background:var(--p1);border:1px dashed var(--bd2);border-radius:12px">Немає прибуткових документів. Натисніть «+ Новий прихід» щоб оформити поставку.</div>';
+    return;
+  }
+  el.innerHTML=`<div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;overflow:hidden">
+    <div style="padding:12px 16px;background:var(--p2);border-bottom:1px solid var(--bd);display:grid;grid-template-columns:90px 110px 1fr 120px 110px 70px;gap:12px;font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">
+      <div>Дата</div><div>№ накладної</div><div>Постачальник</div><div style="text-align:right">Сума</div><div>Користувач</div><div></div>
+    </div>
+    ${_incomeDocs.map(d=>`<div style="padding:12px 16px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:90px 110px 1fr 120px 110px 70px;gap:12px;align-items:center;font-size:12px">
+      <div style="color:var(--m)">${new Date(d.doc_date).toLocaleDateString('uk-UA')}</div>
+      <div style="font-family:'Courier New',monospace;color:var(--m)">${d.doc_number||'—'}</div>
+      <div style="color:${d.supplier_name?'var(--m)':'var(--m2)'}">${d.supplier_name||'—'}</div>
+      <div style="text-align:right;font-weight:700;color:var(--y)">${(d.total_amount||0).toLocaleString('uk-UA')} ₴</div>
+      <div style="color:var(--m2);font-size:11px">${d.created_by||'—'}</div>
+      <div style="display:flex;gap:4px;justify-content:flex-end">
+        <button onclick="viewIncomeDoc('${d.id}')" style="padding:4px 9px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-size:11px;cursor:pointer" title="Переглянути">👁</button>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
 function renderMovements(type){
-  const elId=type==='income'?'g-income-list':'g-writeoff-list';
+  // Якщо це прихід — показуємо документи замість простого списку
+  if(type==='income'){renderIncomeDocs();return;}
+  const elId='g-writeoff-list';
   const el=document.getElementById(elId);
   if(!el)return;
   const list=gMovements.filter(m=>m.type===type);
   if(!list.length){el.innerHTML='<div style="padding:30px;text-align:center;color:var(--m2);font-size:12px">Записів немає</div>';return;}
   el.innerHTML=`<div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;overflow:hidden">
     ${list.map(m=>`<div class="g-log-row">
-      <div style="font-size:18px">${type==='income'?'📥':'🗑'}</div>
+      <div style="font-size:18px">🗑</div>
       <div style="flex:1">
         <div style="font-weight:600;font-size:12px">${m.product_name||'—'}</div>
         <div style="font-size:10px;color:var(--m2)">${m.reason||'—'} · ${m.created_by||'—'}</div>
       </div>
-      <div style="font-size:13px;font-weight:700;color:${type==='income'?'var(--gr)':'var(--rd)'}">${type==='income'?'+':''}${m.qty} шт.</div>
+      <div style="font-size:13px;font-weight:700;color:var(--rd)">${m.qty} шт.</div>
       <div style="font-size:10px;color:var(--m2)">${new Date(m.created_at).toLocaleDateString('uk-UA')}</div>
     </div>`).join('')}
   </div>`;
@@ -2900,17 +2932,280 @@ async function saveInventory(){
 }
 
 async function openAddIncome(){
-  const prod=gProducts.find(p=>p.name===prompt('Назва товару:\n'+gProducts.map(p=>p.name).join('\n')));
+  // Завантажуємо постачальників якщо ще не завантажені
+  if(!_suppliers||!_suppliers.length){
+    try{await loadCategoriesAndSuppliers();}catch(e){}
+  }
+  _incomeItems=[];
+  // Створюємо модалку
+  let mo=document.getElementById('mo-income-doc');
+  if(!mo){
+    mo=document.createElement('div');
+    mo.id='mo-income-doc';
+    mo.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)';
+    mo.onclick=function(e){if(e.target===mo)closeIncomeMo();};
+    document.body.appendChild(mo);
+  } else { mo.style.display='flex'; mo.innerHTML=''; }
+  const today=new Date().toISOString().split('T')[0];
+  mo.innerHTML=`
+    <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;width:100%;max-width:780px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--bd2);flex-shrink:0">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--m)">📥 Нова прибуткова накладна</div>
+          <div style="font-size:11px;color:var(--m2);margin-top:2px">Філія: ${_currentBranch?.name||'—'}</div>
+        </div>
+        <button onclick="closeIncomeMo()" style="width:28px;height:28px;background:var(--p3);border:1px solid var(--bd2);border-radius:6px;cursor:pointer;color:var(--m2);font-size:14px">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          <div class="ff">
+            <label>Дата накладної *</label>
+            <input class="fi2" type="date" id="inc-doc-date" value="${today}">
+          </div>
+          <div class="ff">
+            <label>№ накладної</label>
+            <input class="fi2" type="text" id="inc-doc-number" placeholder="напр. 12345">
+          </div>
+          <div class="ff">
+            <label>Постачальник</label>
+            <select class="fi2" id="inc-doc-supplier">
+              <option value="">— оберіть —</option>
+              ${(_suppliers||[]).map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+
+        <div style="background:var(--p2);border:1px solid var(--bd2);border-radius:8px;padding:12px">
+          <div style="font-size:11px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Додати позицію</div>
+          <div style="display:grid;grid-template-columns:2fr 90px 100px 110px auto;gap:8px;align-items:end">
+            <div class="ff" style="margin:0">
+              <label style="font-size:9px">Товар</label>
+              <select class="fi2" id="inc-line-product">
+                <option value="">— оберіть товар —</option>
+                ${(gProducts||[]).map(p=>`<option value="${p.id}">${p.emoji||'📦'} ${p.name}</option>`).join('')}
+              </select>
+            </div>
+            <div class="ff" style="margin:0">
+              <label style="font-size:9px">К-сть</label>
+              <input class="fi2" type="number" id="inc-line-qty" min="0" step="0.001" placeholder="1">
+            </div>
+            <div class="ff" style="margin:0">
+              <label style="font-size:9px">Ціна од. ₴</label>
+              <input class="fi2" type="number" id="inc-line-price" min="0" step="0.01" placeholder="0">
+            </div>
+            <div class="ff" style="margin:0">
+              <label style="font-size:9px">Сума</label>
+              <div id="inc-line-total" style="padding:8px 10px;border-radius:6px;background:var(--p3);font-size:13px;font-weight:700;color:var(--y);text-align:right;min-height:34px">0 ₴</div>
+            </div>
+            <button onclick="addIncomeLine()" style="padding:8px 16px;border-radius:6px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer;height:34px">+ Додати</button>
+          </div>
+        </div>
+
+        <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:8px;overflow:hidden">
+          <div style="padding:10px 14px;background:var(--p2);border-bottom:1px solid var(--bd);display:grid;grid-template-columns:1fr 80px 100px 110px 40px;gap:10px;font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">
+            <div>Товар</div><div style="text-align:center">К-сть</div><div style="text-align:right">Ціна</div><div style="text-align:right">Сума</div><div></div>
+          </div>
+          <div id="inc-lines"></div>
+          <div id="inc-total-row" style="padding:12px 14px;border-top:2px solid var(--bd2);background:var(--p2);display:flex;justify-content:space-between;align-items:center">
+            <div style="font-size:12px;font-weight:700;color:var(--m)">РАЗОМ:</div>
+            <div id="inc-total" style="font-size:16px;font-weight:700;color:var(--y)">0 ₴</div>
+          </div>
+        </div>
+
+        <div class="ff">
+          <label>Примітки</label>
+          <textarea class="fi2" id="inc-doc-notes" rows="2" placeholder="Додаткова інформація..." style="resize:vertical"></textarea>
+        </div>
+      </div>
+      <div style="padding:12px 18px;border-top:1px solid var(--bd2);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0">
+        <button onclick="closeIncomeMo()" style="padding:9px 18px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">Скасувати</button>
+        <button onclick="saveIncomeDoc()" id="inc-save-btn" style="padding:9px 18px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">💾 Зберегти накладну</button>
+      </div>
+    </div>`;
+  // Підрахунок суми позиції
+  ['inc-line-qty','inc-line-price'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('input',calcIncomeLine);
+  });
+  // Авто-підставлення ціни закупки коли обираєш товар
+  const prodSel=document.getElementById('inc-line-product');
+  if(prodSel) prodSel.addEventListener('change',()=>{
+    const p=gProducts.find(x=>x.id===prodSel.value);
+    const priceInp=document.getElementById('inc-line-price');
+    if(p&&priceInp&&!priceInp.value) priceInp.value=p.cost||'';
+    calcIncomeLine();
+  });
+  renderIncomeLines();
+}
+
+function calcIncomeLine(){
+  const qty=parseFloat(document.getElementById('inc-line-qty')?.value)||0;
+  const price=parseFloat(document.getElementById('inc-line-price')?.value)||0;
+  const total=qty*price;
+  const el=document.getElementById('inc-line-total');
+  if(el) el.textContent=total.toLocaleString('uk-UA',{maximumFractionDigits:2})+' ₴';
+}
+
+function addIncomeLine(){
+  const prodId=document.getElementById('inc-line-product')?.value;
+  const qty=parseFloat(document.getElementById('inc-line-qty')?.value)||0;
+  const price=parseFloat(document.getElementById('inc-line-price')?.value)||0;
+  if(!prodId){alert('Оберіть товар');return;}
+  if(!qty||qty<=0){alert('Введіть кількість');return;}
+  const prod=gProducts.find(p=>p.id===prodId);
   if(!prod)return;
-  const qty=parseInt(prompt(`Кількість приходу "${prod.name}" (зараз: ${prod.stock} шт.):`)||'0');
-  if(!qty||qty<=0)return;
-  const reason=prompt('Причина/постачальник:')||'Прихід';
-  await sb.patch('products',`id=eq.${prod.id}`,{stock:prod.stock+qty});
-  await sb.post('product_movements',{product_id:prod.id,product_name:prod.name,type:'income',qty,reason,created_by:curUser?.name||'owner'});
-  prod.stock+=qty;
-  gMovements.unshift({product_id:prod.id,product_name:prod.name,type:'income',qty,reason,created_by:curUser?.name||'owner',created_at:new Date().toISOString()});
-  renderMovements('income');
-  alert(`✅ Прихід ${qty} шт. "${prod.name}" збережено`);
+  _incomeItems.push({
+    product_id:prodId,
+    product_name:prod.name,
+    emoji:prod.emoji||'📦',
+    unit:prod.unit||'шт',
+    quantity:qty,
+    unit_price:price,
+    total_price:qty*price
+  });
+  // Скидаємо форму додавання
+  document.getElementById('inc-line-product').value='';
+  document.getElementById('inc-line-qty').value='';
+  document.getElementById('inc-line-price').value='';
+  document.getElementById('inc-line-total').textContent='0 ₴';
+  renderIncomeLines();
+}
+
+function removeIncomeLine(idx){
+  _incomeItems.splice(idx,1);
+  renderIncomeLines();
+}
+
+function renderIncomeLines(){
+  const el=document.getElementById('inc-lines');
+  if(!el)return;
+  if(!_incomeItems.length){
+    el.innerHTML='<div style="padding:20px;text-align:center;font-size:11px;color:var(--m2)">Поки немає позицій. Додайте товар вище.</div>';
+    document.getElementById('inc-total').textContent='0 ₴';
+    return;
+  }
+  el.innerHTML=_incomeItems.map((it,idx)=>`<div style="padding:9px 14px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:1fr 80px 100px 110px 40px;gap:10px;align-items:center;font-size:12px">
+    <div>${it.emoji} ${it.product_name}</div>
+    <div style="text-align:center">${it.quantity} ${it.unit}</div>
+    <div style="text-align:right;color:var(--m2)">${it.unit_price.toLocaleString('uk-UA',{maximumFractionDigits:2})} ₴</div>
+    <div style="text-align:right;font-weight:700;color:var(--y)">${it.total_price.toLocaleString('uk-UA',{maximumFractionDigits:2})} ₴</div>
+    <div style="text-align:right"><button onclick="removeIncomeLine(${idx})" style="padding:3px 8px;border-radius:6px;border:1px solid #EF444430;background:#EF444410;color:var(--rd);font-size:11px;cursor:pointer">✕</button></div>
+  </div>`).join('');
+  const total=_incomeItems.reduce((s,i)=>s+i.total_price,0);
+  document.getElementById('inc-total').textContent=total.toLocaleString('uk-UA',{maximumFractionDigits:2})+' ₴';
+}
+
+function closeIncomeMo(){
+  const mo=document.getElementById('mo-income-doc');
+  if(mo) mo.remove();
+  _incomeItems=[];
+}
+
+async function saveIncomeDoc(){
+  if(!_incomeItems.length){alert('Додайте хоча б одну позицію');return;}
+  const docDate=document.getElementById('inc-doc-date')?.value;
+  const docNumber=(document.getElementById('inc-doc-number')?.value||'').trim();
+  const supplierId=document.getElementById('inc-doc-supplier')?.value||null;
+  const notes=(document.getElementById('inc-doc-notes')?.value||'').trim();
+  if(!docDate){alert('Вкажіть дату накладної');return;}
+  const supplier=supplierId?_suppliers.find(s=>s.id===supplierId):null;
+  const total=_incomeItems.reduce((s,i)=>s+i.total_price,0);
+  const btn=document.getElementById('inc-save-btn');
+  btn.textContent='Збереження...';btn.disabled=true;
+  try{
+    // 1. Створюємо документ
+    const docResult=await sb.post('income_documents',{
+      doc_number:docNumber||null,
+      doc_date:docDate,
+      supplier_id:supplierId,
+      supplier_name:supplier?.name||null,
+      total_amount:total,
+      notes:notes||null,
+      created_by:curUser?.name||'owner',
+      branch_id:_currentBranch?.id||null
+    });
+    const doc=Array.isArray(docResult)?docResult[0]:docResult;
+    if(!doc?.id) throw new Error('Не вдалося створити документ');
+    // 2. Створюємо позиції + оновлюємо склад + рух
+    for(const it of _incomeItems){
+      // Позиція
+      await sb.post('income_items',{
+        document_id:doc.id,
+        product_id:it.product_id,
+        product_name:it.product_name,
+        quantity:it.quantity,
+        unit_price:it.unit_price,
+        total_price:it.total_price
+      });
+      // Оновлення складу
+      const prod=gProducts.find(p=>p.id===it.product_id);
+      if(prod){
+        const newStock=(prod.stock||0)+it.quantity;
+        await sb.patch('products',`id=eq.${prod.id}`,{stock:newStock});
+        prod.stock=newStock;
+      }
+      // Рух товару
+      await sb.post('product_movements',{
+        product_id:it.product_id,
+        product_name:it.product_name,
+        type:'income',
+        qty:it.quantity,
+        reason:`Накладна №${docNumber||'—'}${supplier?' від '+supplier.name:''}`,
+        created_by:curUser?.name||'owner'
+      });
+    }
+    alert(`✅ Накладну збережено!\n${_incomeItems.length} позицій на суму ${total.toLocaleString('uk-UA')} ₴`);
+    closeIncomeMo();
+    renderIncomeDocs();
+    renderAssortment();
+  }catch(e){alert('❌ '+e.message);}
+  finally{btn.textContent='💾 Зберегти накладну';btn.disabled=false;}
+}
+
+async function viewIncomeDoc(id){
+  const doc=_incomeDocs.find(d=>d.id===id);
+  if(!doc)return;
+  let items=[];
+  try{items=await sb.get('income_items',`?document_id=eq.${id}&order=created_at.asc`)||[];}catch(e){}
+  let mo=document.getElementById('mo-income-view');
+  if(!mo){
+    mo=document.createElement('div');
+    mo.id='mo-income-view';
+    mo.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)';
+    mo.onclick=function(e){if(e.target===mo)mo.remove();};
+    document.body.appendChild(mo);
+  } else { mo.style.display='flex'; mo.innerHTML=''; }
+  mo.innerHTML=`
+    <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;width:100%;max-width:680px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--bd2);display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--m)">📥 Накладна ${doc.doc_number?'№'+doc.doc_number:''}</div>
+          <div style="font-size:11px;color:var(--m2);margin-top:3px">${new Date(doc.doc_date).toLocaleDateString('uk-UA')}${doc.supplier_name?' · '+doc.supplier_name:''}</div>
+        </div>
+        <button onclick="document.getElementById('mo-income-view').remove()" style="width:28px;height:28px;background:var(--p3);border:1px solid var(--bd2);border-radius:6px;cursor:pointer;color:var(--m2)">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:14px 18px">
+        ${items.length?`<table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="border-bottom:1px solid var(--bd)">
+            <th style="text-align:left;padding:8px 4px;font-size:10px;color:var(--m2);font-weight:600">Товар</th>
+            <th style="text-align:center;padding:8px 4px;font-size:10px;color:var(--m2);font-weight:600">К-сть</th>
+            <th style="text-align:right;padding:8px 4px;font-size:10px;color:var(--m2);font-weight:600">Ціна</th>
+            <th style="text-align:right;padding:8px 4px;font-size:10px;color:var(--m2);font-weight:600">Сума</th>
+          </tr></thead>
+          <tbody>${items.map(it=>`<tr style="border-bottom:1px solid var(--bd)">
+            <td style="padding:8px 4px">${it.product_name||'—'}</td>
+            <td style="text-align:center;padding:8px 4px">${it.quantity}</td>
+            <td style="text-align:right;padding:8px 4px;color:var(--m2)">${(it.unit_price||0).toLocaleString('uk-UA')} ₴</td>
+            <td style="text-align:right;padding:8px 4px;font-weight:700">${(it.total_price||0).toLocaleString('uk-UA')} ₴</td>
+          </tr>`).join('')}</tbody>
+        </table>`:'<div style="text-align:center;color:var(--m2);padding:20px">Позицій не знайдено</div>'}
+        ${doc.notes?`<div style="margin-top:14px;padding:10px;background:var(--p2);border:1px solid var(--bd);border-radius:6px;font-size:11px;color:var(--m2)"><b style="color:var(--m)">Примітки:</b> ${doc.notes}</div>`:''}
+      </div>
+      <div style="padding:12px 18px;border-top:1px solid var(--bd2);display:flex;justify-content:space-between;align-items:center;background:var(--p2)">
+        <div style="font-size:11px;color:var(--m2)">Створив: ${doc.created_by||'—'}</div>
+        <div style="font-size:14px;font-weight:700;color:var(--y)">Разом: ${(doc.total_amount||0).toLocaleString('uk-UA')} ₴</div>
+      </div>
+    </div>`;
 }
 
 async function openAddWriteoff(){
