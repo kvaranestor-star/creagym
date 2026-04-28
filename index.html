@@ -5051,33 +5051,8 @@ async function admSelectClient(id){
     subBlock=`<div class="cl-sub2"><div class="cl-sub-hd2"><div class="cl-sub-nm2" style="color:var(--m2)">Немає активного абонементу</div><span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;background:var(--p3);color:var(--m2)">Відсутній</span></div></div>`;
   }
 
-  // Останні покупки товарів
-  let recentSales=[];
-  let returnedIds=new Set();
-  try{
-    recentSales=await sb.get('sales',`?client_id=eq.${id}&type=eq.product&order=created_at.desc&limit=5`);
-    // Дізнаємось які з них вже повернуто
-    const rets=await sb.get('sales',`?client_id=eq.${id}&type=eq.return&select=original_sale_id`);
-    if(rets) returnedIds=new Set(rets.map(r=>r.original_sale_id).filter(Boolean));
-  }catch(e){}
-  const purchasesHtml=recentSales.length?`
-    <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bd)">
-      <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--m2);margin-bottom:6px">Останні покупки</div>
-      ${recentSales.map(s=>{
-        const isReturned=returnedIds.has(s.id);
-        const btn=isReturned
-          ? `<button disabled title="Чек вже повернуто" style="padding:2px 7px;border-radius:5px;background:var(--p3);border:1px solid var(--bd2);color:var(--m2);font-family:var(--f);font-size:10px;font-weight:600;cursor:not-allowed;opacity:0.5">🔁 Повернуто</button>`
-          : `<button onclick="returnProduct('${s.id}',${s.amount},'${(s.item_name||'').replace(/'/g,'&#39;')}','${s.payment_method||'cash'}')" style="padding:2px 7px;border-radius:5px;background:#F9731614;border:1px solid #F9731628;color:var(--or);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer">🔁</button>`;
-        return `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid var(--bd);font-size:11px">
-          <span>${s.item_name||'—'}</span>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-weight:700;color:var(--y)">${s.amount} ₴</span>
-            ${btn}
-          </div>
-        </div>`;
-      }).join('')}
-    </div>`:'';
+  // Останні покупки товарів — не показуємо в картці клієнта
+  const purchasesHtml='';
 
   document.getElementById('adm-main').innerHTML=`
     <div class="cl-card2">
@@ -5097,7 +5072,6 @@ async function admSelectClient(id){
             :`<button class="ca gr" onclick="admCheckIn('${c.id}')">✅ Зареєструвати вхід</button>`
         }
         <button class="ca pr" onclick="admOpenSell('${c.id}')">🎫 Продати абонемент</button>
-        <button class="ca" onclick="admShopFor('${c.id}')">🛒 Магазин</button>
       </div>
     </div>`;
 }
