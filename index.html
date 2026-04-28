@@ -5538,7 +5538,12 @@ function admOpenSell(id){
   document.getElementById('adm-sell-btn').style.display='none';
   document.getElementById('adm-pm-cash').classList.add('on');
   document.getElementById('adm-pm-card').classList.remove('on');
-  document.getElementById('adm-sub-opts').innerHTML=admSubTypes.length?admSubTypes.map(s=>`<div class="soi" id="asoi-${s.id}" onclick="admSelSub2('${s.id}')"><div><div class="soi-nm">${s.name}</div><div class="soi-meta">${s.days} ${s.duration_unit||'дн.'} · ${s.class_name||''}</div></div><div class="soi-p">${(s.price||0).toLocaleString('uk-UA')} ₴</div></div>`).join(''):'<div style="font-size:12px;color:var(--m2)">Немає активних абонементів. Додайте їх у панелі власника.</div>';
+  document.getElementById('adm-sub-opts').innerHTML=admSubTypes.length?admSubTypes.map(s=>{
+    const networkBadge=s.is_network
+      ?`<span style="font-size:9px;padding:2px 6px;border-radius:10px;background:#60A5FA20;color:#60A5FA;font-weight:700;margin-left:4px">🌐 Мережевий</span>`
+      :`<span style="font-size:9px;padding:2px 6px;border-radius:10px;background:var(--ym);color:var(--y);font-weight:700;margin-left:4px">🏢 Локальний</span>`;
+    return `<div class="soi" id="asoi-${s.id}" onclick="admSelSub2('${s.id}')"><div style="flex:1"><div class="soi-nm">${s.name}${networkBadge}</div><div class="soi-meta">${s.days} ${s.duration_unit||'дн.'} · ${s.class_name||''}</div></div><div class="soi-p">${(s.price||0).toLocaleString('uk-UA')} ₴</div></div>`;
+  }).join(''):'<div style="font-size:12px;color:var(--m2)">Немає активних абонементів. Додайте їх у панелі власника.</div>';
   admOpenMo('adm-sell');
 }
 function admSelSub2(id){
