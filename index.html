@@ -4679,27 +4679,32 @@ async function loadAdminData(){
     admRenderICP();
     await loadCbSettings();
     if(kasaShift) kasaUpdateShiftUI(true);
-    // Визначаємо доступні філії адміна з user_branches
-    let admBranchId=localStorage.getItem('current_branch_id');
+    // Визначаємо філію адміна ЗАВЖДИ з user_branches (ігноруємо localStorage власника!)
+    let admBranchId=null;
     let allowedBranches=[];
     try{
       if(curUser?.id){
         const links=await sb.get('user_branches',`?user_id=eq.${curUser.id}&select=branch_id`);
         allowedBranches=(links||[]).map(l=>l.branch_id);
+        if(allowedBranches.length){
+          // Перевіряємо чи є збережена філія адміна в його дозволених
+          // Використовуємо окремий ключ для адміна щоб не конфліктувати з власником
+          const savedAdmBranch=localStorage.getItem(`adm_branch_${curUser.id}`);
+          if(savedAdmBranch && allowedBranches.includes(savedAdmBranch)){
+            admBranchId=savedAdmBranch;
+          } else {
+            admBranchId=allowedBranches[0];
+            localStorage.setItem(`adm_branch_${curUser.id}`,admBranchId);
+          }
+        }
       }
     }catch(e){console.warn('user_branches:',e);}
-    // Якщо в localStorage філія не з дозволених — беремо першу дозволену
-    if(!admBranchId||(allowedBranches.length&&!allowedBranches.includes(admBranchId))){
-      if(allowedBranches.length){
-        admBranchId=allowedBranches[0];
-      } else {
-        // fallback - перша філія в системі
-        try{
-          const branches=await sb.get('branches','?is_active=eq.true&order=created_at.asc&limit=1');
-          if(branches&&branches.length>0) admBranchId=branches[0].id;
-        }catch(e){}
-      }
-      if(admBranchId) localStorage.setItem('current_branch_id',admBranchId);
+    // fallback — перша філія в системі
+    if(!admBranchId){
+      try{
+        const branches=await sb.get('branches','?is_active=eq.true&order=created_at.asc&limit=1');
+        if(branches&&branches.length>0) admBranchId=branches[0].id;
+      }catch(e){}
     }
     _currentBranch={id:admBranchId};
     _admAllowedBranches=allowedBranches;
@@ -4800,7 +4805,8 @@ function admSwitchBranch(id){
   const b=_branches.find(x=>x.id===id);
   if(!b)return;
   _currentBranch=b;
-  localStorage.setItem('current_branch_id',id);
+  // Персональний ключ адміна — не перезаписує ключ власника
+  if(curUser?.id) localStorage.setItem(`adm_branch_${curUser.id}`,id);
   document.getElementById('adm-current-branch').textContent=b.name;
   updateAdmBranchBadge(id);
   const dd=document.getElementById('adm-branch-dropdown');
