@@ -5095,7 +5095,21 @@ async function loadAdminData(){
     admCart=[];
     admRenderICP();
     await loadCbSettings();
-    if(kasaShift) kasaUpdateShiftUI(true);
+    // Відновлюємо зміну тільки якщо вона належить поточній філії
+    if(_kasaShiftRaw){
+      if(_kasaShiftRaw.branch_id===admBranchId||!_kasaShiftRaw.branch_id){
+        kasaShift=_kasaShiftRaw;
+        kasaUpdateShiftUI(true);
+      } else {
+        // Зміна від іншої філії — скидаємо
+        kasaShift=null;
+        sessionStorage.removeItem('kasaShift');
+        kasaUpdateShiftUI(false);
+      }
+      _kasaShiftRaw=null; // вже обробили
+    } else {
+      kasaUpdateShiftUI(!!kasaShift);
+    }
     // Визначаємо філію адміна ЗАВЖДИ з user_branches (ігноруємо localStorage власника!)
     let admBranchId=null;
     let allowedBranches=[];
@@ -5146,6 +5160,11 @@ async function loadAdminData(){
               const shifts=await sb.get('shifts',`?status=eq.open${bf2}&order=opened_at.desc&limit=1`);
               if(shifts&&shifts.length>0){kasaShift=shifts[0];kasaSaveShift();kasaUpdateShiftUI(true);}
             }catch(e2){}
+          } else if(!isOpen&&kasaShift){
+            // Checkbox каже закрита — скидаємо локальну зміну
+            kasaShift=null;
+            sessionStorage.removeItem('kasaShift');
+            kasaUpdateShiftUI(false);
           }
         }
       }catch(e){console.warn('shift check on login:',e);}
@@ -5965,10 +5984,12 @@ function getStreakLabel(streak){
 // ===== KASA =====
 let kasaShift=null, kasaPeriod='today', kasaTypeFilter='all', kasaTxAll=[], kasaOpType='income';
 
-// Відновлюємо зміну з sessionStorage при завантаженні
+// kasaShift відновлюється в loadAdminData після перевірки філії
+// (не відновлюємо тут щоб не показувати зміну чужої філії)
+let _kasaShiftRaw=null;
 try{
   const saved=sessionStorage.getItem('kasaShift');
-  if(saved) kasaShift=JSON.parse(saved);
+  if(saved) _kasaShiftRaw=JSON.parse(saved);
 }catch(e){}
 
 function kasaSaveShift(){
