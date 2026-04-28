@@ -3681,6 +3681,7 @@ function renderBranches(){
         ${b.notes?`<div style="font-size:11px;color:var(--m2);font-style:italic;padding-top:6px;border-top:1px solid var(--bd)">${b.notes}</div>`:''}
         <div style="display:flex;gap:6px;margin-top:auto;padding-top:8px">
           <button onclick="editBranch('${b.id}')" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer">✏️ Редагувати</button>
+          <button onclick="openLockers('${b.id}','${b.name.replace(/'/g,"&#39;")}')" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer">🔑 Шафки</button>
           <button onclick="deleteBranch('${b.id}','${b.name.replace(/'/g,"&#39;")}')" style="padding:6px 10px;border-radius:6px;border:1px solid #EF444430;background:#EF444410;color:var(--rd);font-family:var(--f);font-size:11px;cursor:pointer">🗑</button>
         </div>
       </div>`).join('')
@@ -3789,6 +3790,174 @@ async function deleteBranch(id,name){
         if(sw) sw.style.display='none';
       }
     }
+  }catch(e){alert('❌ '+(e.message||'Не вдалося видалити'));}
+}
+
+// Модалка вибору шафки при реєстрації входу
+function showLockerPicker(freeLockers, clientName){
+  return new Promise((resolve)=>{
+    let mo=document.getElementById('mo-locker-pick');
+    if(!mo){
+      mo=document.createElement('div');
+      mo.id='mo-locker-pick';
+      mo.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:6000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)';
+      document.body.appendChild(mo);
+    } else {mo.style.display='flex';mo.innerHTML='';}
+
+    mo.innerHTML=`
+      <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;width:100%;max-width:480px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.6)">
+        <div style="padding:14px 18px;border-bottom:1px solid var(--bd2);flex-shrink:0">
+          <div style="font-size:14px;font-weight:700;color:var(--m)">🔑 Оберіть шафку</div>
+          <div style="font-size:11px;color:var(--m2);margin-top:2px">${clientName} · Вільних: ${freeLockers.length}</div>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:14px 18px">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">
+            ${freeLockers.map(l=>`
+              <button onclick="pickLocker(${l.number})" style="padding:12px 6px;border-radius:8px;border:2px solid var(--bd2);background:var(--p2);color:var(--m);font-family:var(--f);font-size:18px;font-weight:800;cursor:pointer;transition:all .1s;display:flex;flex-direction:column;align-items:center;gap:3px"
+                onmouseover="this.style.borderColor='var(--y)';this.style.background='var(--ym)';this.style.color='var(--y)'"
+                onmouseout="this.style.borderColor='var(--bd2)';this.style.background='var(--p2)';this.style.color='var(--m)'">
+                ${l.number}
+                ${l.label?`<span style="font-size:8px;font-weight:400;color:var(--m2)">${l.label}</span>`:''}
+              </button>`).join('')}
+          </div>
+        </div>
+        <div style="padding:12px 18px;border-top:1px solid var(--bd2);display:flex;gap:8px;flex-shrink:0">
+          <button onclick="pickLocker(null)" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">Скасувати</button>
+          <button onclick="pickLocker(0)" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--bd2);background:var(--p3);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">Без шафки</button>
+        </div>
+      </div>`;
+
+    window._lockerPickResolve=resolve;
+  });
+}
+
+function pickLocker(num){
+  const mo=document.getElementById('mo-locker-pick');
+  if(mo) mo.remove();
+  if(window._lockerPickResolve){
+    window._lockerPickResolve(num); // null = скасовано, 0 = без шафки, N = номер
+    window._lockerPickResolve=null;
+  }
+}
+
+// ===== ШАФКИ / РОЗДЯГАЛЬНЯ =====
+let _lockers=[];
+let _lockersCurrentBranch=null;
+
+async function openLockers(branchId, branchName){
+  _lockersCurrentBranch={id:branchId, name:branchName};
+  _lockers=[];
+  try{
+    _lockers=await sb.get('lockers',`?branch_id=eq.${branchId}&order=number.asc`)||[];
+  }catch(e){console.warn('loadLockers:',e);}
+
+  let mo=document.getElementById('mo-lockers');
+  if(!mo){
+    mo=document.createElement('div');
+    mo.id='mo-lockers';
+    mo.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)';
+    mo.onclick=e=>{if(e.target===mo)mo.remove();};
+    document.body.appendChild(mo);
+  } else {mo.style.display='flex';mo.innerHTML='';}
+
+  mo.innerHTML=`
+    <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;width:100%;max-width:600px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--bd2);flex-shrink:0">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--m)">🔑 Шафки — ${branchName}</div>
+          <div style="font-size:11px;color:var(--m2);margin-top:2px">Управління шафками роздягальні</div>
+        </div>
+        <button onclick="document.getElementById('mo-lockers').remove()" style="width:28px;height:28px;background:var(--p3);border:1px solid var(--bd2);border-radius:6px;cursor:pointer;color:var(--m2);font-size:14px">✕</button>
+      </div>
+      <div style="padding:14px 18px;border-bottom:1px solid var(--bd2);display:flex;gap:8px;align-items:flex-end;flex-shrink:0">
+        <div class="ff" style="margin:0;flex:1">
+          <label style="font-size:10px">Додати шафки (номери через кому або діапазон: 1-10)</label>
+          <input class="fi2" type="text" id="locker-add-input" placeholder="напр: 1-20 або 1,2,5,10">
+        </div>
+        <button onclick="addLockers()" style="padding:9px 16px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer;height:36px">+ Додати</button>
+      </div>
+      <div id="lockers-grid" style="flex:1;overflow-y:auto;padding:14px 18px"></div>
+    </div>`;
+  renderLockersGrid();
+}
+
+function renderLockersGrid(){
+  const el=document.getElementById('lockers-grid');
+  if(!el)return;
+  if(!_lockers.length){
+    el.innerHTML='<div style="padding:30px;text-align:center;color:var(--m2);font-size:13px;border:1px dashed var(--bd2);border-radius:8px">Немає шафок. Додайте через поле вище.<br><span style="font-size:11px">Приклад: <b>1-30</b> або <b>1,2,3</b></span></div>';
+    return;
+  }
+  // Отримуємо зайняті ключі (з in_club для цієї філії)
+  const usedKeys=new Set(admInClub.map(c=>c.key));
+  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:8px">
+    ${_lockers.filter(l=>l.is_active).map(l=>{
+      const isBusy=usedKeys.has(l.number);
+      return `<div style="border-radius:8px;border:2px solid ${isBusy?'var(--rd)':'var(--bd2)'};background:${isBusy?'#EF444414':'var(--p2)'};padding:8px;text-align:center;position:relative">
+        <div style="font-size:16px;font-weight:800;color:${isBusy?'var(--rd)':'var(--m)'}">${l.number}</div>
+        <div style="font-size:9px;color:${isBusy?'var(--rd)':'var(--m2)'};margin-top:2px">${isBusy?'🔒 Зайнята':'🔓 Вільна'}</div>
+        ${!isBusy?`<button onclick="deleteLocker('${l.id}',${l.number})" title="Видалити шафку" style="position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;border:none;background:transparent;color:var(--m2);font-size:10px;cursor:pointer;padding:0;line-height:1">✕</button>`:''}
+      </div>`;
+    }).join('')}
+  </div>
+  <div style="margin-top:12px;font-size:11px;color:var(--m2)">
+    Всього: ${_lockers.filter(l=>l.is_active).length} шафок · 
+    Зайнято: ${usedKeys.size} · 
+    Вільно: ${_lockers.filter(l=>l.is_active&&!usedKeys.has(l.number)).length}
+  </div>`;
+}
+
+async function addLockers(){
+  const inp=document.getElementById('locker-add-input');
+  const val=(inp?.value||'').trim();
+  if(!val){alert('Введіть номери шафок');return;}
+  if(!_lockersCurrentBranch?.id)return;
+
+  // Парсимо введення: "1-20" або "1,2,5,10" або "1, 2, 5"
+  const numbers=[];
+  const parts=val.split(',');
+  for(const part of parts){
+    const p=part.trim();
+    if(p.includes('-')){
+      const [from,to]=p.split('-').map(x=>parseInt(x.trim()));
+      if(!isNaN(from)&&!isNaN(to)&&from<=to&&to-from<=200){
+        for(let i=from;i<=to;i++) numbers.push(i);
+      }
+    } else {
+      const n=parseInt(p);
+      if(!isNaN(n)&&n>0) numbers.push(n);
+    }
+  }
+  if(!numbers.length){alert('Не вдалось розпізнати номери. Приклад: 1-20 або 1,2,5');return;}
+
+  // Фільтруємо вже існуючі
+  const existing=new Set(_lockers.map(l=>l.number));
+  const toAdd=numbers.filter(n=>!existing.has(n));
+  if(!toAdd.length){alert('Всі вказані номери вже існують');return;}
+
+  let added=0;
+  for(const num of toAdd){
+    try{
+      const r=await sb.post('lockers',{branch_id:_lockersCurrentBranch.id,number:num});
+      const created=Array.isArray(r)?r[0]:r;
+      if(created?.id){_lockers.push(created);added++;}
+    }catch(e){console.warn('add locker:',e);}
+  }
+  _lockers.sort((a,b)=>a.number-b.number);
+  inp.value='';
+  renderLockersGrid();
+  if(added>0) alert(`✅ Додано ${added} шафок`);
+}
+
+async function deleteLocker(id, number){
+  if(!confirm(`Видалити шафку №${number}?`))return;
+  try{
+    await fetch(`${SB_URL}/rest/v1/lockers?id=eq.${id}`,{
+      method:'DELETE',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    });
+    _lockers=_lockers.filter(l=>l.id!==id);
+    renderLockersGrid();
   }catch(e){alert('❌ '+(e.message||'Не вдалося видалити'));}
 }
 
@@ -5150,7 +5319,34 @@ async function admCheckIn(id){
     return;
   }
 
-  const key=Math.floor(Math.random()*99)+1;
+  // Вибір шафки — завантажуємо список і показуємо діалог
+  let key=null;
+  try{
+    const branchLockers=await sb.get('lockers',`?branch_id=eq.${_currentBranch?.id}&is_active=eq.true&order=number.asc`)||[];
+    if(branchLockers.length){
+      const usedKeys=new Set(admInClub.map(x=>x.key));
+      const freeLockers=branchLockers.filter(l=>!usedKeys.has(l.number));
+      if(freeLockers.length){
+        // Показуємо вибір шафки
+        key=await showLockerPicker(freeLockers, c.last_name+' '+c.first_name);
+        if(key===null) return; // скасовано
+      } else {
+        // Всі шафки зайняті
+        const useAny=confirm(`⚠️ Всі шафки (${branchLockers.length}) зайняті!\n\nВсе одно зареєструвати вхід без шафки?`);
+        if(!useAny) return;
+        key=0; // без шафки
+      }
+    } else {
+      // Шафок немає — вводимо номер вручну або без ключа
+      const manualKey=prompt(`Введіть номер ключа для ${c.last_name} ${c.first_name}:\n(або скасуйте щоб зареєструвати без ключа)`);
+      if(manualKey===null) return; // скасовано
+      key=parseInt(manualKey)||0;
+    }
+  }catch(e){
+    console.warn('locker load:',e);
+    key=Math.floor(Math.random()*99)+1; // fallback
+  }
+
   admInClub.push({...c,key});
   admRenderICP(); // оновлює adm-cnt і icp2-cnt разом
 
@@ -5225,7 +5421,7 @@ async function admCheckOut(id){
       });
     }
   }catch(e){console.warn('in_club delete:',e);}
-  alert(`👋 ${c.last_name} ${c.first_name} вийшов\n🔑 Ключ №${c.key} повернуто`);
+  alert(`👋 ${c.last_name} ${c.first_name} вийшов${c.key?`\n🔑 Шафка №${c.key} звільнена`:''}`);
 }
 function admRenderICP(){
   // Завжди оновлюємо ОБИДВА лічильники синхронно
