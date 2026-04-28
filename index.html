@@ -868,7 +868,71 @@ tr:hover td{background:#ffffff03;cursor:pointer}
           </div>
         </div>
         <div class="sec" id="sec-mkt"><div class="cs"><div class="cs-ic"><svg viewBox="0 0 28 28" fill="none"><path d="M4 14c0-1.5.7-3 3-4.5L18 4v20L7 18.5C4.7 17 4 15.5 4 14z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div><div class="cs-t">Маркетинг</div><div class="cs-s">SMS/Viber, промокоди — в розробці</div></div></div>
-        <div class="sec" id="sec-staff"><div class="cs"><div class="cs-ic"><svg viewBox="0 0 28 28" fill="none"><path d="M4 22c0-3.5 2.8-5.5 6-5.5h8c3.2 0 6 2 6 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="14" cy="10" r="5" stroke="currentColor" stroke-width="1.6"/></svg></div><div class="cs-t">Персонал</div><div class="cs-s">Акаунти, ролі, доступи — в розробці</div></div></div>
+        <div class="sec" id="sec-staff">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+            <div>
+              <div style="font-size:16px;font-weight:700">👥 Персонал</div>
+              <div style="font-size:12px;color:var(--m2)">Облікові записи та доступ до філій</div>
+            </div>
+            <button onclick="openStaffModal()" style="padding:9px 16px;border-radius:9px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">+ Новий співробітник</button>
+          </div>
+          <div id="staff-list"></div>
+        </div>
+
+        <!-- STAFF MODAL -->
+        <div class="mo" id="mo-staff" onclick="closeStaffMo(event)" style="z-index:1000">
+          <div class="mo-bx" style="width:520px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column">
+            <div class="mo-hd">
+              <div class="mo-ti" id="mo-staff-title">Новий співробітник</div>
+              <button class="cls-b" onclick="closeStaffMoD()">✕</button>
+            </div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:14px;overflow-y:auto">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="ff">
+                  <label>Ім'я та прізвище *</label>
+                  <input class="fi2" type="text" id="staff-name" placeholder="Іван Петренко">
+                </div>
+                <div class="ff">
+                  <label>Роль *</label>
+                  <select class="fi2" id="staff-role">
+                    <option value="admin">🔧 Адміністратор</option>
+                    <option value="trainer">💪 Тренер</option>
+                  </select>
+                </div>
+              </div>
+              <div class="ff">
+                <label>Email (логін) *</label>
+                <input class="fi2" type="email" id="staff-email" placeholder="ivan@creagym.com" autocomplete="off">
+              </div>
+              <div class="ff">
+                <label id="staff-pass-label">Пароль *</label>
+                <input class="fi2" type="text" id="staff-pass" placeholder="Мінімум 6 символів" autocomplete="new-password">
+                <div id="staff-pass-hint" style="font-size:10px;color:var(--m2);margin-top:3px;display:none">Залиште порожнім щоб не змінювати пароль</div>
+              </div>
+              <div class="ff">
+                <label>Телефон</label>
+                <input class="fi2" type="text" id="staff-phone" placeholder="+380...">
+              </div>
+              <div class="ff">
+                <label>Доступ до філій *</label>
+                <div id="staff-branches" style="display:flex;flex-direction:column;gap:6px;padding:8px;background:var(--p2);border:1px solid var(--bd2);border-radius:8px;max-height:180px;overflow-y:auto"></div>
+                <div style="font-size:10px;color:var(--m2);margin-top:4px">Користувач бачитиме дані тільки тих філій, до яких має доступ</div>
+              </div>
+              <div class="ff">
+                <label>Примітки</label>
+                <textarea class="fi2" id="staff-notes" rows="2" placeholder="Додаткова інформація..." style="resize:vertical"></textarea>
+              </div>
+              <div style="padding:10px 12px;background:var(--p2);border:1px solid var(--bd2);border-radius:8px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="document.getElementById('staff-active').checked=!document.getElementById('staff-active').checked">
+                <input type="checkbox" id="staff-active" checked style="width:18px;height:18px;cursor:pointer;accent-color:var(--y)">
+                <div style="flex:1;font-size:12px;font-weight:600;color:var(--m)">Активний (може входити в систему)</div>
+              </div>
+            </div>
+            <div class="mo-ft">
+              <button class="f-b se" onclick="closeStaffMoD()">Скасувати</button>
+              <button class="f-b" onclick="saveStaff()" id="staff-save-btn">Створити</button>
+            </div>
+          </div>
+        </div>
         <div class="sec" id="sec-branches">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
             <div>
@@ -1397,6 +1461,10 @@ async function doLogin(){
     btn.classList.remove('ld');
     if(users&&users.length>0){
       const u=users[0];
+      if(u.is_active===false){
+        btn.classList.remove('ld');
+        document.getElementById('err-t').textContent='Обліковий запис деактивовано';err.classList.add('sh');return;
+      }
       if(u.role==='trainer'){
         document.getElementById('err-t').textContent='Тренери не мають доступу до системи';err.classList.add('sh');return;
       }
@@ -1602,6 +1670,7 @@ function gp(id,el){
   if(id==='fin'){okSyncShiftFromCheckbox();okUpdateShiftUI(!!okShift);okLoadTx();}
   if(id==='goods') loadGoods();
   if(id==='branches') loadBranches();
+  if(id==='staff') loadStaff();
   if(id==='cfg'){
     // Завантажуємо збережені налаштування
     loadCbSettings().then(async ()=>{
@@ -3695,6 +3764,223 @@ async function deleteBranch(id,name){
   }catch(e){alert('❌ '+(e.message||'Не вдалося видалити'));}
 }
 
+// ===== ПЕРСОНАЛ =====
+let _staff=[];
+let _staffBranches={}; // user_id -> [branch_id]
+let _editStaffId=null;
+
+async function loadStaff(){
+  try{
+    // Гарантуємо що філії завантажено
+    if(!_branches||!_branches.length){
+      try{_branches=await sb.get('branches','?order=created_at.asc')||[];}catch(e){}
+    }
+    _staff=await sb.get('users','?order=created_at.asc')||[];
+    // Підтягуємо зв'язки user→branches
+    const links=await sb.get('user_branches','?select=user_id,branch_id')||[];
+    _staffBranches={};
+    links.forEach(l=>{
+      if(!_staffBranches[l.user_id]) _staffBranches[l.user_id]=[];
+      _staffBranches[l.user_id].push(l.branch_id);
+    });
+    renderStaff();
+  }catch(e){console.warn('loadStaff:',e);}
+}
+
+function renderStaff(){
+  const el=document.getElementById('staff-list');
+  if(!el)return;
+  if(!_staff.length){
+    el.innerHTML='<div style="padding:40px;text-align:center;color:var(--m2);font-size:13px;background:var(--p1);border:1px dashed var(--bd2);border-radius:12px">Немає співробітників. Натисніть «+ Новий співробітник» щоб додати.</div>';
+    return;
+  }
+  const branchMap=Object.fromEntries((_branches||[]).map(b=>[b.id,b.name]));
+  const roleLabel={owner:{l:'⭐ Власник',c:'#FCD34D'},admin:{l:'🔧 Адмін',c:'#60A5FA'},trainer:{l:'💪 Тренер',c:'#34D399'}};
+  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px">${
+    _staff.map(u=>{
+      const r=roleLabel[u.role]||{l:u.role,c:'#888'};
+      const isActive=u.is_active!==false;
+      const userBranches=(_staffBranches[u.id]||[]).map(bid=>branchMap[bid]).filter(Boolean);
+      const isOwner=u.role==='owner';
+      return `<div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px;${!isActive?'opacity:0.6':''}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+            <div style="width:38px;height:38px;border-radius:50%;background:${isActive?'var(--ym)':'var(--p3)'};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:${isActive?'var(--y)':'var(--m2)'};flex-shrink:0">${(u.initials||u.name||'?').slice(0,2).toUpperCase()}</div>
+            <div style="min-width:0">
+              <div style="font-size:13px;font-weight:700;color:var(--m);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.name}</div>
+              <div style="font-size:10px;color:var(--m2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.email}</div>
+            </div>
+          </div>
+          <span style="font-size:9px;padding:3px 8px;border-radius:20px;font-weight:700;background:${r.c}20;color:${r.c};white-space:nowrap;letter-spacing:.04em">${r.l}</span>
+        </div>
+        ${u.phone?`<div style="font-size:11px;color:var(--m2)">☎ ${u.phone}</div>`:''}
+        <div style="padding:8px;background:var(--p2);border-radius:6px;border:1px solid var(--bd)">
+          <div style="font-size:9px;color:var(--m2);text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:4px">Доступ до філій</div>
+          <div style="font-size:11px;color:var(--m);display:flex;flex-wrap:wrap;gap:4px">
+            ${isOwner?'<span style="padding:2px 7px;background:#FCD34D20;color:#FCD34D;border-radius:20px;font-size:10px;font-weight:600">🌐 Всі філії</span>':
+              userBranches.length?userBranches.map(bn=>`<span style="padding:2px 7px;background:var(--p3);color:var(--m);border-radius:20px;font-size:10px">🏢 ${bn}</span>`).join(''):'<span style="color:var(--m2);font-size:10px">— Без доступу —</span>'}
+          </div>
+        </div>
+        ${u.notes?`<div style="font-size:11px;color:var(--m2);font-style:italic">${u.notes}</div>`:''}
+        <div style="display:flex;gap:6px;margin-top:auto;padding-top:8px;border-top:1px solid var(--bd)">
+          <span style="flex:1;font-size:10px;font-weight:600;color:${isActive?'var(--gr)':'var(--m2)'};display:flex;align-items:center;gap:4px">
+            <span style="width:6px;height:6px;border-radius:50%;background:${isActive?'var(--gr)':'var(--m2)'}"></span>
+            ${isActive?'Активний':'Неактивний'}
+          </span>
+          ${!isOwner?`
+          <button onclick="editStaff('${u.id}')" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer">✏️</button>
+          <button onclick="deleteStaff('${u.id}','${(u.name||'').replace(/'/g,"&#39;")}')" style="padding:5px 10px;border-radius:6px;border:1px solid #EF444430;background:#EF444410;color:var(--rd);font-family:var(--f);font-size:11px;cursor:pointer">🗑</button>
+          `:'<span style="font-size:10px;color:var(--m2);padding:5px 10px">недоторканний</span>'}
+        </div>
+      </div>`;
+    }).join('')
+  }</div>`;
+}
+
+function openStaffModal(){
+  _editStaffId=null;
+  document.getElementById('mo-staff-title').textContent='Новий співробітник';
+  document.getElementById('staff-save-btn').textContent='Створити';
+  ['staff-name','staff-email','staff-pass','staff-phone','staff-notes'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  document.getElementById('staff-role').value='admin';
+  document.getElementById('staff-active').checked=true;
+  document.getElementById('staff-pass-label').textContent='Пароль *';
+  document.getElementById('staff-pass').placeholder='Мінімум 6 символів';
+  document.getElementById('staff-pass-hint').style.display='none';
+  renderStaffBranchesCheckboxes([]);
+  document.getElementById('mo-staff').classList.add('sh');
+}
+
+function editStaff(id){
+  const u=_staff.find(x=>x.id===id);
+  if(!u)return;
+  _editStaffId=id;
+  document.getElementById('mo-staff-title').textContent='Редагувати співробітника';
+  document.getElementById('staff-save-btn').textContent='Зберегти зміни';
+  document.getElementById('staff-name').value=u.name||'';
+  document.getElementById('staff-email').value=u.email||'';
+  document.getElementById('staff-pass').value='';
+  document.getElementById('staff-phone').value=u.phone||'';
+  document.getElementById('staff-notes').value=u.notes||'';
+  document.getElementById('staff-role').value=u.role||'admin';
+  document.getElementById('staff-active').checked=u.is_active!==false;
+  document.getElementById('staff-pass-label').textContent='Новий пароль';
+  document.getElementById('staff-pass').placeholder='Залиште порожнім...';
+  document.getElementById('staff-pass-hint').style.display='block';
+  renderStaffBranchesCheckboxes(_staffBranches[id]||[]);
+  document.getElementById('mo-staff').classList.add('sh');
+}
+
+function renderStaffBranchesCheckboxes(selected){
+  const el=document.getElementById('staff-branches');
+  if(!el)return;
+  if(!_branches||!_branches.length){
+    el.innerHTML='<div style="font-size:11px;color:var(--m2);padding:6px">Немає жодної філії. Спочатку створіть філію.</div>';
+    return;
+  }
+  el.innerHTML=_branches.map(b=>`
+    <label style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;cursor:pointer;background:var(--p3);transition:background .12s" onmouseover="this.style.background='var(--p1)'" onmouseout="this.style.background='var(--p3)'">
+      <input type="checkbox" data-branch="${b.id}" ${selected.includes(b.id)?'checked':''} style="width:16px;height:16px;cursor:pointer;accent-color:var(--y)">
+      <span style="font-size:12px;color:var(--m);font-weight:600">🏢 ${b.name}</span>
+      ${b.address?`<span style="font-size:10px;color:var(--m2);margin-left:auto">${b.address}</span>`:''}
+    </label>`).join('');
+}
+
+function closeStaffMo(e){if(e.target===document.getElementById('mo-staff'))closeStaffMoD();}
+function closeStaffMoD(){
+  document.getElementById('mo-staff').classList.remove('sh');
+  _editStaffId=null;
+}
+
+async function saveStaff(){
+  const name=(document.getElementById('staff-name')?.value||'').trim();
+  const email=(document.getElementById('staff-email')?.value||'').trim().toLowerCase();
+  const pass=(document.getElementById('staff-pass')?.value||'').trim();
+  const phone=(document.getElementById('staff-phone')?.value||'').trim()||null;
+  const notes=(document.getElementById('staff-notes')?.value||'').trim()||null;
+  const role=document.getElementById('staff-role')?.value||'admin';
+  const isActive=document.getElementById('staff-active')?.checked!==false;
+  // Обрані філії
+  const selBranches=[...document.querySelectorAll('#staff-branches input[type="checkbox"]:checked')].map(c=>c.dataset.branch);
+
+  if(!name){alert("Введіть ім'я співробітника");return;}
+  if(!email){alert('Введіть email (логін)');return;}
+  if(!email.includes('@')){alert('Невірний формат email');return;}
+  if(!_editStaffId&&!pass){alert('Введіть пароль');return;}
+  if(pass&&pass.length<6){alert('Пароль має бути мінімум 6 символів');return;}
+  if(!selBranches.length){alert('Виберіть хоча б одну філію для доступу');return;}
+
+  // Перевірка унікальності email
+  if(_staff.some(u=>u.email.toLowerCase()===email && u.id!==_editStaffId)){
+    alert('Користувач з таким email вже існує');return;
+  }
+
+  // Initials з імені
+  const parts=name.split(/\s+/);
+  const initials=((parts[0]?.[0]||'')+(parts[1]?.[0]||'')).toUpperCase()||'??';
+
+  const btn=document.getElementById('staff-save-btn');
+  btn.textContent='Збереження...';btn.disabled=true;
+  try{
+    let userId=_editStaffId;
+    if(_editStaffId){
+      // Update
+      const data={name,email,phone,notes,role,is_active:isActive,initials};
+      if(pass) data.password_hash=pass; // спрощено - в реальному проекті потрібен hash
+      const res=await sb.patch('users',`id=eq.${_editStaffId}`,data);
+      if(res&&res.code) throw new Error(res.message||'Помилка оновлення');
+    } else {
+      // Create
+      const res=await sb.post('users',{
+        name,email,phone,notes,role,is_active:isActive,initials,
+        password_hash:pass
+      });
+      const newU=Array.isArray(res)?res[0]:res;
+      if(!newU?.id) throw new Error(newU?.message||'Не вдалося створити');
+      userId=newU.id;
+    }
+
+    // Оновлюємо філії: видаляємо старі і додаємо нові
+    try{
+      await fetch(`${SB_URL}/rest/v1/user_branches?user_id=eq.${userId}`,{
+        method:'DELETE',
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+      });
+    }catch(e){}
+    for(const bid of selBranches){
+      try{
+        await sb.post('user_branches',{user_id:userId,branch_id:bid});
+      }catch(e){console.warn('user_branches link:',e);}
+    }
+
+    closeStaffMoD();
+    await loadStaff();
+    alert(`✅ Співробітника ${_editStaffId?'оновлено':'створено'}`);
+  }catch(e){alert('❌ '+(e.message||'Помилка'));}
+  finally{btn.textContent=_editStaffId?'Зберегти зміни':'Створити';btn.disabled=false;}
+}
+
+async function deleteStaff(id,name){
+  if(!confirm(`Видалити співробітника "${name}"?\nЦю дію не можна скасувати, користувач втратить доступ.`))return;
+  try{
+    // Видаляємо лінки до філій (cascade на FK мав би це зробити, але робимо явно)
+    try{
+      await fetch(`${SB_URL}/rest/v1/user_branches?user_id=eq.${id}`,{
+        method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+      });
+    }catch(e){}
+    const resp=await fetch(`${SB_URL}/rest/v1/users?id=eq.${id}`,{
+      method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    });
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    _staff=_staff.filter(u=>u.id!==id);
+    delete _staffBranches[id];
+    renderStaff();
+  }catch(e){alert('❌ '+(e.message||'Не вдалося видалити'));}
+}
+
 // ===== АВТОЗАМОВЛЕННЯ =====
 async function openAutoOrder(){
   // Завантажуємо постачальників
@@ -4353,18 +4639,30 @@ async function loadAdminData(){
   try{
     await loadCbSettings();
     if(kasaShift) kasaUpdateShiftUI(true);
-    // Визначаємо філію адміна: з localStorage (як у власника) або перша
+    // Визначаємо доступні філії адміна з user_branches
     let admBranchId=localStorage.getItem('current_branch_id');
-    if(!admBranchId){
-      try{
-        const branches=await sb.get('branches','?is_active=eq.true&order=created_at.asc&limit=1');
-        if(branches&&branches.length>0){
-          admBranchId=branches[0].id;
-          localStorage.setItem('current_branch_id',admBranchId);
-        }
-      }catch(e){}
+    let allowedBranches=[];
+    try{
+      if(curUser?.id){
+        const links=await sb.get('user_branches',`?user_id=eq.${curUser.id}&select=branch_id`);
+        allowedBranches=(links||[]).map(l=>l.branch_id);
+      }
+    }catch(e){console.warn('user_branches:',e);}
+    // Якщо в localStorage філія не з дозволених — беремо першу дозволену
+    if(!admBranchId||(allowedBranches.length&&!allowedBranches.includes(admBranchId))){
+      if(allowedBranches.length){
+        admBranchId=allowedBranches[0];
+      } else {
+        // fallback - перша філія в системі
+        try{
+          const branches=await sb.get('branches','?is_active=eq.true&order=created_at.asc&limit=1');
+          if(branches&&branches.length>0) admBranchId=branches[0].id;
+        }catch(e){}
+      }
+      if(admBranchId) localStorage.setItem('current_branch_id',admBranchId);
     }
     _currentBranch={id:admBranchId};
+    _admAllowedBranches=allowedBranches;
     const bf=admBranchId?`&branch_id=eq.${admBranchId}`:'';
     [admClients,admProducts,admSubTypes]=await Promise.all([
       sb.get('clients','?order=last_name.asc'),
@@ -4376,7 +4674,82 @@ async function loadAdminData(){
     // Синхронізуємо статуси клієнтів
     await syncAdminClientStatuses();
     cbCheckExistingShift();
+    // Якщо адмін має доступ до більш ніж 1 філії — показуємо селектор
+    initAdminBranchSwitcher();
   }catch(e){console.error(e)}
+}
+
+// Селектор філії для адміна (тільки якщо доступно більше 1 філії)
+let _admAllowedBranches=[];
+async function initAdminBranchSwitcher(){
+  if(!_admAllowedBranches||_admAllowedBranches.length<2)return;
+  // Завантажуємо назви філій
+  try{
+    if(!_branches||!_branches.length){
+      _branches=await sb.get('branches','?order=created_at.asc')||[];
+    }
+  }catch(e){}
+  // Знаходимо поточну
+  const current=_branches.find(b=>b.id===_currentBranch?.id)||_branches.find(b=>_admAllowedBranches.includes(b.id));
+  if(!current)return;
+  _currentBranch=current;
+  // Якщо вже є селектор - оновлюємо назву
+  let sw=document.getElementById('adm-branch-switcher');
+  if(!sw){
+    // Створюємо селектор у шапці адміна
+    const hdr=document.querySelector('.adm-hdr');
+    if(!hdr)return;
+    sw=document.createElement('div');
+    sw.id='adm-branch-switcher';
+    sw.style.cssText='display:flex;align-items:center;gap:6px;margin-left:8px;padding:4px 9px;border-radius:7px;border:1px solid var(--bd2);background:var(--p2);cursor:pointer';
+    sw.onclick=openAdmBranchSwitcher;
+    sw.innerHTML=`<span style="font-size:11px">🏢</span><span id="adm-current-branch" style="font-size:11px;font-weight:600;color:var(--m);max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</span><svg width="10" height="10" viewBox="0 0 12 12" fill="none" style="color:var(--m2)"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    // Вставляємо після logo або sep
+    const sep=hdr.querySelector('.adm-sep');
+    if(sep&&sep.nextSibling) hdr.insertBefore(sw,sep.nextSibling);
+    else hdr.appendChild(sw);
+  }
+  document.getElementById('adm-current-branch').textContent=current.name;
+}
+
+function openAdmBranchSwitcher(event){
+  event.stopPropagation();
+  const existing=document.getElementById('adm-branch-dropdown');
+  if(existing){existing.remove();return;}
+  const sw=document.getElementById('adm-branch-switcher');
+  if(!sw)return;
+  const rect=sw.getBoundingClientRect();
+  const dd=document.createElement('div');
+  dd.id='adm-branch-dropdown';
+  dd.style.cssText=`position:fixed;top:${rect.bottom+4}px;left:${rect.left}px;min-width:${Math.max(rect.width,220)}px;background:var(--p1);border:1px solid var(--bd2);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:5000;padding:4px;max-height:60vh;overflow-y:auto`;
+  const allowedList=_branches.filter(b=>_admAllowedBranches.includes(b.id));
+  dd.innerHTML=allowedList.map(b=>`
+    <button onclick="admSwitchBranch('${b.id}')" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:6px;border:none;background:${_currentBranch&&_currentBranch.id===b.id?'var(--ym)':'transparent'};color:${_currentBranch&&_currentBranch.id===b.id?'var(--y)':'var(--m)'};font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer;text-align:left">
+      <span>🏢</span><div style="flex:1">${b.name}</div>
+      ${_currentBranch&&_currentBranch.id===b.id?'<span style="color:var(--y)">✓</span>':''}
+    </button>`).join('');
+  document.body.appendChild(dd);
+  setTimeout(()=>{
+    const handler=(e)=>{
+      if(!dd.contains(e.target)&&!sw.contains(e.target)){
+        dd.remove();
+        document.removeEventListener('click',handler);
+      }
+    };
+    document.addEventListener('click',handler);
+  },0);
+}
+
+function admSwitchBranch(id){
+  const b=_branches.find(x=>x.id===id);
+  if(!b)return;
+  _currentBranch=b;
+  localStorage.setItem('current_branch_id',id);
+  document.getElementById('adm-current-branch').textContent=b.name;
+  const dd=document.getElementById('adm-branch-dropdown');
+  if(dd) dd.remove();
+  // Перезавантажуємо дані
+  loadAdminData();
 }
 
 // Синхронізація статусів для адмін-панелі
