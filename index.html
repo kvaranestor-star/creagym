@@ -3807,7 +3807,7 @@ async function deleteLockerGroup(grp){
 }
 
 // Модалка вибору шафки при реєстрації входу
-function showLockerPicker(freeLockers, clientName){
+function showLockerPicker(freeLockers, clientName, gender){
   return new Promise((resolve)=>{
     let mo=document.getElementById('mo-locker-pick');
     if(!mo){
@@ -3817,7 +3817,8 @@ function showLockerPicker(freeLockers, clientName){
       document.body.appendChild(mo);
     } else {mo.style.display='flex';mo.innerHTML='';}
 
-    // Групуємо по роздягальні
+    const genderLabel=gender==='М'?'👨 Чоловіча':gender==='Ж'?'👩 Жіноча':'';
+
     const groups={};
     freeLockers.forEach(l=>{
       const g=l.locker_group||'Загальна';
@@ -3830,7 +3831,7 @@ function showLockerPicker(freeLockers, clientName){
       <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;width:100%;max-width:500px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.6)">
         <div style="padding:14px 18px;border-bottom:1px solid var(--bd2);flex-shrink:0">
           <div style="font-size:14px;font-weight:700;color:var(--m)">🔑 Оберіть шафку</div>
-          <div style="font-size:11px;color:var(--m2);margin-top:2px">${clientName} · Вільних: ${freeLockers.length}</div>
+          <div style="font-size:11px;color:var(--m2);margin-top:2px">${clientName}${genderLabel?' · '+genderLabel:''} · Вільних: ${freeLockers.length}</div>
         </div>
         <div style="flex:1;overflow-y:auto;padding:14px 18px">
           ${Object.entries(groups).map(([grp,lockers])=>`
@@ -5378,12 +5379,19 @@ async function admCheckIn(id){
   try{
     const branchLockers=await sb.get('lockers',`?branch_id=eq.${_currentBranch?.id}&is_active=eq.true&order=locker_group.asc,number.asc`)||[];
     if(branchLockers.length){
-      // Зайняті: ключ — "номер:група" щоб різні групи могли мати однакові номери
       const usedKeys=new Set(admInClub.map(x=>x.key+':'+(x.keyGroup||'')));
-      const freeLockers=branchLockers.filter(l=>!usedKeys.has(l.number+':'+(l.locker_group||'')));
+      // Фільтр по статі клієнта
+      const gender=c.gender||'';
+      const allFree=branchLockers.filter(l=>!usedKeys.has(l.number+':'+(l.locker_group||'')));
+      const freeLockers=allFree.filter(l=>{
+        const g=l.locker_group||'Загальна';
+        if(gender==='М') return g==='Чоловіча'||g==='Загальна';
+        if(gender==='Ж') return g==='Жіноча'||g==='Загальна';
+        return true; // стать не вказана — всі
+      });
       if(freeLockers.length){
-        const picked=await showLockerPicker(freeLockers, c.last_name+' '+c.first_name);
-        if(picked===null) return; // скасовано
+        const picked=await showLockerPicker(freeLockers, c.last_name+' '+c.first_name, gender);
+        if(picked===null) return;
         if(picked===0){key=0;}
         else{key=picked.number; keyGroup=picked.group||'';}
       } else {
