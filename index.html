@@ -4417,6 +4417,10 @@ function generateAutoOrderPDF(data){
         <div class="reg-panel">
           <div class="icp2">
             <div class="icp2-hd"><span class="icp2-t">Зараз в клубі</span><span class="icp2-c" id="icp2-cnt">0</span></div>
+            <div style="padding:8px 10px;border-bottom:1px solid var(--bd);display:flex;gap:6px">
+              <input id="key-return-input" type="number" min="1" max="99" placeholder="№ ключа..." onkeydown="if(event.key==='Enter')returnByKey()" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p3);color:var(--m);font-family:var(--f);font-size:12px;-moz-appearance:textfield" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+              <button onclick="returnByKey()" style="padding:6px 12px;border-radius:6px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">Здати</button>
+            </div>
             <div class="icp2-list" id="icp2-list"><div style="padding:12px;font-size:11px;color:var(--m2);text-align:center">Нікого немає</div></div>
           </div>
         </div>
@@ -4910,6 +4914,24 @@ async function reloadAdmClients(){
 }
 
 let admST=null;
+async function returnByKey(){
+  const inp=document.getElementById('key-return-input');
+  const keyNum=parseInt(inp?.value||'');
+  if(!keyNum||keyNum<=0){inp?.focus();return;}
+  // Шукаємо клієнта з таким ключем у поточній філії
+  const c=admInClub.find(x=>x.key===keyNum);
+  if(!c){
+    // Підсвічуємо поле червоним
+    if(inp){inp.style.borderColor='var(--rd)';setTimeout(()=>inp.style.borderColor='var(--bd2)',1500);}
+    alert(`❌ Ключ №${keyNum} не знайдено серед активних відвідувачів`);
+    inp?.select();
+    return;
+  }
+  if(inp) inp.value='';
+  // Викликаємо стандартний checkout
+  await admCheckOut(c.id);
+}
+
 function clearAdmClient(){
   const main=document.getElementById('adm-main');
   if(main) main.innerHTML='';
