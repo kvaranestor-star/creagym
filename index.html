@@ -5198,16 +5198,19 @@ async function admSelectClient(id){
   // Підраховуємо візити: загалом і у поточній філії
   let totalVisits=c.visits||0;
   let branchVisits=0;
-  let inOtherBranch=null; // якщо клієнт зараз у іншій філії
+  let inOtherBranch=null;
+  let firstVisit=null; // перший вхід у зал
   try{
     if(_currentBranch?.id){
       const visList=await sb.get('visits',`?client_id=eq.${id}&branch_id=eq.${_currentBranch.id}&select=id`);
       branchVisits=(visList||[]).length;
     }
-    // Якщо визитов в БД больше ніж в clients.visits — оновлюємо клієнта
     const allVisList=await sb.get('visits',`?client_id=eq.${id}&select=id`);
     const realTotal=(allVisList||[]).length;
     if(realTotal>totalVisits) totalVisits=realTotal;
+    // Перший візит взагалі
+    const firstVisitRes=await sb.get('visits',`?client_id=eq.${id}&order=created_at.asc&limit=1&select=created_at`);
+    if(firstVisitRes&&firstVisitRes.length) firstVisit=new Date(firstVisitRes[0].created_at);
     // Перевіряємо чи клієнт зараз у будь-якій філії
     const inClubRows=await sb.get('in_club',`?client_id=eq.${id}&select=branch_id,key_number,checked_in_at`)||[];
     if(inClubRows.length){
@@ -5258,9 +5261,19 @@ async function admSelectClient(id){
       :'';
     const daysInfo=notStarted?'⏳ Чекає активації':isFrozen?'❄️ Заморожений':dl===0?'⚠️ Закінчується сьогодні':dl+' днів залишилось';
 
+    // Визначаємо тип абонементу (мережевий чи локальний)
+    const subType=admSubTypes.find(t=>t.id===activeSub.type_id);
+    const isNetwork=subType?.is_network||false;
+    const subBranchName=!isNetwork&&subType?.branch_id
+      ?(_branches||[]).find(b=>b.id===subType.branch_id)?.name||'Локальний'
+      :null;
+    const networkBadge=isNetwork
+      ?`<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:#60A5FA20;color:#60A5FA;font-weight:700;margin-left:6px">🌐 Мережевий</span>`
+      :`<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:var(--ym);color:var(--y);font-weight:700;margin-left:6px">🏢 ${subBranchName||'Локальний'}</span>`;
+
     subBlock=`<div class="cl-sub2">
       <div class="cl-sub-hd2">
-        <div class="cl-sub-nm2">${activeSub.type_name}</div>
+        <div class="cl-sub-nm2">${activeSub.type_name}${networkBadge}</div>
         <span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;background:${statusBg};color:${statusColor}">${statusLabel}</span>
       </div>
       <div class="sub-pr"><div class="sub-pr-f" style="width:${pct}%;background:${dl<=3&&!notStarted&&!isFrozen?'var(--rd)':'var(--y)'}"></div></div>
@@ -5269,6 +5282,10 @@ async function admSelectClient(id){
         <span>${activeSub.price} ₴</span>
       </div>
       <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">${returnBtn}${activateBtn}</div>
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bd);display:flex;flex-direction:column;gap:4px">
+        ${activeSub.created_at?`<div style="font-size:10px;color:var(--m2);display:flex;justify-content:space-between"><span>🛒 Куплено:</span><span style="color:var(--m);font-weight:600">${new Date(activeSub.created_at).toLocaleDateString('uk-UA')} о ${new Date(activeSub.created_at).toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})}</span></div>`:''}
+        ${firstVisit?`<div style="font-size:10px;color:var(--m2);display:flex;justify-content:space-between"><span>🚪 Перший вхід:</span><span style="color:var(--m);font-weight:600">${firstVisit.toLocaleDateString('uk-UA')} о ${firstVisit.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})}</span></div>`:'<div style="font-size:10px;color:var(--m2)">🚪 Перший вхід: ще не відвідував</div>'}
+      </div>
     </div>`;
   } else {
     subBlock=`<div class="cl-sub2"><div class="cl-sub-hd2"><div class="cl-sub-nm2" style="color:var(--m2)">Немає активного абонементу</div><span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;background:var(--p3);color:var(--m2)">Відсутній</span></div></div>`;
