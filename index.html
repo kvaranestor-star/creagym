@@ -6061,26 +6061,34 @@ async function kasaOpenShift(){
     }
   }
 
-  // 3. Зберігаємо зміну в БД (оборот завжди з нуля — cash_start=0)
+  // Переносимо готівку з кінця попередньої зміни (фізично гроші не зникли)
+  let prevCashEnd=0;
+  try{
+    const bf=_currentBranch?.id?`&branch_id=eq.${_currentBranch.id}`:'';
+    const prevShifts=await sb.get('shifts',`?status=eq.closed${bf}&order=closed_at.desc&limit=1`);
+    if(prevShifts&&prevShifts.length>0) prevCashEnd=prevShifts[0].cash_end||0;
+  }catch(e){}
+
+  // 3. Зберігаємо зміну в БД (оборот з нуля, але cash_start = залишок з попередньої)
   try{
     const result=await sb.post('shifts',{
       opened_by:curUser?.name||'admin',
-      cash_start:0,
+      cash_start:prevCashEnd,
       status:'open'
     });
     kasaShift=Array.isArray(result)?result[0]:result;
     if(!kasaShift||kasaShift.code){
-      kasaShift={id:'local-'+Date.now(),opened_by:curUser?.name||'admin',cash_start:0,opened_at:new Date().toISOString(),status:'open'};
+      kasaShift={id:'local-'+Date.now(),opened_by:curUser?.name||'admin',cash_start:prevCashEnd,opened_at:new Date().toISOString(),status:'open'};
     }
   }catch(e){
-    kasaShift={id:'local-'+Date.now(),opened_by:curUser?.name||'admin',cash_start:0,opened_at:new Date().toISOString(),status:'open'};
+    kasaShift={id:'local-'+Date.now(),opened_by:curUser?.name||'admin',cash_start:prevCashEnd,opened_at:new Date().toISOString(),status:'open'};
   }
 
   kasaSaveShift();
   kasaUpdateShiftUI(true);
   kasaLoadTx();
   const t=new Date().toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
-  alert(`✅ Зміну відкрито о ${t}\n📋 Зміну відкрито в Checkbox\n💵 Оборот: 0 ₴ (нова зміна)`);
+  alert(`✅ Зміну відкрито о ${t}\n📋 Зміну відкрито в Checkbox\n💵 Готівка на початок: ${prevCashEnd.toLocaleString('uk-UA')} ₴`);
 }
 
 function kasaUpdateShiftUI(open){
@@ -6095,12 +6103,14 @@ function kasaUpdateShiftUI(open){
     dot.style.background='var(--gr)';
     title.textContent='Зміна відкрита';
     const t=new Date(kasaShift.opened_at);
-    sub.textContent='Відкрита о '+t.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})+' · '+kasaShift.opened_by;
+    const branchName=_currentBranch?.name?` · 🏢 ${_currentBranch.name}`:'';
+    sub.textContent='Відкрита о '+t.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})+' · '+kasaShift.opened_by+branchName;
     badge.textContent='ВІДКРИТО';badge.style.background='#22C55E20';badge.style.color='var(--gr)';
     openBtn.style.display='none';xBtn.style.display='flex';zBtn.style.display='flex';
   } else {
     dot.style.background='var(--rd)';
-    title.textContent='Зміна не відкрита';
+    const branchName=_currentBranch?.name?` (${_currentBranch.name})`:'';
+    title.textContent='Зміна не відкрита'+branchName;
     sub.textContent='Відкрийте зміну щоб розпочати роботу з касою';
     badge.textContent='ЗАЧИНЕНО';badge.style.background='#EF444420';badge.style.color='var(--rd)';
     openBtn.style.display='flex';xBtn.style.display='none';zBtn.style.display='none';
@@ -6182,9 +6192,10 @@ function kasaUpdateStats(){
   const cashOut=kasaTxAll.filter(x=>x.payment_method==='cash'&&(x.type==='outcome'||x.type==='return')).reduce((s,x)=>s+x.amount,0);
   const cashTurn=cashIn-cashOut;
   const cardTurn=kasaTxAll.filter(x=>x.payment_method==='card'&&x.type!=='return').reduce((s,x)=>s+x.amount,0);
-  // Оборот завжди з нуля — без перенесення з попередньої зміни
-  document.getElementById('k-cash-start').textContent='0 ₴';
-  document.getElementById('k-cash-total').textContent=cashTurn.toLocaleString('uk-UA')+' ₴';
+  // Готівка на початок — з поточної зміни (перенесена з попередньої)
+  const cashStart=kasaShift?.cash_start||0;
+  document.getElementById('k-cash-start').textContent=cashStart.toLocaleString('uk-UA')+' ₴';
+  document.getElementById('k-cash-total').textContent=(cashStart+cashTurn).toLocaleString('uk-UA')+' ₴';
   document.getElementById('k-cash-turn').textContent=cashTurn.toLocaleString('uk-UA')+' ₴';
   document.getElementById('k-card-start').textContent='0 ₴';
   document.getElementById('k-card-total').textContent=cardTurn.toLocaleString('uk-UA')+' ₴';
