@@ -1029,7 +1029,27 @@ tr:hover td{background:#ffffff03;cursor:pointer}
         </div>
         <div class="ff">
           <label>Емодзі</label>
-          <input class="fi2" type="text" id="prod-emoji" placeholder="📦" maxlength="2">
+          <div style="position:relative">
+            <button type="button" id="prod-emoji-btn" onclick="toggleEmojiPicker()" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m);font-family:var(--f);font-size:22px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px">
+              <span id="prod-emoji-display">📦</span>
+              <span style="font-size:11px;color:var(--m2);margin-left:auto">▾</span>
+            </button>
+            <input type="hidden" id="prod-emoji" value="📦">
+            <div id="emoji-picker" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:1000;background:var(--p1);border:1px solid var(--bd2);border-radius:10px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-height:260px;overflow-y:auto">
+              ${[
+                {cat:'🏋️ Спорт/Фітнес', emojis:['🏋️','⚽','🏃','🤸','💪','🧘','🥊','🏊','🚴','⛹️','🤾','🏇','🎯','🥋','🏄']},
+                {cat:'🥤 Напої', emojis:['🥤','💧','🍵','☕','🧃','🥛','🍺','🍹','🧋','🫗']},
+                {cat:'🍎 Їжа', emojis:['🍎','🍌','🥗','🥩','🍗','🥚','🧁','🍫','🍬','🥜','🫘']},
+                {cat:'💊 Здоров\'я', emojis:['💊','🧴','🩹','💉','🧪','🩺','🫀','🧬','🏥','🌿']},
+                {cat:'👕 Одяг/Аксесуари', emojis:['👕','👟','🧤','🧢','👓','⌚','🎒','👙','🩱','🩳']},
+                {cat:'📦 Інше', emojis:['📦','🎁','⭐','✨','🔑','🏷️','🧾','📋','🛒','💳','🪙','💎']}
+              ].map(({cat,emojis})=>`
+                <div style="font-size:9px;font-weight:700;color:var(--m2);text-transform:uppercase;letter-spacing:.08em;margin:8px 0 4px">${cat}</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(36px,1fr));gap:4px">
+                  ${emojis.map(e=>`<button type="button" onclick="selectEmoji('${e}')" style="padding:5px;border-radius:6px;border:none;background:transparent;font-size:20px;cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--p3)'" onmouseout="this.style.background='transparent'">${e}</button>`).join('')}
+                </div>`).join('')}
+            </div>
+          </div>
         </div>
       </div>
       <div class="ff">
@@ -3433,6 +3453,32 @@ async function deleteProduct(id,name){
 
 let _editProductId=null;
 
+function toggleEmojiPicker(){
+  const p=document.getElementById('emoji-picker');
+  if(!p)return;
+  p.style.display=p.style.display==='none'?'block':'none';
+  // Закриваємо при кліку поза picker
+  if(p.style.display==='block'){
+    setTimeout(()=>{
+      const handler=(e)=>{
+        if(!p.contains(e.target)&&e.target.id!=='prod-emoji-btn'){
+          p.style.display='none';
+          document.removeEventListener('click',handler);
+        }
+      };
+      document.addEventListener('click',handler);
+    },0);
+  }
+}
+
+function selectEmoji(emoji){
+  document.getElementById('prod-emoji').value=emoji;
+  const display=document.getElementById('prod-emoji-display');
+  if(display) display.textContent=emoji;
+  const picker=document.getElementById('emoji-picker');
+  if(picker) picker.style.display='none';
+}
+
 function editProduct(id){ _editProductId=id; openAddProduct(); }
 
 // ===== КАТЕГОРІЇ ТА ПОСТАЧАЛЬНИКИ =====
@@ -3577,6 +3623,8 @@ async function openAddProduct(){
     document.getElementById('prod-min').value=p.min_stock||5;
     document.getElementById('prod-max').value=p.desired_max||0;
     document.getElementById('prod-emoji').value=p.emoji||'📦';
+    const emojiDisplay=document.getElementById('prod-emoji-display');
+    if(emojiDisplay) emojiDisplay.textContent=p.emoji||'📦';
     document.getElementById('prod-unit').value=p.unit||'шт';
     document.getElementById('prod-barcode').value=p.barcode||'';
     document.getElementById('prod-desc').value=p.description||'';
@@ -3588,7 +3636,12 @@ function closeMoProd(e){if(e.target===document.getElementById('mo-prod'))closeMo
 function closeMoProdD(){
   document.getElementById('mo-prod').classList.remove('sh');
   _editProductId=null;
-  ['prod-name','prod-price','prod-cost','prod-stock','prod-min','prod-max','prod-barcode','prod-desc','prod-emoji','prod-cat-new','prod-supplier-new'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['prod-name','prod-price','prod-cost','prod-stock','prod-min','prod-max','prod-barcode','prod-desc','prod-cat-new','prod-supplier-new'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('prod-emoji').value='📦';
+  const emojiDisplay=document.getElementById('prod-emoji-display');
+  if(emojiDisplay) emojiDisplay.textContent='📦';
+  const picker=document.getElementById('emoji-picker');
+  if(picker) picker.style.display='none';
   const cat=document.getElementById('prod-cat');if(cat)cat.value='';
   const sup=document.getElementById('prod-supplier');if(sup)sup.value='';
   const unit=document.getElementById('prod-unit');if(unit)unit.value='шт';
@@ -5606,6 +5659,12 @@ async function admSelectClient(id){
 
 async function admCheckIn(id){
   const c=admClients.find(x=>x.id===id);if(!c)return;
+
+  // 0. Перевіряємо чи відкрита зміна
+  if(!kasaShift){
+    alert('⛔ Не можна зареєструвати вхід!\n\nСпочатку відкрийте зміну в розділі «Каса».');
+    return;
+  }
 
   // 1. Перевіряємо чи клієнт вже в іншому залі
   try{
