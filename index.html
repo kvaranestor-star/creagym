@@ -5347,21 +5347,35 @@ async function cbCheckExistingShift(){
     const sh=await cbCall("shift_status", {token:lr.access_token, _license_key:_cbSettings.cb_key});
 
     if(sh?.status==='OPENED'){
-      // Checkbox відкрита — відновлюємо якщо немає локально
+      // Checkbox відкрита — шукаємо в нашій БД
       if(!kasaShift){
         try{
           const bf=_currentBranch?.id?`&branch_id=eq.${_currentBranch.id}`:'';
           const shifts=await sb.get('shifts',`?status=eq.open${bf}&order=opened_at.desc&limit=1`);
-          if(shifts&&shifts.length>0){ kasaShift=shifts[0]; kasaSaveShift(); kasaUpdateShiftUI(true); kasaLoadTx(); }
+          if(shifts&&shifts.length>0){
+            kasaShift=shifts[0];
+          } else {
+            // Зміна відкрита в Checkbox але не в нашій БД (наприклад з іншої CRM)
+            // Показуємо як відкриту щоб адмін знав стан каси
+            kasaShift={
+              id:'cb-external',
+              opened_by:curUser?.name||'admin',
+              cash_start:0,
+              opened_at:new Date().toISOString(),
+              status:'open',
+              branch_id:_currentBranch?.id||null
+            };
+          }
+          kasaSaveShift();
+          kasaUpdateShiftUI(true);
+          kasaLoadTx();
         }catch(e2){}
       }
       const badge=document.getElementById('kasa-status-badge');
       if(badge){badge.textContent='ВІДКРИТО';badge.style.background='#22C55E20';badge.style.color='var(--gr)';}
-      console.log('✅ Checkbox: зміна відкрита');
     } else {
       // Checkbox закрита — скидаємо локальний стан
       if(kasaShift){
-        console.log('⚠️ Checkbox: зміна закрита — скидаємо локальний стан');
         kasaShift=null;
         kasaSaveShift();
         kasaUpdateShiftUI(false);
@@ -6467,6 +6481,11 @@ async function kasaXReport(){
 
 async function kasaCloseShift(){
   if(!kasaShift)return;
+  // Якщо зміна відкрита з іншої CRM — не можна закрити через нашу систему
+  if(kasaShift.id==='cb-external'){
+    alert('⚠️ Зміна відкрита в Checkbox але не через цю систему.\nЗакрийте зміну через систему де вона була відкрита.');
+    return;
+  }
   if(!confirm('Закрити зміну? Буде сформовано Z-звіт.'))return;
   const cashIn=kasaTxAll.filter(x=>x.payment_method==='cash'&&x.type!=='outcome').reduce((s,x)=>s+x.amount,0);
   const cashOut=kasaTxAll.filter(x=>x.payment_method==='cash'&&x.type==='outcome').reduce((s,x)=>s+x.amount,0);
