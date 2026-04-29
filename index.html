@@ -3039,59 +3039,181 @@ function renderMovements(type){
   </div>`;
 }
 
+let _invStarted=false;
+let _invDate=null;
+
+function startInventory(){
+  if(_invStarted&&!confirm('Почати нову інвентаризацію? Поточні дані будуть скинуті.'))return;
+  _invStarted=true;
+  _invDate=new Date().toISOString();
+  renderInventory();
+}
+
 function renderInventory(){
   const el=document.getElementById('g-inventory-list');
   if(!el)return;
+  if(!_invStarted){
+    el.innerHTML=`<div style="padding:40px;text-align:center;color:var(--m2);font-size:13px;background:var(--p1);border:1px dashed var(--bd2);border-radius:12px">
+      Натисніть «▶ Розпочати інвентаризацію» щоб створити документ перерахунку
+    </div>`;
+    return;
+  }
+  const dateStr=new Date(_invDate).toLocaleString('uk-UA',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
   el.innerHTML=`<div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;overflow:hidden">
-    <div style="padding:12px 16px;background:var(--p2);border-bottom:1px solid var(--bd);display:grid;grid-template-columns:36px 1fr 100px 100px 100px;gap:12px;font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">
-      <div></div><div>Товар</div><div style="text-align:center">В системі</div><div style="text-align:center">Фактично</div><div style="text-align:center">Різниця</div>
+    <div style="padding:12px 16px;background:var(--p2);border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--m)">📋 Документ інвентаризації</div>
+        <div style="font-size:10px;color:var(--m2);margin-top:2px">Розпочато: ${dateStr}</div>
+      </div>
+      <div id="inv-total-loss" style="font-size:11px;color:var(--m2)"></div>
     </div>
-    ${gProducts.map(p=>`<div style="padding:10px 16px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:36px 1fr 100px 100px 100px;align-items:center;gap:12px">
+    <div style="padding:12px 16px;background:var(--p2);border-bottom:1px solid var(--bd);display:grid;grid-template-columns:36px 1fr 80px 90px 90px 110px 110px;gap:8px;font-size:9px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">
+      <div></div><div>Товар</div>
+      <div style="text-align:center">В системі</div>
+      <div style="text-align:center">Факт</div>
+      <div style="text-align:center">Різниця</div>
+      <div style="text-align:right">Збиток (опт)</div>
+      <div style="text-align:right">Збиток (роздріб)</div>
+    </div>
+    ${gProducts.map(p=>`<div style="padding:10px 16px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:36px 1fr 80px 90px 90px 110px 110px;align-items:center;gap:8px">
       <div style="font-size:20px;text-align:center">${p.emoji||'📦'}</div>
-      <div><div style="font-size:12px;font-weight:600">${p.name}</div><div style="font-size:10px;color:var(--m2)">${p.category}</div></div>
-      <div style="text-align:center;font-size:13px;font-weight:600">${p.stock}</div>
-      <div style="text-align:center"><input type="number" id="inv-${p.id}" placeholder="${p.stock}" min="0" style="width:70px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd2);background:var(--p3);color:var(--w);font-family:var(--f);font-size:12px;text-align:center"></div>
+      <div>
+        <div style="font-size:12px;font-weight:600">${p.name}</div>
+        <div style="font-size:9px;color:var(--m2)">${p.category||''} · Опт: ${p.cost||0}₴ · Роздріб: ${p.price||0}₴</div>
+      </div>
+      <div style="text-align:center;font-size:13px;font-weight:600">${p.stock} ${p.unit||'шт'}</div>
+      <div style="text-align:center">
+        <input type="number" id="inv-${p.id}" placeholder="${p.stock}" min="0" step="1"
+          oninput="calcInventoryRow('${p.id}',${p.stock},${p.cost||0},${p.price||0})"
+          style="width:70px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd2);background:var(--p3);color:var(--w);font-family:var(--f);font-size:12px;text-align:center">
+      </div>
       <div id="inv-diff-${p.id}" style="text-align:center;font-size:13px;font-weight:700;color:var(--m2)">—</div>
+      <div id="inv-loss-cost-${p.id}" style="text-align:right;font-size:12px;font-weight:600;color:var(--m2)">—</div>
+      <div id="inv-loss-price-${p.id}" style="text-align:right;font-size:12px;font-weight:600;color:var(--m2)">—</div>
     </div>`).join('')}
+    <div id="inv-summary" style="display:none;padding:14px 16px;background:var(--p2);border-top:2px solid var(--bd2)">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:8px;padding:10px">
+          <div style="font-size:10px;color:var(--m2);margin-bottom:4px">Змін товарів</div>
+          <div id="inv-sum-count" style="font-size:16px;font-weight:800;color:var(--m)">0</div>
+        </div>
+        <div style="background:#EF444414;border:1px solid #EF444430;border-radius:8px;padding:10px">
+          <div style="font-size:10px;color:var(--m2);margin-bottom:4px">Збиток по опту</div>
+          <div id="inv-sum-cost" style="font-size:16px;font-weight:800;color:var(--rd)">0 ₴</div>
+        </div>
+        <div style="background:#EF444414;border:1px solid #EF444430;border-radius:8px;padding:10px">
+          <div style="font-size:10px;color:var(--m2);margin-bottom:4px">Збиток по роздрібу</div>
+          <div id="inv-sum-price" style="font-size:16px;font-weight:800;color:var(--rd)">0 ₴</div>
+        </div>
+      </div>
+    </div>
     <div style="padding:14px 16px;display:flex;gap:8px;justify-content:flex-end">
       <button onclick="calcInventory()" style="padding:8px 16px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">🔢 Порахувати різницю</button>
-      <button onclick="saveInventory()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">✅ Зберегти інвентаризацію</button>
+      <button onclick="saveInventory()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">✅ Підписати і зберегти</button>
     </div>
   </div>`;
 }
 
+function calcInventoryRow(productId, systemStock, cost, retailPrice){
+  const inp=document.getElementById('inv-'+productId);
+  const diffEl=document.getElementById('inv-diff-'+productId);
+  const lossCostEl=document.getElementById('inv-loss-cost-'+productId);
+  const lossPriceEl=document.getElementById('inv-loss-price-'+productId);
+  if(!inp||inp.value===''){
+    if(diffEl) diffEl.textContent='—';
+    if(lossCostEl) lossCostEl.textContent='—';
+    if(lossPriceEl) lossPriceEl.textContent='—';
+    updateInventorySummary();
+    return;
+  }
+  const actual=parseInt(inp.value);
+  if(isNaN(actual)) return;
+  const diff=actual-systemStock;
+  if(diffEl){
+    diffEl.textContent=(diff>0?'+':'')+diff;
+    diffEl.style.color=diff>0?'var(--gr)':diff<0?'var(--rd)':'var(--m2)';
+  }
+  if(diff<0){
+    const lossCost=Math.abs(diff)*cost;
+    const lossPrice=Math.abs(diff)*retailPrice;
+    if(lossCostEl){lossCostEl.textContent='-'+lossCost.toLocaleString('uk-UA')+' ₴';lossCostEl.style.color='var(--rd)';}
+    if(lossPriceEl){lossPriceEl.textContent='-'+lossPrice.toLocaleString('uk-UA')+' ₴';lossPriceEl.style.color='var(--rd)';}
+  } else if(diff>0){
+    if(lossCostEl){lossCostEl.textContent='+'+Math.abs(diff*cost).toLocaleString('uk-UA')+' ₴';lossCostEl.style.color='var(--gr)';}
+    if(lossPriceEl){lossPriceEl.textContent='+'+Math.abs(diff*retailPrice).toLocaleString('uk-UA')+' ₴';lossPriceEl.style.color='var(--gr)';}
+  } else {
+    if(lossCostEl){lossCostEl.textContent='0 ₴';lossCostEl.style.color='var(--m2)';}
+    if(lossPriceEl){lossPriceEl.textContent='0 ₴';lossPriceEl.style.color='var(--m2)';}
+  }
+  updateInventorySummary();
+}
+
 function calcInventory(){
+  gProducts.forEach(p=>calcInventoryRow(p.id,p.stock,p.cost||0,p.price||0));
+}
+
+function updateInventorySummary(){
+  let count=0,totalCostLoss=0,totalPriceLoss=0;
   gProducts.forEach(p=>{
     const inp=document.getElementById('inv-'+p.id);
-    const diff_el=document.getElementById('inv-diff-'+p.id);
-    if(!inp||!diff_el)return;
-    const val=parseInt(inp.value);
-    if(isNaN(val)){diff_el.textContent='—';diff_el.style.color='var(--m2)';return;}
-    const diff=val-p.stock;
-    diff_el.textContent=(diff>0?'+':'')+diff;
-    diff_el.style.color=diff>0?'var(--gr)':diff<0?'var(--rd)':'var(--m2)';
+    if(!inp||inp.value==='') return;
+    const actual=parseInt(inp.value);
+    if(isNaN(actual)||actual===p.stock) return;
+    count++;
+    const diff=actual-p.stock;
+    totalCostLoss+=diff*(p.cost||0);
+    totalPriceLoss+=diff*(p.price||0);
   });
+  const summary=document.getElementById('inv-summary');
+  if(summary) summary.style.display=count>0?'block':'none';
+  const el=document.getElementById('inv-sum-count');
+  if(el) el.textContent=count;
+  const ec=document.getElementById('inv-sum-cost');
+  if(ec){ec.textContent=(totalCostLoss<0?'-':'')+Math.abs(totalCostLoss).toLocaleString('uk-UA')+' ₴';ec.style.color=totalCostLoss<0?'var(--rd)':'var(--gr)';}
+  const ep=document.getElementById('inv-sum-price');
+  if(ep){ep.textContent=(totalPriceLoss<0?'-':'')+Math.abs(totalPriceLoss).toLocaleString('uk-UA')+' ₴';ep.style.color=totalPriceLoss<0?'var(--rd)':'var(--gr)';}
 }
 
 async function saveInventory(){
   const changes=[];
+  let totalCostLoss=0,totalPriceLoss=0;
   for(const p of gProducts){
     const inp=document.getElementById('inv-'+p.id);
-    if(!inp||inp.value==='')continue;
+    if(!inp||inp.value==='') continue;
     const actual=parseInt(inp.value);
-    if(isNaN(actual)||actual===p.stock)continue;
-    changes.push({product:p,actual,diff:actual-p.stock});
+    if(isNaN(actual)||actual===p.stock) continue;
+    const diff=actual-p.stock;
+    totalCostLoss+=diff*(p.cost||0);
+    totalPriceLoss+=diff*(p.price||0);
+    changes.push({product:p,actual,diff});
   }
   if(!changes.length){alert('Немає змін для збереження');return;}
-  if(!confirm(`Зберегти інвентаризацію?\n${changes.map(c=>`${c.product.name}: ${c.product.stock}→${c.actual} (${c.diff>0?'+':''}${c.diff})`).join('\n')}`))return;
+
+  const lossText=totalCostLoss<0
+    ?`\n\n💸 Збиток по опту: ${Math.abs(totalCostLoss).toLocaleString('uk-UA')} ₴\n💸 Збиток по роздрібу: ${Math.abs(totalPriceLoss).toLocaleString('uk-UA')} ₴`:'';
+
+  const lines=changes.map(c=>`• ${c.product.name}: ${c.product.stock}→${c.actual} (${c.diff>0?'+':''}${c.diff})`).join('\n');
+  if(!confirm(`Підписати інвентаризацію?\n\n${lines}${lossText}\n\nПісля підписання залишки в системі будуть оновлені.`))return;
+
   for(const c of changes){
     await sb.patch('products',`id=eq.${c.product.id}`,{stock:c.actual});
-    await sb.post('product_movements',{product_id:c.product.id,product_name:c.product.name,type:'inventory',qty:c.diff,reason:'Інвентаризація',created_by:curUser?.name||'owner'});
+    await sb.post('product_movements',{
+      product_id:c.product.id,
+      product_name:c.product.name,
+      type:'inventory',
+      qty:c.diff,
+      reason:`Інвентаризація від ${new Date(_invDate).toLocaleDateString('uk-UA')}`,
+      created_by:curUser?.name||'owner'
+    });
     c.product.stock=c.actual;
   }
-  alert(`✅ Інвентаризацію збережено!\nЗмінено: ${changes.length} товарів`);
+
+  _invStarted=false;
+  _invDate=null;
+  alert(`✅ Інвентаризацію підписано!\nЗмінено: ${changes.length} товарів${lossText}`);
   renderInventory();
   renderStock();
+  renderAssortment();
 }
 
 async function openAddIncome(){
