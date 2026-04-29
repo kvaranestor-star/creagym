@@ -5116,21 +5116,6 @@ async function loadAdminData(){
     admCart=[];
     admRenderICP();
     await loadCbSettings();
-    // Відновлюємо зміну тільки якщо вона належить поточній філії
-    if(_kasaShiftRaw){
-      if(_kasaShiftRaw.branch_id===admBranchId||!_kasaShiftRaw.branch_id){
-        kasaShift=_kasaShiftRaw;
-        kasaUpdateShiftUI(true);
-      } else {
-        // Зміна від іншої філії — скидаємо
-        kasaShift=null;
-        sessionStorage.removeItem('kasaShift');
-        kasaUpdateShiftUI(false);
-      }
-      _kasaShiftRaw=null; // вже обробили
-    } else {
-      kasaUpdateShiftUI(!!kasaShift);
-    }
     // Визначаємо філію адміна ЗАВЖДИ з user_branches (ігноруємо localStorage власника!)
     let admBranchId=null;
     let allowedBranches=[];
@@ -5160,6 +5145,20 @@ async function loadAdminData(){
     }
     _currentBranch={id:admBranchId};
     _admAllowedBranches=allowedBranches;
+    // Відновлюємо зміну тільки якщо вона належить поточній філії
+    if(_kasaShiftRaw){
+      if(_kasaShiftRaw.branch_id===admBranchId||!_kasaShiftRaw.branch_id){
+        kasaShift=_kasaShiftRaw;
+        kasaUpdateShiftUI(true);
+      } else {
+        kasaShift=null;
+        sessionStorage.removeItem('kasaShift');
+        kasaUpdateShiftUI(false);
+      }
+      _kasaShiftRaw=null;
+    } else {
+      kasaUpdateShiftUI(!!kasaShift);
+    }
     // Завантажуємо філії якщо ще немає (потрібно для плашки і Checkbox)
     if(!_branches||!_branches.length){
       try{_branches=await sb.get('branches','?order=created_at.asc')||[];}catch(e){}
