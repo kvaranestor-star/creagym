@@ -5160,6 +5160,10 @@ async function loadAdminData(){
     }
     _currentBranch={id:admBranchId};
     _admAllowedBranches=allowedBranches;
+    // Завантажуємо філії якщо ще немає (потрібно для плашки і Checkbox)
+    if(!_branches||!_branches.length){
+      try{_branches=await sb.get('branches','?order=created_at.asc')||[];}catch(e){}
+    }
     // Оновлюємо плашку філії в шапці
     updateAdmBranchBadge(admBranchId);
     // Перевіряємо статус зміни через Checkbox для цієї філії
