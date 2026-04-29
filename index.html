@@ -1035,20 +1035,7 @@ tr:hover td{background:#ffffff03;cursor:pointer}
               <span style="font-size:11px;color:var(--m2);margin-left:auto">▾</span>
             </button>
             <input type="hidden" id="prod-emoji" value="📦">
-            <div id="emoji-picker" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:1000;background:var(--p1);border:1px solid var(--bd2);border-radius:10px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-height:260px;overflow-y:auto">
-              ${[
-                {cat:'🏋️ Спорт/Фітнес', emojis:['🏋️','⚽','🏃','🤸','💪','🧘','🥊','🏊','🚴','⛹️','🤾','🏇','🎯','🥋','🏄']},
-                {cat:'🥤 Напої', emojis:['🥤','💧','🍵','☕','🧃','🥛','🍺','🍹','🧋','🫗']},
-                {cat:'🍎 Їжа', emojis:['🍎','🍌','🥗','🥩','🍗','🥚','🧁','🍫','🍬','🥜','🫘']},
-                {cat:'💊 Здоров\'я', emojis:['💊','🧴','🩹','💉','🧪','🩺','🫀','🧬','🏥','🌿']},
-                {cat:'👕 Одяг/Аксесуари', emojis:['👕','👟','🧤','🧢','👓','⌚','🎒','👙','🩱','🩳']},
-                {cat:'📦 Інше', emojis:['📦','🎁','⭐','✨','🔑','🏷️','🧾','📋','🛒','💳','🪙','💎']}
-              ].map(({cat,emojis})=>`
-                <div style="font-size:9px;font-weight:700;color:var(--m2);text-transform:uppercase;letter-spacing:.08em;margin:8px 0 4px">${cat}</div>
-                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(36px,1fr));gap:4px">
-                  ${emojis.map(e=>`<button type="button" onclick="selectEmoji('${e}')" style="padding:5px;border-radius:6px;border:none;background:transparent;font-size:20px;cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--p3)'" onmouseout="this.style.background='transparent'">${e}</button>`).join('')}
-                </div>`).join('')}
-            </div>
+            <div id="emoji-picker" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:1000;background:var(--p1);border:1px solid var(--bd2);border-radius:10px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-height:260px;overflow-y:auto"></div>
           </div>
         </div>
       </div>
@@ -3453,21 +3440,41 @@ async function deleteProduct(id,name){
 
 let _editProductId=null;
 
+const _EMOJI_CATS=[
+  {cat:'🏋️ Спорт',     e:['🏋️','⚽','🏃','🤸','💪','🧘','🥊','🏊','🚴','🎯','🥋','🏄','⛹️','🤾','🏇']},
+  {cat:'🥤 Напої',     e:['🥤','💧','🍵','☕','🧃','🥛','🍹','🧋','🫗','🍶']},
+  {cat:'🍎 Їжа',       e:['🍎','🍌','🥗','🥩','🍗','🥚','🧁','🍫','🍬','🥜','🫘','🍞']},
+  {cat:'💊 Здоров\'я', e:['💊','🧴','🩹','💉','🧪','🩺','🫀','🧬','🌿','🏥']},
+  {cat:'👕 Одяг',      e:['👕','👟','🧤','🧢','👓','⌚','🎒','👙','🩱','🩳']},
+  {cat:'📦 Інше',      e:['📦','🎁','⭐','✨','🔑','🏷️','🧾','📋','🛒','💳','🪙','💎']}
+];
+
 function toggleEmojiPicker(){
   const p=document.getElementById('emoji-picker');
   if(!p)return;
-  p.style.display=p.style.display==='none'?'block':'none';
-  // Закриваємо при кліку поза picker
-  if(p.style.display==='block'){
+  const isHidden=p.style.display==='none';
+  if(isHidden){
+    // Будуємо контент якщо порожній
+    if(!p.innerHTML.trim()){
+      p.innerHTML=_EMOJI_CATS.map(({cat,e})=>`
+        <div style="font-size:9px;font-weight:700;color:var(--m2);text-transform:uppercase;letter-spacing:.08em;margin:8px 0 4px">${cat}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(36px,1fr));gap:4px">${
+          e.map(em=>`<button type="button" onclick="selectEmoji('${em}')" style="padding:5px;border-radius:6px;border:none;background:transparent;font-size:20px;cursor:pointer" onmouseover="this.style.background='var(--p3)'" onmouseout="this.style.background='transparent'">${em}</button>`).join('')
+        }</div>`).join('');
+    }
+    p.style.display='block';
     setTimeout(()=>{
       const handler=(e)=>{
-        if(!p.contains(e.target)&&e.target.id!=='prod-emoji-btn'){
+        const btn=document.getElementById('prod-emoji-btn');
+        if(!p.contains(e.target)&&e.target!==btn&&!btn?.contains(e.target)){
           p.style.display='none';
           document.removeEventListener('click',handler);
         }
       };
       document.addEventListener('click',handler);
     },0);
+  } else {
+    p.style.display='none';
   }
 }
 
