@@ -885,32 +885,22 @@ tr:hover td{background:#ffffff03;cursor:pointer}
               </div>
               <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
 
-                <!-- Вікно серії -->
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                  <div class="ff" style="margin:0">
-                    <label>Вікно серії (днів) *</label>
-                    <input class="fi2" type="number" id="streak-window" min="1" max="60" value="14">
-                    <div style="font-size:10px;color:var(--m2);margin-top:3px">Скільки днів після закінчення абонементу серія зберігається</div>
-                  </div>
-                  <div class="ff" style="margin:0">
-                    <label>Знижка за місяць (%)</label>
-                    <input class="fi2" type="number" id="streak-step" min="1" max="10" value="3">
-                    <div style="font-size:10px;color:var(--m2);margin-top:3px">На скільки % збільшується знижка кожен місяць</div>
-                  </div>
-                </div>
                 <div class="ff" style="margin:0">
-                  <label>Максимальна знижка (%)</label>
-                  <input class="fi2" type="number" id="streak-max" min="1" max="50" value="33">
-                  <div style="font-size:10px;color:var(--m2);margin-top:3px">Знижка не перевищить це значення (досягається на x12)</div>
+                  <label>Вікно серії (днів) *</label>
+                  <input class="fi2" type="number" id="streak-window" min="1" max="60" value="14" style="max-width:200px">
+                  <div style="font-size:10px;color:var(--m2);margin-top:3px">Скільки днів після закінчення абонементу серія зберігається</div>
                 </div>
 
-                <!-- Таблиця знижок (preview) -->
+                <!-- Таблиця з ручними знижками -->
                 <div>
-                  <div style="font-size:11px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Таблиця знижок</div>
-                  <div id="streak-table" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px"></div>
+                  <div style="font-size:11px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Знижка по місяцях</div>
+                  <div id="streak-table" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px"></div>
                 </div>
 
-                <button onclick="saveStreakSettings()" style="align-self:flex-start;padding:9px 20px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">💾 Зберегти налаштування</button>
+                <div style="display:flex;gap:8px">
+                  <button id="streak-save-btn" onclick="saveStreakSettings()" style="padding:9px 20px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">💾 Зберегти</button>
+                  <button id="streak-edit-btn" onclick="unlockStreakSettings()" style="display:none;padding:9px 20px;border-radius:8px;border:1px solid var(--y);background:var(--ym);color:var(--y);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">✏️ Змінити</button>
+                </div>
               </div>
             </div>
 
@@ -4566,71 +4556,116 @@ async function deleteStaff(id,name){
 }
 
 // ===== МАРКЕТИНГ =====
+// Дефолтні знижки по місяцях: x1=0, x2=3, x3=6... x12+=33
+let _streakDiscounts=[0,3,6,9,12,15,18,21,24,27,30,33]; // індекс = streak-1
+
 async function loadMkt(){
   await loadStreakSettings();
-  // Заповнюємо поля
   const en=document.getElementById('streak-enabled');
   const lbl=document.getElementById('streak-enabled-lbl');
   const win=document.getElementById('streak-window');
-  const step=document.getElementById('streak-step');
-  const max=document.getElementById('streak-max');
-  if(en){en.checked=_streakSettings.enabled; if(lbl)lbl.textContent=_streakSettings.enabled?'Увімкнено':'Вимкнено';}
+  if(en){
+    en.checked=_streakSettings.enabled;
+    if(lbl) lbl.textContent=_streakSettings.enabled?'Увімкнено':'Вимкнено';
+    en.onchange=()=>{
+      if(lbl) lbl.textContent=en.checked?'Увімкнено':'Вимкнено';
+      renderStreakTable(false);
+    };
+  }
   if(win) win.value=_streakSettings.window;
-  if(step) step.value=_streakSettings.step;
-  if(max) max.value=_streakSettings.max;
-  if(en) en.onchange=()=>{if(lbl)lbl.textContent=en.checked?'Увімкнено':'Вимкнено'; renderStreakTable();};
-  if(win) win.oninput=renderStreakTable;
-  if(step) step.oninput=renderStreakTable;
-  if(max) max.oninput=renderStreakTable;
-  renderStreakTable();
+  renderStreakTable(false);
+  // Якщо є збережені налаштування — блокуємо одразу
+  try{
+    const check=await sb.get('settings','?key=eq.streak_enabled');
+    if(check&&check.length) setTimeout(()=>lockStreakSettings(),50);
+  }catch(e){}
 }
 
-function renderStreakTable(){
+function renderStreakTable(locked){
   const el=document.getElementById('streak-table');
   if(!el)return;
-  const step=parseInt(document.getElementById('streak-step')?.value)||3;
-  const max=parseInt(document.getElementById('streak-max')?.value)||33;
   const enabled=document.getElementById('streak-enabled')?.checked;
-  if(!enabled){el.innerHTML='<div style="color:var(--m2);font-size:12px">Серія вимкнена</div>';return;}
-  const rows=[];
-  for(let s=1;s<=13;s++){
-    const disc=s<=1?0:Math.min((s-1)*step,max);
-    const isMax=s>1&&disc>=max;
-    rows.push(`<div style="padding:8px;background:var(--p2);border:1px solid ${disc?'var(--y)30':'var(--bd2)'};border-radius:8px;text-align:center">
-      <div style="font-size:16px">${s<=1?'—':s<=3?'🔥':s<=6?'🔥🔥':s<=9?'🔥🔥🔥':'🔥🔥🔥🔥'}</div>
-      <div style="font-size:10px;font-weight:700;color:var(--m2)">x${s}${isMax?'+':''}</div>
-      <div style="font-size:12px;font-weight:800;color:${disc?'var(--y)':'var(--m2)'}">${disc?'-'+disc+'%':'0%'}</div>
-    </div>`);
-    if(isMax) break;
+  if(!enabled){
+    el.innerHTML='<div style="color:var(--m2);font-size:12px;padding:8px">Серія вимкнена — знижки не застосовуються</div>';
+    return;
   }
-  el.innerHTML=rows.join('');
+  const emojis=['—','🔥','🔥','🔥🔥','🔥🔥','🔥🔥','🔥🔥🔥','🔥🔥🔥','🔥🔥🔥','🔥🔥🔥🔥','🔥🔥🔥🔥','🔥🔥🔥🔥'];
+  el.innerHTML=_streakDiscounts.map((disc,i)=>{
+    const month=i+1;
+    const isFirst=i===0;
+    const isLast=i===_streakDiscounts.length-1;
+    return `<div style="background:var(--p2);border:1px solid ${disc&&!isFirst?'var(--y)30':'var(--bd2)'};border-radius:10px;padding:10px 6px;text-align:center;${locked?'opacity:'+( isFirst?'0.5':'1'):'' }">
+      <div style="font-size:14px;margin-bottom:2px">${isFirst?'—':emojis[i]||'🔥🔥🔥🔥'}</div>
+      <div style="font-size:9px;font-weight:700;color:var(--m2);margin-bottom:6px">x${month}${isLast?'+':''}</div>
+      ${isFirst
+        ? `<div style="font-size:13px;font-weight:800;color:var(--m2)">0%</div>`
+        : `<div style="display:flex;align-items:center;justify-content:center;gap:2px">
+            <input type="number" id="sdiscount-${i}" min="0" max="100" value="${disc}"
+              ${locked?'disabled':''}
+              style="width:44px;padding:3px 4px;border-radius:5px;border:1px solid ${locked?'transparent':'var(--bd2)'};background:${locked?'transparent':'var(--p3)'};color:var(--y);font-family:var(--f);font-size:13px;font-weight:800;text-align:center;-moz-appearance:textfield;opacity:${locked?'1':'1'}">
+            <span style="font-size:11px;color:var(--y);font-weight:700">%</span>
+          </div>`
+      }
+    </div>`;
+  }).join('');
+}
+
+function lockStreakSettings(){
+  renderStreakTable(true);
+  const win=document.getElementById('streak-window');
+  if(win){win.disabled=true;win.style.opacity='0.5';}
+  const en=document.getElementById('streak-enabled');
+  if(en){en.disabled=true;}
+  document.getElementById('streak-save-btn').style.display='none';
+  document.getElementById('streak-edit-btn').style.display='flex';
+}
+
+function unlockStreakSettings(){
+  renderStreakTable(false);
+  const win=document.getElementById('streak-window');
+  if(win){win.disabled=false;win.style.opacity='1';}
+  const en=document.getElementById('streak-enabled');
+  if(en){en.disabled=false;}
+  document.getElementById('streak-save-btn').style.display='flex';
+  document.getElementById('streak-edit-btn').style.display='none';
 }
 
 async function saveStreakSettings(){
   const enabled=document.getElementById('streak-enabled')?.checked;
   const window_days=parseInt(document.getElementById('streak-window')?.value)||14;
-  const step=parseInt(document.getElementById('streak-step')?.value)||3;
-  const max=parseInt(document.getElementById('streak-max')?.value)||33;
 
-  const pairs=[
-    {key:'streak_enabled',value:String(enabled)},
-    {key:'streak_window',value:String(window_days)},
-    {key:'streak_step',value:String(step)},
-    {key:'streak_max',value:String(max)},
-  ];
+  // Зчитуємо знижки з інпутів
+  const discounts=[0]; // x1 = завжди 0
+  for(let i=1;i<_streakDiscounts.length;i++){
+    const val=parseInt(document.getElementById(`sdiscount-${i}`)?.value)||0;
+    discounts.push(Math.max(0,Math.min(100,val)));
+  }
+  _streakDiscounts=discounts;
+
+  const btn=document.getElementById('streak-save-btn');
+  btn.textContent='Збереження...';btn.disabled=true;
   try{
+    const pairs=[
+      {key:'streak_enabled',value:String(enabled)},
+      {key:'streak_window',value:String(window_days)},
+      {key:'streak_discounts',value:JSON.stringify(discounts)},
+    ];
     for(const p of pairs){
-      // Upsert в settings
       await fetch(`${SB_URL}/rest/v1/settings`,{
         method:'POST',
         headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
         body:JSON.stringify({key:p.key,value:p.value})
       });
     }
-    // Оновлюємо локально
-    _streakSettings={enabled,window:window_days,step,max};
-    alert('✅ Налаштування серії збережено');
+    _streakSettings={enabled,window:window_days,step:3,max:100};
+    lockStreakSettings();
+    const res=document.createElement('div');
+    res.style.cssText='color:var(--gr);font-size:12px;padding:4px 0';
+    res.textContent='✅ Збережено';
+    btn.parentNode.appendChild(res);
+    setTimeout(()=>res.remove(),3000);
   }catch(e){alert('❌ '+e.message);}
+  finally{btn.textContent='💾 Зберегти';btn.disabled=false;}
 }
 
 // ===== АВТОЗАМОВЛЕННЯ =====
@@ -6199,13 +6234,14 @@ let _streakSettings={enabled:true, window:14, step:3, max:33};
 
 async function loadStreakSettings(){
   try{
-    const rows=await sb.get('settings','?key=in.(streak_enabled,streak_window,streak_step,streak_max)');
+    const rows=await sb.get('settings','?key=in.(streak_enabled,streak_window,streak_discounts)');
     if(rows&&rows.length){
       rows.forEach(r=>{
         if(r.key==='streak_enabled') _streakSettings.enabled=r.value!=='false';
         if(r.key==='streak_window') _streakSettings.window=parseInt(r.value)||14;
-        if(r.key==='streak_step') _streakSettings.step=parseInt(r.value)||3;
-        if(r.key==='streak_max') _streakSettings.max=parseInt(r.value)||33;
+        if(r.key==='streak_discounts'){
+          try{_streakDiscounts=JSON.parse(r.value);}catch(e){}
+        }
       });
     }
   }catch(e){console.warn('loadStreakSettings:',e);}
@@ -6213,7 +6249,9 @@ async function loadStreakSettings(){
 
 function getStreakDiscount(streak){
   if(!_streakSettings.enabled||streak<=1) return 0;
-  return Math.min((streak-1)*_streakSettings.step, _streakSettings.max);
+  const idx=streak-1;
+  if(idx<_streakDiscounts.length) return _streakDiscounts[idx]||0;
+  return _streakDiscounts[_streakDiscounts.length-1]||0; // останній = максимум
 }
 
 function getStreakEmoji(streak){
