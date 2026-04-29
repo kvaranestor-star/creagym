@@ -5342,8 +5342,12 @@ async function syncAdminClientStatuses(){
 // Перевіряємо існуючу зміну при завантаженні — не питаємо якщо вже відкрита
 async function cbCheckExistingShift(){
   try{
+    // Завантажуємо credentials поточної філії (або глобальні як fallback)
+    await loadCbSettings();
+    if(!_cbSettings.cb_login||!_cbSettings.cb_key) return; // немає жодних credentials
+
     const lr=await cbCall('login');
-    if(!lr.access_token) return;
+    if(!lr||!lr.access_token) return;
     const sh=await cbCall("shift_status", {token:lr.access_token, _license_key:_cbSettings.cb_key});
 
     if(sh?.status==='OPENED'){
@@ -6481,11 +6485,6 @@ async function kasaXReport(){
 
 async function kasaCloseShift(){
   if(!kasaShift)return;
-  // Якщо зміна відкрита з іншої CRM — не можна закрити через нашу систему
-  if(kasaShift.id==='cb-external'){
-    alert('⚠️ Зміна відкрита в Checkbox але не через цю систему.\nЗакрийте зміну через систему де вона була відкрита.');
-    return;
-  }
   if(!confirm('Закрити зміну? Буде сформовано Z-звіт.'))return;
   const cashIn=kasaTxAll.filter(x=>x.payment_method==='cash'&&x.type!=='outcome').reduce((s,x)=>s+x.amount,0);
   const cashOut=kasaTxAll.filter(x=>x.payment_method==='cash'&&x.type==='outcome').reduce((s,x)=>s+x.amount,0);
