@@ -6826,7 +6826,7 @@ async function kasaLoadTx(){
       else if(kasaPeriod==='month'){const m=new Date();m.setMonth(m.getMonth()-1);filter=`?created_at=gte.${m.toISOString()}&order=created_at.desc`;}
       if(_currentBranch?.id) filter+='&branch_id=eq.'+_currentBranch.id;
     }
-    kasaTxAll=await sb.get('sales',filter);
+    kasaTxAll=await sb.get('sales',filter)||[];
     kasaRenderTx();kasaUpdateStats();
   }catch(e){
     document.getElementById('kasa-tx-body').innerHTML='<tr><td colspan="6" style="padding:20px;text-align:center;font-size:12px;color:var(--rd)">Помилка завантаження</td></tr>';
@@ -7162,6 +7162,8 @@ async function kasaXReport(){
 async function kasaCloseShift(){
   if(!kasaShift)return;
   if(!confirm('Закрити зміну? Буде сформовано Z-звіт.'))return;
+  // Гарантуємо що kasaTxAll масив
+  if(!Array.isArray(kasaTxAll)) kasaTxAll=[];
   const cashIn=kasaTxAll.filter(x=>x.payment_method==='cash'&&x.type!=='outcome').reduce((s,x)=>s+x.amount,0);
   const cashOut=kasaTxAll.filter(x=>x.payment_method==='cash'&&x.type==='outcome').reduce((s,x)=>s+x.amount,0);
   const cashTurn=cashIn-cashOut;
