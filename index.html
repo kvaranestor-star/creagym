@@ -552,11 +552,6 @@ tr:hover td{background:#ffffff03;cursor:pointer}
     </div>
   </div>
   <div class="auth-foot">CREAGYM CRM · Захищено SSL</div>
-  <div class="demo-hint">
-    <strong>ДЕМО АКАУНТИ</strong>
-    owner@creagym.com / admin123<br>
-    admin@creagym.com / admin123
-  </div>
 </div>
 
 <!-- APP -->
@@ -1440,6 +1435,11 @@ function togglePass(){
   document.getElementById('pw').type=passVis?'text':'password';
 }
 
+async function sha256(str){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
 async function doLogin(){
   const email=document.getElementById('em').value.trim();
   const pass=document.getElementById('pw').value;
@@ -1449,7 +1449,8 @@ async function doLogin(){
   const btn=document.getElementById('ab');
   btn.classList.add('ld');
   try {
-    const users=await sb.get('users',`?email=eq.${encodeURIComponent(email)}&password_hash=eq.${encodeURIComponent(pass)}&select=*`);
+    const passHash=await sha256(pass);
+    const users=await sb.get('users',`?email=eq.${encodeURIComponent(email)}&password_hash=eq.${encodeURIComponent(passHash)}&select=*`);
     btn.classList.remove('ld');
     if(users&&users.length>0){
       const u=users[0];
