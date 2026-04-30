@@ -3041,179 +3041,271 @@ function renderMovements(type){
 
 let _invStarted=false;
 let _invDate=null;
+let _invDocId=null;
+let _invDocs=[];
 
-function startInventory(){
-  if(_invStarted&&!confirm('Почати нову інвентаризацію? Поточні дані будуть скинуті.'))return;
-  _invStarted=true;
-  _invDate=new Date().toISOString();
+async function startInventory(){
+  if(_invStarted&&!confirm('Почати нову? Поточні дані будуть скинуті.'))return;
+  _invStarted=true;_invDate=new Date().toISOString();_invDocId=null;
   renderInventory();
 }
 
-function renderInventory(){
+async function renderInventory(){
   const el=document.getElementById('g-inventory-list');
   if(!el)return;
+  try{
+    _invDocs=await _invLoadDocs();
+    // Фільтруємо по філії
+    if(_currentBranch?.id) _invDocs=_invDocs.filter(d=>!d.branch_id||d.branch_id===_currentBranch.id);
+    _invDocs.sort((a,b)=>new Date(b.doc_date)-new Date(a.doc_date));
+  }catch(e){_invDocs=[];}
+
   if(!_invStarted){
-    el.innerHTML=`<div style="padding:40px;text-align:center;color:var(--m2);font-size:13px;background:var(--p1);border:1px dashed var(--bd2);border-radius:12px">
-      Натисніть «▶ Розпочати інвентаризацію» щоб створити документ перерахунку
-    </div>`;
+    const docsHtml=_invDocs.length?`<div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;overflow:hidden;margin-top:16px">
+      <div style="padding:12px 16px;background:var(--p2);border-bottom:1px solid var(--bd);font-size:11px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">Документи інвентаризації</div>
+      ${_invDocs.map(d=>{
+        const date=new Date(d.doc_date).toLocaleString('uk-UA',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+        const items=Array.isArray(d.items)?d.items:[];
+        return `<div style="padding:12px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px">
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:var(--m)">📋 Інвентаризація від ${date}</div>
+            <div style="font-size:10px;color:var(--m2);margin-top:2px">Позицій: ${items.length} · Автор: ${d.created_by||'—'}${d.is_signed?` · ✅ Підписано: ${d.signed_by}`:''}</div>
+            ${d.total_cost_loss<0?`<div style="font-size:10px;color:var(--rd);margin-top:2px">💸 Збиток: ${Math.abs(d.total_cost_loss).toLocaleString('uk-UA')} ₴ (опт) · ${Math.abs(d.total_price_loss).toLocaleString('uk-UA')} ₴ (роздріб)</div>`:''}
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            ${d.is_signed
+              ?`<span style="padding:3px 8px;border-radius:20px;background:#22C55E14;color:var(--gr);font-size:10px;font-weight:700">✅ Підписано</span>
+                <button onclick="viewInvDoc('${d.id}')" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;cursor:pointer">👁</button>
+                <button onclick="unsignInvDoc('${d.id}')" style="padding:5px 10px;border-radius:6px;border:1px solid #F9731630;background:#F9731614;color:var(--or);font-family:var(--f);font-size:11px;cursor:pointer">↩ Зняти підпис</button>`
+              :`<span style="padding:3px 8px;border-radius:20px;background:var(--p3);color:var(--m2);font-size:10px;font-weight:700">Чернетка</span>
+                <button onclick="openInvDoc('${d.id}')" style="padding:5px 10px;border-radius:6px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">✏️ Редагувати</button>
+                <button onclick="deleteInvDoc('${d.id}')" style="padding:5px 10px;border-radius:6px;border:1px solid #EF444430;background:#EF444410;color:var(--rd);font-family:var(--f);font-size:11px;cursor:pointer">🗑</button>`}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`
+    :`<div style="padding:30px;text-align:center;color:var(--m2);font-size:12px;background:var(--p1);border:1px dashed var(--bd2);border-radius:12px;margin-top:16px">Немає документів інвентаризації</div>`;
+
+    el.innerHTML=`<div style="padding:10px;text-align:center;color:var(--m2);font-size:13px;background:var(--p1);border:1px dashed var(--bd2);border-radius:12px">Натисніть «▶ Розпочати інвентаризацію»</div>${docsHtml}`;
     return;
   }
+
   const dateStr=new Date(_invDate).toLocaleString('uk-UA',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
   el.innerHTML=`<div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;overflow:hidden">
     <div style="padding:12px 16px;background:var(--p2);border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-size:12px;font-weight:700;color:var(--m)">📋 Документ інвентаризації</div>
-        <div style="font-size:10px;color:var(--m2);margin-top:2px">Розпочато: ${dateStr}</div>
-      </div>
-      <div id="inv-total-loss" style="font-size:11px;color:var(--m2)"></div>
+      <div><div style="font-size:12px;font-weight:700;color:var(--m)">📋 Документ інвентаризації (Чернетка)</div><div style="font-size:10px;color:var(--m2)">Розпочато: ${dateStr}</div></div>
+      <button onclick="cancelInvDoc()" style="padding:5px 12px;border-radius:6px;border:1px solid var(--bd2);background:var(--p3);color:var(--m2);font-family:var(--f);font-size:11px;cursor:pointer">✕ Скасувати</button>
     </div>
-    <div style="padding:12px 16px;background:var(--p2);border-bottom:1px solid var(--bd);display:grid;grid-template-columns:36px 1fr 80px 90px 90px 110px 110px;gap:8px;font-size:9px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">
-      <div></div><div>Товар</div>
-      <div style="text-align:center">В системі</div>
-      <div style="text-align:center">Факт</div>
-      <div style="text-align:center">Різниця</div>
-      <div style="text-align:right">Збиток (опт)</div>
-      <div style="text-align:right">Збиток (роздріб)</div>
+    <div style="padding:10px 16px;background:var(--p2);border-bottom:1px solid var(--bd);display:grid;grid-template-columns:36px 1fr 80px 90px 90px 110px 110px;gap:8px;font-size:9px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.07em">
+      <div></div><div>Товар</div><div style="text-align:center">В системі</div><div style="text-align:center">Факт</div><div style="text-align:center">Різниця</div><div style="text-align:right">Збиток (опт)</div><div style="text-align:right">Збиток (роздріб)</div>
     </div>
     ${gProducts.map(p=>`<div style="padding:10px 16px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:36px 1fr 80px 90px 90px 110px 110px;align-items:center;gap:8px">
       <div style="font-size:20px;text-align:center">${p.emoji||'📦'}</div>
-      <div>
-        <div style="font-size:12px;font-weight:600">${p.name}</div>
-        <div style="font-size:9px;color:var(--m2)">${p.category||''} · Опт: ${p.cost||0}₴ · Роздріб: ${p.price||0}₴</div>
-      </div>
+      <div><div style="font-size:12px;font-weight:600">${p.name}</div><div style="font-size:9px;color:var(--m2)">${p.category||''} · Опт:${p.cost||0}₴ · Роздріб:${p.price||0}₴</div></div>
       <div style="text-align:center;font-size:13px;font-weight:600">${p.stock} ${p.unit||'шт'}</div>
-      <div style="text-align:center">
-        <input type="number" id="inv-${p.id}" placeholder="${p.stock}" min="0" step="1"
-          oninput="calcInventoryRow('${p.id}',${p.stock},${p.cost||0},${p.price||0})"
-          style="width:70px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd2);background:var(--p3);color:var(--w);font-family:var(--f);font-size:12px;text-align:center">
-      </div>
+      <div style="text-align:center"><input type="number" id="inv-${p.id}" placeholder="${p.stock}" min="0" oninput="calcInventoryRow('${p.id}',${p.stock},${p.cost||0},${p.price||0})" style="width:70px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd2);background:var(--p3);color:var(--w);font-family:var(--f);font-size:12px;text-align:center"></div>
       <div id="inv-diff-${p.id}" style="text-align:center;font-size:13px;font-weight:700;color:var(--m2)">—</div>
       <div id="inv-loss-cost-${p.id}" style="text-align:right;font-size:12px;font-weight:600;color:var(--m2)">—</div>
       <div id="inv-loss-price-${p.id}" style="text-align:right;font-size:12px;font-weight:600;color:var(--m2)">—</div>
     </div>`).join('')}
     <div id="inv-summary" style="display:none;padding:14px 16px;background:var(--p2);border-top:2px solid var(--bd2)">
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
-        <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:8px;padding:10px">
-          <div style="font-size:10px;color:var(--m2);margin-bottom:4px">Змін товарів</div>
-          <div id="inv-sum-count" style="font-size:16px;font-weight:800;color:var(--m)">0</div>
-        </div>
-        <div style="background:#EF444414;border:1px solid #EF444430;border-radius:8px;padding:10px">
-          <div style="font-size:10px;color:var(--m2);margin-bottom:4px">Збиток по опту</div>
-          <div id="inv-sum-cost" style="font-size:16px;font-weight:800;color:var(--rd)">0 ₴</div>
-        </div>
-        <div style="background:#EF444414;border:1px solid #EF444430;border-radius:8px;padding:10px">
-          <div style="font-size:10px;color:var(--m2);margin-bottom:4px">Збиток по роздрібу</div>
-          <div id="inv-sum-price" style="font-size:16px;font-weight:800;color:var(--rd)">0 ₴</div>
-        </div>
+        <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:8px;padding:10px"><div style="font-size:10px;color:var(--m2);margin-bottom:4px">Змін</div><div id="inv-sum-count" style="font-size:16px;font-weight:800;color:var(--m)">0</div></div>
+        <div style="background:#EF444414;border:1px solid #EF444430;border-radius:8px;padding:10px"><div style="font-size:10px;color:var(--m2);margin-bottom:4px">Збиток по опту</div><div id="inv-sum-cost" style="font-size:16px;font-weight:800;color:var(--rd)">0 ₴</div></div>
+        <div style="background:#EF444414;border:1px solid #EF444430;border-radius:8px;padding:10px"><div style="font-size:10px;color:var(--m2);margin-bottom:4px">Збиток по роздрібу</div><div id="inv-sum-price" style="font-size:16px;font-weight:800;color:var(--rd)">0 ₴</div></div>
       </div>
     </div>
     <div style="padding:14px 16px;display:flex;gap:8px;justify-content:flex-end">
-      <button onclick="calcInventory()" style="padding:8px 16px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">🔢 Порахувати різницю</button>
-      <button onclick="saveInventory()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">✅ Підписати і зберегти</button>
+      <button onclick="calcInventory()" style="padding:8px 16px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">🔢 Порахувати</button>
+      <button onclick="saveInvDraft()" style="padding:8px 16px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">💾 Зберегти чернетку</button>
+      <button onclick="signInventory()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--gr);color:#fff;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">✅ Підписати</button>
     </div>
   </div>`;
 }
 
-function calcInventoryRow(productId, systemStock, cost, retailPrice){
+function calcInventoryRow(productId,systemStock,cost,retailPrice){
   const inp=document.getElementById('inv-'+productId);
   const diffEl=document.getElementById('inv-diff-'+productId);
-  const lossCostEl=document.getElementById('inv-loss-cost-'+productId);
-  const lossPriceEl=document.getElementById('inv-loss-price-'+productId);
-  if(!inp||inp.value===''){
-    if(diffEl) diffEl.textContent='—';
-    if(lossCostEl) lossCostEl.textContent='—';
-    if(lossPriceEl) lossPriceEl.textContent='—';
-    updateInventorySummary();
-    return;
-  }
-  const actual=parseInt(inp.value);
-  if(isNaN(actual)) return;
+  const lcEl=document.getElementById('inv-loss-cost-'+productId);
+  const lpEl=document.getElementById('inv-loss-price-'+productId);
+  if(!inp||inp.value===''){if(diffEl)diffEl.textContent='—';if(lcEl)lcEl.textContent='—';if(lpEl)lpEl.textContent='—';updateInventorySummary();return;}
+  const actual=parseInt(inp.value);if(isNaN(actual))return;
   const diff=actual-systemStock;
-  if(diffEl){
-    diffEl.textContent=(diff>0?'+':'')+diff;
-    diffEl.style.color=diff>0?'var(--gr)':diff<0?'var(--rd)':'var(--m2)';
-  }
-  if(diff<0){
-    const lossCost=Math.abs(diff)*cost;
-    const lossPrice=Math.abs(diff)*retailPrice;
-    if(lossCostEl){lossCostEl.textContent='-'+lossCost.toLocaleString('uk-UA')+' ₴';lossCostEl.style.color='var(--rd)';}
-    if(lossPriceEl){lossPriceEl.textContent='-'+lossPrice.toLocaleString('uk-UA')+' ₴';lossPriceEl.style.color='var(--rd)';}
-  } else if(diff>0){
-    if(lossCostEl){lossCostEl.textContent='+'+Math.abs(diff*cost).toLocaleString('uk-UA')+' ₴';lossCostEl.style.color='var(--gr)';}
-    if(lossPriceEl){lossPriceEl.textContent='+'+Math.abs(diff*retailPrice).toLocaleString('uk-UA')+' ₴';lossPriceEl.style.color='var(--gr)';}
-  } else {
-    if(lossCostEl){lossCostEl.textContent='0 ₴';lossCostEl.style.color='var(--m2)';}
-    if(lossPriceEl){lossPriceEl.textContent='0 ₴';lossPriceEl.style.color='var(--m2)';}
-  }
+  if(diffEl){diffEl.textContent=(diff>0?'+':'')+diff;diffEl.style.color=diff>0?'var(--gr)':diff<0?'var(--rd)':'var(--m2)';}
+  const lc=diff*cost,lp=diff*retailPrice;
+  if(lcEl){lcEl.textContent=(lc>0?'+':'')+lc.toLocaleString('uk-UA')+' ₴';lcEl.style.color=lc<0?'var(--rd)':lc>0?'var(--gr)':'var(--m2)';}
+  if(lpEl){lpEl.textContent=(lp>0?'+':'')+lp.toLocaleString('uk-UA')+' ₴';lpEl.style.color=lp<0?'var(--rd)':lp>0?'var(--gr)':'var(--m2)';}
   updateInventorySummary();
 }
 
-function calcInventory(){
-  gProducts.forEach(p=>calcInventoryRow(p.id,p.stock,p.cost||0,p.price||0));
-}
+function calcInventory(){gProducts.forEach(p=>calcInventoryRow(p.id,p.stock,p.cost||0,p.price||0));}
 
 function updateInventorySummary(){
-  let count=0,totalCostLoss=0,totalPriceLoss=0;
-  gProducts.forEach(p=>{
-    const inp=document.getElementById('inv-'+p.id);
-    if(!inp||inp.value==='') return;
-    const actual=parseInt(inp.value);
-    if(isNaN(actual)||actual===p.stock) return;
-    count++;
-    const diff=actual-p.stock;
-    totalCostLoss+=diff*(p.cost||0);
-    totalPriceLoss+=diff*(p.price||0);
-  });
-  const summary=document.getElementById('inv-summary');
-  if(summary) summary.style.display=count>0?'block':'none';
-  const el=document.getElementById('inv-sum-count');
-  if(el) el.textContent=count;
-  const ec=document.getElementById('inv-sum-cost');
-  if(ec){ec.textContent=(totalCostLoss<0?'-':'')+Math.abs(totalCostLoss).toLocaleString('uk-UA')+' ₴';ec.style.color=totalCostLoss<0?'var(--rd)':'var(--gr)';}
-  const ep=document.getElementById('inv-sum-price');
-  if(ep){ep.textContent=(totalPriceLoss<0?'-':'')+Math.abs(totalPriceLoss).toLocaleString('uk-UA')+' ₴';ep.style.color=totalPriceLoss<0?'var(--rd)':'var(--gr)';}
+  let count=0,tc=0,tp=0;
+  gProducts.forEach(p=>{const inp=document.getElementById('inv-'+p.id);if(!inp||inp.value==='')return;const a=parseInt(inp.value);if(isNaN(a)||a===p.stock)return;count++;tc+=(a-p.stock)*(p.cost||0);tp+=(a-p.stock)*(p.price||0);});
+  const s=document.getElementById('inv-summary');if(s)s.style.display=count>0?'block':'none';
+  const ec=document.getElementById('inv-sum-count');if(ec)ec.textContent=count;
+  const ecc=document.getElementById('inv-sum-cost');if(ecc){ecc.textContent=(tc<0?'-':'')+Math.abs(tc).toLocaleString('uk-UA')+' ₴';ecc.style.color=tc<0?'var(--rd)':'var(--gr)';}
+  const ecp=document.getElementById('inv-sum-price');if(ecp){ecp.textContent=(tp<0?'-':'')+Math.abs(tp).toLocaleString('uk-UA')+' ₴';ecp.style.color=tp<0?'var(--rd)':'var(--gr)';}
 }
 
-async function saveInventory(){
-  const changes=[];
-  let totalCostLoss=0,totalPriceLoss=0;
-  for(const p of gProducts){
+function getInvItems(){
+  return gProducts.reduce((arr,p)=>{
     const inp=document.getElementById('inv-'+p.id);
-    if(!inp||inp.value==='') continue;
-    const actual=parseInt(inp.value);
-    if(isNaN(actual)||actual===p.stock) continue;
-    const diff=actual-p.stock;
-    totalCostLoss+=diff*(p.cost||0);
-    totalPriceLoss+=diff*(p.price||0);
-    changes.push({product:p,actual,diff});
+    if(inp&&inp.value!==''){const a=parseInt(inp.value);if(!isNaN(a))arr.push({product_id:p.id,product_name:p.name,system_stock:p.stock,actual:a,diff:a-p.stock,cost:p.cost||0,price:p.price||0});}
+    return arr;
+  },[]);
+}
+
+async function saveInvDraft(){
+  const items=getInvItems();
+  const tc=items.reduce((s,i)=>s+i.diff*i.cost,0),tp=items.reduce((s,i)=>s+i.diff*i.price,0);
+  try{
+    if(!_invDocId) _invDocId='inv_'+Date.now();
+    const doc={id:_invDocId,doc_date:_invDate,created_by:curUser?.name||'owner',is_signed:false,signed_by:null,signed_at:null,items,total_cost_loss:tc,total_price_loss:tp,branch_id:_currentBranch?.id||null};
+    await _invSaveDoc(doc);
+    alert('💾 Чернетку збережено');
+  }catch(e){alert('❌ '+e.message);}
+}
+
+async function signInventory(){
+  const items=getInvItems();
+  if(!items.length){alert('Введіть фактичні залишки для хоча б одного товару');return;}
+  const changes=items.filter(i=>i.diff!==0);
+  const tc=items.reduce((s,i)=>s+i.diff*i.cost,0),tp=items.reduce((s,i)=>s+i.diff*i.price,0);
+  const lossText=tc<0?`\n\n\ud83d\udcb8 Збиток по опту: ${Math.abs(tc).toLocaleString('uk-UA')} \u20b4\n\ud83d\udcb8 Збиток по роздрібу: ${Math.abs(tp).toLocaleString('uk-UA')} \u20b4`:'';
+  const lines=changes.map(c=>`\u2022 ${c.product_name}: ${c.system_stock}\u2192${c.actual} (${c.diff>0?'+':''}${c.diff})`).join('\n')||'Всі залишки співпадають';
+  if(!confirm(`Підписати інвентаризацію?\n\n${lines}${lossText}\n\nПісля підписання залишки будуть оновлені.`))return;
+
+  const signedAt=new Date().toISOString();
+
+  // 1. Оновлюємо склад
+  for(const i of items){
+    try{
+      await sb.patch('products',`id=eq.${i.product_id}`,{stock:i.actual});
+      if(i.diff!==0) await sb.post('product_movements',{product_id:i.product_id,product_name:i.product_name,type:'inventory',qty:i.diff,reason:`Інвентаризація від ${new Date(_invDate).toLocaleDateString('uk-UA')}`,created_by:curUser?.name||'owner'});
+      const p=gProducts.find(x=>x.id===i.product_id);if(p)p.stock=i.actual;
+    }catch(e){console.warn('patch:',e);}
   }
-  if(!changes.length){alert('Немає змін для збереження');return;}
 
-  const lossText=totalCostLoss<0
-    ?`\n\n💸 Збиток по опту: ${Math.abs(totalCostLoss).toLocaleString('uk-UA')} ₴\n💸 Збиток по роздрібу: ${Math.abs(totalPriceLoss).toLocaleString('uk-UA')} ₴`:'';
+  // 2. Зберігаємо документ в settings
+  try{
+    if(!_invDocId) _invDocId='inv_'+Date.now();
+    const doc={id:_invDocId,doc_date:_invDate,created_by:curUser?.name||'owner',is_signed:true,signed_by:curUser?.name||'owner',signed_at:signedAt,items,total_cost_loss:tc,total_price_loss:tp,branch_id:_currentBranch?.id||null};
+    await _invSaveDoc(doc);
+  }catch(e){console.warn('inv save:',e.message);}
 
-  const lines=changes.map(c=>`• ${c.product.name}: ${c.product.stock}→${c.actual} (${c.diff>0?'+':''}${c.diff})`).join('\n');
-  if(!confirm(`Підписати інвентаризацію?\n\n${lines}${lossText}\n\nПісля підписання залишки в системі будуть оновлені.`))return;
+  _invStarted=false;_invDate=null;_invDocId=null;
+  alert(`✅ Підписано і збережено! Змінено: ${changes.length} товарів${lossText}`);
+  renderInventory();renderStock();renderAssortment();
+}
 
-  for(const c of changes){
-    await sb.patch('products',`id=eq.${c.product.id}`,{stock:c.actual});
-    await sb.post('product_movements',{
-      product_id:c.product.id,
-      product_name:c.product.name,
-      type:'inventory',
-      qty:c.diff,
-      reason:`Інвентаризація від ${new Date(_invDate).toLocaleDateString('uk-UA')}`,
-      created_by:curUser?.name||'owner'
-    });
-    c.product.stock=c.actual;
-  }
+// ===== ЗБЕРІГАННЯ ІНВЕНТАРИЗАЦІЙ В SETTINGS =====
+const INV_SETTINGS_KEY='inventory_docs';
 
-  _invStarted=false;
-  _invDate=null;
-  alert(`✅ Інвентаризацію підписано!\nЗмінено: ${changes.length} товарів${lossText}`);
+async function _invLoadDocs(){
+  try{
+    const r=await sb.get('settings',`?key=eq.${INV_SETTINGS_KEY}`);
+    if(r&&r.length) return JSON.parse(r[0].value)||[];
+  }catch(e){}
+  return [];
+}
+
+async function _invSaveDoc(doc){
+  const all=await _invLoadDocs();
+  const idx=all.findIndex(d=>d.id===doc.id);
+  if(idx>=0) all[idx]=doc; else all.push(doc);
+  await fetch(`${SB_URL}/rest/v1/settings`,{
+    method:'POST',
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+    body:JSON.stringify({key:INV_SETTINGS_KEY,value:JSON.stringify(all)})
+  });
+}
+
+async function _invDeleteDoc(id){
+  const all=await _invLoadDocs();
+  const filtered=all.filter(d=>d.id!==id);
+  await fetch(`${SB_URL}/rest/v1/settings`,{
+    method:'POST',
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+    body:JSON.stringify({key:INV_SETTINGS_KEY,value:JSON.stringify(filtered)})
+  });
+}
+
+async function cancelInvDoc(){
+  if(!confirm('Скасувати? Введені дані будуть втрачені.'))return;
+  if(_invDocId) await _invDeleteDoc(_invDocId).catch(()=>{});
+  _invStarted=false;_invDate=null;_invDocId=null;renderInventory();
+}
+
+async function deleteInvDoc(id){
+  const doc=_invDocs.find(d=>d.id===id);
+  if(doc?.is_signed){alert('❌ Не можна видалити підписаний документ.\nСпочатку зніміть підпис.');return;}
+  if(!confirm('Видалити чернетку?'))return;
+  try{await _invDeleteDoc(id);renderInventory();}catch(e){alert('❌ '+e.message);}
+}
+
+async function unsignInvDoc(id){
+  const doc=_invDocs.find(d=>d.id===id);if(!doc)return;
+  const items=Array.isArray(doc.items)?doc.items:[];
+  if(!confirm(`Зняти підпис?\n\nЗалишки будуть відновлені до стану ДО інвентаризації.\nДокумент стане чернеткою і можна буде видалити.`))return;
+  try{
+    for(const i of items.filter(i=>i.diff!==0)){
+      await sb.patch('products',`id=eq.${i.product_id}`,{stock:i.system_stock});
+      const p=gProducts.find(x=>x.id===i.product_id);if(p)p.stock=i.system_stock;
+    }
+    const updated={...doc,is_signed:false,signed_by:null,signed_at:null};
+    await _invSaveDoc(updated);
+    alert('✅ Підпис знятий. Залишки відновлено.');
+    renderInventory();renderStock();renderAssortment();
+  }catch(e){alert('❌ '+e.message);}
+}
+
+async function openInvDoc(id){
+  const doc=_invDocs.find(d=>d.id===id);if(!doc)return;
+  _invStarted=true;_invDate=doc.doc_date;_invDocId=id;
   renderInventory();
-  renderStock();
-  renderAssortment();
+  const items=Array.isArray(doc.items)?doc.items:[];
+  items.forEach(i=>{const inp=document.getElementById('inv-'+i.product_id);if(inp){inp.value=i.actual;calcInventoryRow(i.product_id,i.system_stock,i.cost||0,i.price||0);}});
+}
+
+function viewInvDoc(id){
+  const doc=_invDocs.find(d=>d.id===id);if(!doc)return;
+  const items=(Array.isArray(doc.items)?doc.items:[]).filter(i=>i.diff!==0);
+  const date=new Date(doc.doc_date).toLocaleString('uk-UA',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const mo=document.createElement('div');
+  mo.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)';
+  mo.onclick=e=>{if(e.target===mo)mo.remove();};
+  mo.innerHTML=`<div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;width:100%;max-width:680px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--bd2);display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:14px;font-weight:700">📋 Інвентаризація від ${date}</div>
+      <div style="font-size:11px;color:var(--m2)">✅ Підписано: ${doc.signed_by} · ${new Date(doc.signed_at).toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})}</div></div>
+      <button onclick="this.closest('div[style*=fixed]').remove()" style="width:28px;height:28px;background:var(--p3);border:1px solid var(--bd2);border-radius:6px;cursor:pointer;color:var(--m2)">✕</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:14px 18px">
+      ${items.length?`<table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="border-bottom:1px solid var(--bd)">
+          <th style="text-align:left;padding:6px 4px;font-size:10px;color:var(--m2)">Товар</th>
+          <th style="text-align:center;padding:6px 4px;font-size:10px;color:var(--m2)">Було</th>
+          <th style="text-align:center;padding:6px 4px;font-size:10px;color:var(--m2)">Стало</th>
+          <th style="text-align:center;padding:6px 4px;font-size:10px;color:var(--m2)">Різниця</th>
+          <th style="text-align:right;padding:6px 4px;font-size:10px;color:var(--m2)">Збиток (опт)</th>
+        </tr></thead>
+        <tbody>${items.map(i=>`<tr style="border-bottom:1px solid var(--bd)">
+          <td style="padding:6px 4px">${i.product_name}</td>
+          <td style="text-align:center;padding:6px 4px">${i.system_stock}</td>
+          <td style="text-align:center;padding:6px 4px">${i.actual}</td>
+          <td style="text-align:center;padding:6px 4px;color:${i.diff<0?'var(--rd)':'var(--gr)'}">${i.diff>0?'+':''}${i.diff}</td>
+          <td style="text-align:right;padding:6px 4px;color:${i.diff<0?'var(--rd)':'var(--gr)'}">${i.diff<0?'-':'+'} ${Math.abs(i.diff*i.cost).toLocaleString('uk-UA')} ₴</td>
+        </tr>`).join('')}</tbody>
+      </table>`:'<div style="text-align:center;color:var(--m2);padding:20px">Всі залишки співпадали</div>'}
+    </div>
+    <div style="padding:12px 18px;border-top:1px solid var(--bd2);display:flex;justify-content:space-between;background:var(--p2)">
+      <div style="font-size:11px;color:var(--m2)">Автор: ${doc.created_by||'—'}</div>
+      <div style="font-size:13px;font-weight:700;color:${doc.total_cost_loss<0?'var(--rd)':'var(--gr)'}">Збиток по опту: ${doc.total_cost_loss<0?'-':''}${Math.abs(doc.total_cost_loss||0).toLocaleString('uk-UA')} ₴</div>
+    </div>
+  </div>`;
+  document.body.appendChild(mo);
 }
 
 async function openAddIncome(){
