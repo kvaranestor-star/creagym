@@ -6194,17 +6194,25 @@ async function admSelectClient(id){
       ?`<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:#60A5FA20;color:#60A5FA;font-weight:700;margin-left:6px">🌐 Мережевий</span>`
       :`<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:var(--ym);color:var(--y);font-weight:700;margin-left:6px">🏢 ${subBranchName||'Локальний'}</span>`;
 
+    // Кнопки заморозки
+    const freezeDaysMax=subType?.freeze_days||14;
+    const freezeBtn=(!isFrozen&&!notStarted&&dl>0)
+      ?`<button onclick="admFreezeSub('${activeSub.id}','${c.id}',${freezeDaysMax})" style="padding:4px 10px;border-radius:6px;background:#3B82F614;border:1px solid #3B82F630;color:var(--bl);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer">❄️ Заморозити</button>`:'';
+    const unfreezeBtn=isFrozen
+      ?`<button onclick="admUnfreezeSub('${activeSub.id}','${c.id}')" style="padding:4px 10px;border-radius:6px;background:#22C55E14;border:1px solid #22C55E30;color:var(--gr);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer">▶ Розморозити</button>`:'';
+
     subBlock=`<div class="cl-sub2">
       <div class="cl-sub-hd2">
         <div class="cl-sub-nm2">${activeSub.type_name}${networkBadge}</div>
         <span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;background:${statusBg};color:${statusColor}">${statusLabel}</span>
       </div>
-      <div class="sub-pr"><div class="sub-pr-f" style="width:${pct}%;background:${dl<=3&&!notStarted&&!isFrozen?'var(--rd)':'var(--y)'}"></div></div>
+      <div class="sub-pr"><div class="sub-pr-f" style="width:${pct}%;background:${isFrozen?'var(--bl)':dl<=3&&!notStarted?'var(--rd)':'var(--y)'}"></div></div>
       <div class="sub-dt">
         <span style="color:${dl<=3&&!notStarted&&!isFrozen?'var(--rd)':'inherit'}">${daysInfo}</span>
         <span>${activeSub.price} ₴</span>
       </div>
-      <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">${returnBtn}${activateBtn}</div>
+      ${isFrozen&&activeSub.frozen_at?`<div style="font-size:10px;color:var(--bl);margin-top:4px">❄️ Заморожено: ${new Date(activeSub.frozen_at).toLocaleDateString('uk-UA')} · залишилось днів: ${dl}</div>`:''}
+      <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">${returnBtn}${activateBtn}${freezeBtn}${unfreezeBtn}</div>
       <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bd);display:flex;flex-direction:column;gap:4px">
         ${activeSub.created_at?`<div style="font-size:10px;color:var(--m2);display:flex;justify-content:space-between"><span>🛒 Куплено:</span><span style="color:var(--m);font-weight:600">${new Date(activeSub.created_at).toLocaleDateString('uk-UA')} о ${new Date(activeSub.created_at).toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})}</span></div>`:''}
         ${activeSub.end_date?`<div style="font-size:10px;color:var(--m2);display:flex;justify-content:space-between"><span>📅 Діє до:</span><span style="color:${dl<=3&&!notStarted&&!isFrozen?'var(--rd)':dl<=7&&!notStarted&&!isFrozen?'var(--or)':'var(--gr)'};font-weight:700">${new Date(activeSub.end_date+'T00:00:00').toLocaleDateString('uk-UA',{day:'2-digit',month:'long',year:'numeric'})}</span></div>`:''}
@@ -6251,6 +6259,45 @@ async function admSelectClient(id){
         <button class="ca pr" onclick="admOpenSell('${c.id}')">🎫 Продати абонемент</button>
       </div>
     </div>`;
+}
+
+async function admFreezeSub(subId, clientId, maxDays){
+  const days=parseInt(prompt(`Заморозити абонемент.\nМаксимум днів: ${maxDays}\n\nВкажіть кількість днів заморозки:`)||'0');
+  if(!days||days<=0) return;
+  if(days>maxDays){alert(`❌ Максимум ${maxDays} днів заморозки для цього абонементу`);return;}
+  try{
+    const today=new Date().toISOString().split('T')[0];
+    // Переносимо end_date вперед на кількість днів заморозки
+    const sub=await sb.get('subscriptions',`?id=eq.${subId}&select=end_date`);
+    const curEnd=sub?.[0]?.end_date;
+    let newEnd=null;
+    if(curEnd){
+      const e=new Date(curEnd+'T00:00:00');
+      e.setDate(e.getDate()+days);
+      newEnd=e.toISOString().split('T')[0];
+    }
+    await sb.patch('subscriptions',`id=eq.${subId}`,{
+      status:'frozen',
+      frozen_at:today,
+      freeze_days_left:days,
+      end_date:newEnd
+    });
+    alert(`❄️ Абонемент заморожено на ${days} днів.\n📅 Нова дата закінчення: ${newEnd?new Date(newEnd+'T00:00:00').toLocaleDateString('uk-UA'):'-'}`);
+    admSelectClient(clientId);
+  }catch(e){alert('❌ '+e.message);}
+}
+
+async function admUnfreezeSub(subId, clientId){
+  if(!confirm('Розморозити абонемент? Відлік часу продовжиться з сьогодні.'))return;
+  try{
+    await sb.patch('subscriptions',`id=eq.${subId}`,{
+      status:'active',
+      frozen_at:null,
+      freeze_days_left:null
+    });
+    alert('✅ Абонемент розморожено');
+    admSelectClient(clientId);
+  }catch(e){alert('❌ '+e.message);}
 }
 
 async function admCheckIn(id){
