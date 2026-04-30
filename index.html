@@ -623,7 +623,11 @@ tr:hover td{background:#ffffff03;cursor:pointer}
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
             <span style="font-size:11px;color:var(--m2);font-weight:600">Період:</span>
             <div style="display:flex;gap:4px">
-              ${['today','week','month','year','all'].map(p=>`<button onclick="setStatsPeriod('${p}')" id="sp-${p}" style="padding:4px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer">${{today:'Сьогодні',week:'Тиждень',month:'Місяць',year:'Рік',all:'Весь час'}[p]}</button>`).join('')}
+              <button id="sp-today" onclick="setStatsPeriod('today')" style="padding:4px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer">Сьогодні</button>
+              <button id="sp-week" onclick="setStatsPeriod('week')" style="padding:4px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer">Тиждень</button>
+              <button id="sp-month" onclick="setStatsPeriod('month')" style="padding:4px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer">Місяць</button>
+              <button id="sp-year" onclick="setStatsPeriod('year')" style="padding:4px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer">Рік</button>
+              <button id="sp-all" onclick="setStatsPeriod('all')" style="padding:4px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer">Весь час</button>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
@@ -5097,27 +5101,18 @@ function prepareAutoOrder(supplierId){
         <thead>
           <tr style="border-bottom:1px solid var(--bd)">
             <th style="text-align:left;padding:6px 4px;font-size:10px;color:var(--m2);font-weight:600">Товар</th>
-            <th style="text-align:center;padding:6px 4px;font-size:10px;color:var(--m2);font-weight:600">Зал.</th>
-            <th style="text-align:center;padding:6px 4px;font-size:10px;color:var(--m2);font-weight:600">Макс.</th>
-            <th style="text-align:center;padding:6px 4px;font-size:10px;color:var(--m2);font-weight:600">Замов.</th>
-            <th style="text-align:right;padding:6px 4px;font-size:10px;color:var(--m2);font-weight:600">Сума</th>
+            <th style="text-align:center;padding:6px 4px;font-size:10px;color:var(--m2);font-weight:600">До макс.</th>
+            <th style="text-align:center;padding:6px 4px;font-size:10px;color:var(--m2);font-weight:600">Замовити</th>
           </tr>
         </thead>
         <tbody>
           ${orderItems.map(i=>`<tr style="border-top:1px solid var(--bd)">
             <td style="padding:6px 4px">${i.emoji} ${i.name}</td>
-            <td style="text-align:center;padding:6px 4px;color:${i.stock<=0?'var(--rd)':'var(--or)'}">${i.stock}</td>
             <td style="text-align:center;padding:6px 4px;color:var(--m2)">${i.desired_max}</td>
             <td style="text-align:center;padding:6px 4px;font-weight:700;color:var(--y)">+${i.qty} ${i.unit}</td>
-            <td style="text-align:right;padding:6px 4px">${i.total?i.total.toLocaleString('uk-UA')+' ₴':'—'}</td>
           </tr>`).join('')}
         </tbody>
-        <tfoot>
-          <tr style="border-top:2px solid var(--bd2)">
-            <td colspan="4" style="padding:8px 4px;font-weight:700;text-align:right">Разом:</td>
-            <td style="text-align:right;padding:8px 4px;font-weight:700;color:var(--y)">${totalSum?totalSum.toLocaleString('uk-UA')+' ₴':'—'}</td>
-          </tr>
-        </tfoot>
+
       </table>
     </div>
     <div style="display:flex;gap:8px">
@@ -5173,28 +5168,18 @@ function generateAutoOrderPDF(data){
       <thead><tr>
         <th>#</th>
         <th>Товар</th>
-        <th class="center">Артикул</th>
-        <th class="center">Залишок</th>
+        <th class="center">До макс.</th>
         <th class="center">Замовити</th>
-        <th class="right">Ціна</th>
-        <th class="right">Сума</th>
       </tr></thead>
       <tbody>
         ${items.map((i,idx)=>`<tr>
           <td>${idx+1}</td>
           <td>${i.emoji} ${i.name}</td>
-          <td class="center">${i.sku||'—'}</td>
-          <td class="center">${i.stock} ${i.unit}</td>
-          <td class="center"><b>${i.qty} ${i.unit}</b></td>
-          <td class="right">${i.cost?i.cost.toLocaleString('uk-UA')+' ₴':'—'}</td>
-          <td class="right">${i.total?i.total.toLocaleString('uk-UA')+' ₴':'—'}</td>
+          <td class="center">${i.desired_max} ${i.unit}</td>
+          <td class="center"><b>+${i.qty} ${i.unit}</b></td>
         </tr>`).join('')}
       </tbody>
     </table>
-    <div class="total">
-      <div class="total-label">РАЗОМ ДО СПЛАТИ:</div>
-      <div class="total-amount">${total?total.toLocaleString('uk-UA')+' ₴':'—'}</div>
-    </div>
     <div class="signature-block">
       <div class="sig-line">Замовив</div>
       <div class="sig-line">Прийняв</div>
