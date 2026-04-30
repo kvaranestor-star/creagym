@@ -3722,18 +3722,112 @@ async function deleteIncomeDoc(id){
 }
 
 async function openAddWriteoff(){
-  const prod=gProducts.find(p=>p.name===prompt('Назва товару:\n'+gProducts.map(p=>p.name).join('\n')));
-  if(!prod)return;
-  const qty=parseInt(prompt(`Кількість списання "${prod.name}" (є: ${prod.stock} шт.):`)||'0');
-  if(!qty||qty<=0)return;
-  if(qty>prod.stock){alert('Недостатньо товару');return;}
-  const reason=prompt('Причина списання:')||'Списання';
-  await sb.patch('products',`id=eq.${prod.id}`,{stock:prod.stock-qty});
-  await sb.post('product_movements',{product_id:prod.id,product_name:prod.name,type:'writeoff',qty:-qty,reason,created_by:curUser?.name||'owner'});
-  prod.stock-=qty;
-  gMovements.unshift({product_id:prod.id,product_name:prod.name,type:'writeoff',qty:-qty,reason,created_by:curUser?.name||'owner',created_at:new Date().toISOString()});
+  let mo=document.getElementById('mo-writeoff');
+  if(!mo){
+    mo=document.createElement('div');
+    mo.id='mo-writeoff';
+    mo.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:4000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)';
+    mo.onclick=e=>{if(e.target===mo)mo.remove();};
+    document.body.appendChild(mo);
+  } else {mo.style.display='flex';mo.innerHTML='';}
+
+  const rows=gProducts.map(p=>`
+    <tr id="wo-row-${p.id}" style="border-bottom:1px solid var(--bd)">
+      <td style="padding:8px 6px;font-size:12px">${p.emoji||'📦'} ${p.name}</td>
+      <td style="text-align:center;padding:8px 6px;font-size:12px;color:var(--m2)">${p.stock} ${p.unit||'шт'}</td>
+      <td style="text-align:center;padding:8px 6px">
+        <input type="number" id="wo-qty-${p.id}" min="0" max="${p.stock}" placeholder="0"
+          oninput="updateWoTotal()"
+          style="width:60px;padding:4px;border-radius:5px;border:1px solid var(--bd2);background:var(--p3);color:var(--w);font-family:var(--f);font-size:12px;text-align:center">
+      </td>
+    </tr>`).join('');
+
+  mo.innerHTML=`
+    <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;width:100%;max-width:620px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--bd2);display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--m)">🗑 Акт списання</div>
+          <div style="font-size:11px;color:var(--m2);margin-top:2px">${new Date().toLocaleDateString('uk-UA')} · ${curUser?.name||'owner'}</div>
+        </div>
+        <button onclick="document.getElementById('mo-writeoff').remove()" style="width:28px;height:28px;background:var(--p3);border:1px solid var(--bd2);border-radius:6px;cursor:pointer;color:var(--m2)">✕</button>
+      </div>
+      <div style="padding:12px 18px;border-bottom:1px solid var(--bd2);flex-shrink:0">
+        <div class="ff" style="margin:0">
+          <label>Причина списання *</label>
+          <input class="fi2" id="wo-reason" placeholder="Наприклад: Зіпсований товар, Прострочено, Розбито...">
+        </div>
+      </div>
+      <div style="flex:1;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse">
+          <thead style="position:sticky;top:0;background:var(--p2);z-index:1">
+            <tr>
+              <th style="text-align:left;padding:8px 6px;font-size:10px;font-weight:700;color:var(--m2);text-transform:uppercase;letter-spacing:.07em">Товар</th>
+              <th style="text-align:center;padding:8px 6px;font-size:10px;font-weight:700;color:var(--m2);text-transform:uppercase;letter-spacing:.07em">Є на складі</th>
+              <th style="text-align:center;padding:8px 6px;font-size:10px;font-weight:700;color:var(--m2);text-transform:uppercase;letter-spacing:.07em">Списати (шт)</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div id="wo-summary" style="display:none;padding:10px 18px;background:#EF444414;border-top:1px solid #EF444430;flex-shrink:0">
+        <span style="font-size:12px;font-weight:700;color:var(--rd)">🗑 Буде списано позицій: <span id="wo-count">0</span></span>
+      </div>
+      <div style="padding:12px 18px;border-top:1px solid var(--bd2);display:flex;gap:8px;flex-shrink:0">
+        <button onclick="document.getElementById('mo-writeoff').remove()" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">Скасувати</button>
+        <button onclick="saveWriteoffDoc()" style="flex:2;padding:9px;border-radius:8px;border:none;background:var(--rd);color:#fff;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">🗑 Провести списання</button>
+      </div>
+    </div>`;
+}
+
+function updateWoTotal(){
+  let count=0;
+  gProducts.forEach(p=>{
+    const v=parseInt(document.getElementById('wo-qty-'+p.id)?.value||'0');
+    if(v>0) count++;
+  });
+  const s=document.getElementById('wo-summary');
+  const c=document.getElementById('wo-count');
+  if(s) s.style.display=count>0?'block':'none';
+  if(c) c.textContent=count;
+}
+
+async function saveWriteoffDoc(){
+  const reason=(document.getElementById('wo-reason')?.value||'').trim();
+  if(!reason){alert('Вкажіть причину списання');return;}
+
+  const items=[];
+  gProducts.forEach(p=>{
+    const v=parseInt(document.getElementById('wo-qty-'+p.id)?.value||'0');
+    if(v>0){
+      if(v>p.stock){alert(`❌ "${p.name}": списуєте ${v} шт., а є тільки ${p.stock} шт.`);return;}
+      items.push({product:p,qty:v});
+    }
+  });
+  if(!items.length){alert('Вкажіть кількість для хоча б одного товару');return;}
+
+  const lines=items.map(i=>`• ${i.product.name}: ${i.qty} ${i.product.unit||'шт'}`).join('\n');
+  if(!confirm(`Провести списання?\n\n${lines}\nПричина: ${reason}\n\nЦю дію не можна скасувати.`))return;
+
+  for(const i of items){
+    const newStock=i.product.stock-i.qty;
+    await sb.patch('products',`id=eq.${i.product.id}`,{stock:newStock});
+    await sb.post('product_movements',{
+      product_id:i.product.id,
+      product_name:i.product.name,
+      type:'writeoff',
+      qty:-i.qty,
+      reason,
+      created_by:curUser?.name||'owner'
+    });
+    i.product.stock=newStock;
+    gMovements.unshift({product_id:i.product.id,product_name:i.product.name,type:'writeoff',qty:-i.qty,reason,created_by:curUser?.name||'owner',created_at:new Date().toISOString()});
+  }
+
+  document.getElementById('mo-writeoff').remove();
   renderMovements('writeoff');
-  alert(`✅ Списання ${qty} шт. "${prod.name}" збережено`);
+  renderStock();
+  renderAssortment();
+  alert(`✅ Списання проведено!\n${items.length} позицій · Причина: ${reason}`);
 }
 
 async function deleteProduct(id,name){
@@ -4768,18 +4862,21 @@ async function saveStaff(){
   const btn=document.getElementById('staff-save-btn');
   btn.textContent='Збереження...';btn.disabled=true;
   try{
+    // Хешуємо пароль SHA-256 якщо вводили
+    const passHash=pass?await sha256(pass):null;
+
     let userId=_editStaffId;
     if(_editStaffId){
       // Update
       const data={name,email,phone,notes,role,is_active:isActive,initials};
-      if(pass) data.password_hash=pass; // спрощено - в реальному проекті потрібен hash
+      if(passHash) data.password_hash=passHash;
       const res=await sb.patch('users',`id=eq.${_editStaffId}`,data);
       if(res&&res.code) throw new Error(res.message||'Помилка оновлення');
     } else {
       // Create
       const res=await sb.post('users',{
         name,email,phone,notes,role,is_active:isActive,initials,
-        password_hash:pass
+        password_hash:passHash
       });
       const newU=Array.isArray(res)?res[0]:res;
       if(!newU?.id) throw new Error(newU?.message||'Не вдалося створити');
