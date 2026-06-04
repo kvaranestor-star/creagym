@@ -1093,6 +1093,34 @@ tr:hover td{background:#ffffff03;cursor:pointer}
               </div>
             </div>
 
+            <!-- TURBOSMS -->
+            <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:14px;overflow:hidden">
+              <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--bd)">
+                <div style="width:40px;height:40px;background:#22C55E20;border:1px solid #22C55E30;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px">📱</div>
+                <div style="flex:1">
+                  <div style="font-size:14px;font-weight:700;color:var(--m)">TurboSMS</div>
+                  <div style="font-size:11px;color:var(--m2);margin-top:2px">SMS для відновлення пароля клієнтів</div>
+                </div>
+              </div>
+              <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+                <div class="ff" style="margin:0">
+                  <label>API Token *</label>
+                  <input class="fi2" id="sms-token" type="password" placeholder="Ваш токен з turbosms.ua">
+                  <div style="font-size:10px;color:var(--m2);margin-top:3px">turbosms.ua → Профіль → API ключ</div>
+                </div>
+                <div class="ff" style="margin:0">
+                  <label>Ім'я відправника</label>
+                  <input class="fi2" id="sms-sender" placeholder="CREAGYM" maxlength="11">
+                  <div style="font-size:10px;color:var(--m2);margin-top:3px">До 11 символів латиницею</div>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button id="sms-save-btn" onclick="saveSmsSettings()" style="padding:9px 20px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">💾 Зберегти</button>
+                  <button id="sms-edit-btn" onclick="unlockSmsSettings()" style="display:none;padding:9px 20px;border-radius:8px;border:1px solid var(--y);background:var(--ym);color:var(--y);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">✏️ Змінити</button>
+                  <button onclick="testSms()" style="padding:9px 16px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">📨 Тест</button>
+                </div>
+              </div>
+            </div>
+
             <!-- АВТОЗАКРИТТЯ ЗМІНИ -->
             <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:14px;overflow:hidden">
               <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--bd)">
@@ -1751,7 +1779,7 @@ function gp(id,el){
   if(id==='branches') loadBranches();
   if(id==='staff') loadStaff();
   if(id==='mkt') loadMkt();
-  if(id==='cfg'){loadAutoCloseSettings();loadAcqSettings();}
+  if(id==='cfg'){loadAutoCloseSettings();loadAcqSettings();loadSmsSettings();}
   if(id==='cfg'){
     // Завантажуємо збережені налаштування
     loadCbSettings().then(async ()=>{
@@ -4963,6 +4991,56 @@ async function deleteStaff(id,name){
     delete _staffBranches[id];
     renderStaff();
   }catch(e){alert('❌ '+(e.message||'Не вдалося видалити'));}
+}
+
+// ===== TURBOSMS =====
+async function loadSmsSettings(){
+  try{
+    const r=await sb.get('settings','?key=in.(turbosms_token,turbosms_sender)')||[];
+    const m={};r.forEach(x=>m[x.key]=x.value);
+    if(m.turbosms_token) document.getElementById('sms-token').value=m.turbosms_token;
+    if(m.turbosms_sender) document.getElementById('sms-sender').value=m.turbosms_sender;
+    if(m.turbosms_token) setTimeout(()=>lockSmsSettings(),50);
+  }catch(e){}
+}
+function lockSmsSettings(){
+  ['sms-token','sms-sender'].forEach(id=>{const e=document.getElementById(id);if(e){e.disabled=true;e.style.opacity='0.5';}});
+  document.getElementById('sms-save-btn').style.display='none';
+  document.getElementById('sms-edit-btn').style.display='flex';
+}
+function unlockSmsSettings(){
+  ['sms-token','sms-sender'].forEach(id=>{const e=document.getElementById(id);if(e){e.disabled=false;e.style.opacity='1';}});
+  document.getElementById('sms-save-btn').style.display='flex';
+  document.getElementById('sms-edit-btn').style.display='none';
+}
+async function saveSmsSettings(){
+  const token=document.getElementById('sms-token')?.value.trim();
+  const sender=document.getElementById('sms-sender')?.value.trim()||'CREAGYM';
+  if(!token){alert('Введіть API Token');return;}
+  const btn=document.getElementById('sms-save-btn');
+  btn.textContent='...';btn.disabled=true;
+  try{
+    for(const p of [{key:'turbosms_token',value:token},{key:'turbosms_sender',value:sender}]){
+      await fetch(`${SB_URL}/rest/v1/settings`,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},body:JSON.stringify(p)});
+    }
+    lockSmsSettings();
+    alert('✅ TurboSMS налаштовано');
+  }catch(e){alert('❌ '+e.message);}
+  btn.textContent='💾 Зберегти';btn.disabled=false;
+}
+async function testSms(){
+  const token=document.getElementById('sms-token')?.value.trim();
+  const sender=document.getElementById('sms-sender')?.value.trim()||'CREAGYM';
+  const phone=prompt('Введіть номер телефону для тесту:');
+  if(!phone||!token)return;
+  try{
+    const r=await fetch('https://api.turbosms.ua/message/send.json',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({token,recipients:[phone],sms:{sender,text:'CREAGYM: тестове повідомлення'}})
+    });
+    const d=await r.json();
+    alert(d.response_status==='OK'?'✅ SMS надіслано!':'❌ '+JSON.stringify(d));
+  }catch(e){alert('❌ '+e.message);}
 }
 
 // ===== ЕКВАЙРИНГ =====
