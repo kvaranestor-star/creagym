@@ -5060,7 +5060,8 @@ async function testSms(){
       body:JSON.stringify({phone,message:'CREAGYM: тестове повідомлення',token:map.turbosms_token,sender:map.turbosms_sender||'CREAGYM'})
     });
     const d=await r.json();
-    if(d.response_status==='OK') alert('✅ SMS надіслано!');
+    if(d.response_status==='OK'||d.response_code===0) alert('✅ SMS надіслано!');
+    else if(d.response_result&&d.response_result[0]) alert('✅ SMS надіслано: '+d.response_result[0]);
     else alert('❌ '+JSON.stringify(d));
   }catch(e){alert('❌ '+e.message);}
 }
