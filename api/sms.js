@@ -14,7 +14,9 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('body:', JSON.stringify(req.body));
     const { phone, message, token, sender } = req.body;
+    console.log('token:', token);
 
     const r = await fetch('https://api.turbosms.ua/message/send.json', {
       method: 'POST',
@@ -27,6 +29,7 @@ export default async function handler(req, res) {
     });
 
     const data = await r.json();
+    console.log('turbosms:', JSON.stringify(data));
     res.status(200).json(data);
   } catch(e) {
     res.status(500).json({ error: e.message });
