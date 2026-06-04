@@ -4,21 +4,31 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    res.status(200).end();
+    return;
   }
 
-  const { phone, message, token, sender } = req.body;
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
 
-  const r = await fetch('https://api.turbosms.ua/message/send.json', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      token,
-      recipients: [phone],
-      sms: { sender: sender || 'CREAGYM', text: message }
-    })
-  });
+  try {
+    const { phone, message, token, sender } = req.body;
 
-  const data = await r.json();
-  return res.status(200).json(data);
+    const r = await fetch('https://api.turbosms.ua/message/send.json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token,
+        recipients: [phone],
+        sms: { sender: sender || 'CREAGYM', text: message }
+      })
+    });
+
+    const data = await r.json();
+    res.status(200).json(data);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
 }
