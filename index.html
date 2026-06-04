@@ -5029,17 +5029,23 @@ async function saveSmsSettings(){
   btn.textContent='💾 Зберегти';btn.disabled=false;
 }
 async function testSms(){
-  const token=document.getElementById('sms-token')?.value.trim();
-  const sender=document.getElementById('sms-sender')?.value.trim()||'CREAGYM';
-  const phone=prompt('Введіть номер телефону для тесту:');
-  if(!phone||!token)return;
+  // Читаємо токен з БД
+  const rows=await sb.get('settings','?key=in.(turbosms_token,turbosms_sender)')||[];
+  const map={};rows.forEach(r=>map[r.key]=r.value);
+  const token=map.turbosms_token;
+  const sender=map.turbosms_sender||'CREAGYM';
+  if(!token){alert('Спочатку збережіть API Token');return;}
+  const phone=prompt('Номер телефону для тесту (+380671234567):');
+  if(!phone) return;
   try{
-    const r=await fetch('https://api.turbosms.ua/message/send.json',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({token,recipients:[phone],sms:{sender,text:'CREAGYM: тестове повідомлення'}})
+    const r=await fetch(`${SB_URL}/functions/v1/turbosms-proxy`,{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({phone,message:'CREAGYM: тестове повідомлення',token,sender})
     });
     const d=await r.json();
-    alert(d.response_status==='OK'?'✅ SMS надіслано!':'❌ '+JSON.stringify(d));
+    if(d.response_status==='OK'){alert('✅ SMS надіслано!');}
+    else alert('❌ '+JSON.stringify(d));
   }catch(e){alert('❌ '+e.message);}
 }
 
