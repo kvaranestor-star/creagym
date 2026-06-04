@@ -14,9 +14,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('body:', JSON.stringify(req.body));
-    const { phone, message, token, sender } = req.body;
-    console.log('token:', token);
+    let body = req.body;
+    if (typeof body === 'string') body = JSON.parse(body);
+    
+    const { phone, message, token, sender } = body;
+    console.log('token:', token, 'phone:', phone);
 
     const r = await fetch('https://api.turbosms.ua/message/send.json', {
       method: 'POST',
@@ -32,6 +34,7 @@ export default async function handler(req, res) {
     console.log('turbosms:', JSON.stringify(data));
     res.status(200).json(data);
   } catch(e) {
+    console.log('error:', e.message);
     res.status(500).json({ error: e.message });
   }
 }
