@@ -5028,42 +5028,41 @@ async function saveSmsSettings(){
   }catch(e){alert('❌ '+e.message);}
   btn.textContent='💾 Зберегти';btn.disabled=false;
 }
-async function testSms(){
+const SMS_PROXY='https://creagym-one.vercel.app/api/sms';
+
+async function sendSms(phone,message){
   const rows=await sb.get('settings','?key=in.(turbosms_token,turbosms_sender)')||[];
   const map={};rows.forEach(r=>map[r.key]=r.value);
   const token=map.turbosms_token;
   const sender=map.turbosms_sender||'CREAGYM';
-  if(!token){alert('Спочатку збережіть API Token');return;}
-  const phone=prompt('Номер телефону для тесту (+380671234567):');
-  if(!phone) return;
-  await sendSms(phone,'CREAGYM: тестове повідомлення',token,sender);
+  if(!token) return false;
+  try{
+    const r=await fetch(SMS_PROXY,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({phone,message,token,sender})
+    });
+    const d=await r.json();
+    return d.response_status==='OK';
+  }catch(e){console.warn('SMS error:',e);return false;}
 }
 
-async function sendSms(phone,message,token,sender){
-  // Використовуємо JSONP через script tag — обходить CORS
-  return new Promise((resolve)=>{
-    const cbName='_sms_cb_'+Date.now();
-    window[cbName]=(d)=>{
-      delete window[cbName];
-      if(d.response_status==='OK'){
-        console.log('SMS OK');resolve(true);
-      } else {
-        console.warn('SMS error:',d);resolve(false);
-      }
-    };
-    const params=new URLSearchParams({
-      token,
-      recipients:phone,
-      sender:sender||'CREAGYM',
-      text:message,
-      callback:cbName
+async function testSms(){
+  const phone=prompt('Номер телефону для тесту (+380671234567):');
+  if(!phone) return;
+  const rows=await sb.get('settings','?key=in.(turbosms_token,turbosms_sender)')||[];
+  const map={};rows.forEach(r=>map[r.key]=r.value);
+  if(!map.turbosms_token){alert('Спочатку збережіть API Token');return;}
+  try{
+    const r=await fetch(SMS_PROXY,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({phone,message:'CREAGYM: тестове повідомлення',token:map.turbosms_token,sender:map.turbosms_sender||'CREAGYM'})
     });
-    const script=document.createElement('script');
-    script.src=`https://api.turbosms.ua/message/send.jsonp?${params}`;
-    script.onerror=()=>{delete window[cbName];resolve(false);};
-    document.head.appendChild(script);
-    setTimeout(()=>{script.remove();},5000);
-  });
+    const d=await r.json();
+    if(d.response_status==='OK') alert('✅ SMS надіслано!');
+    else alert('❌ '+JSON.stringify(d));
+  }catch(e){alert('❌ '+e.message);}
 }
 
 // ===== ЕКВАЙРИНГ =====
