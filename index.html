@@ -1053,6 +1053,49 @@ tr:hover td{background:#ffffff03;cursor:pointer}
             <!-- АВТОЗАКРИТТЯ ЗМІНИ -->
             <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:14px;overflow:hidden">
               <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--bd)">
+                <div style="width:40px;height:40px;background:#8B5CF620;border:1px solid #8B5CF630;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px">💳</div>
+                <div style="flex:1">
+                  <div style="font-size:14px;font-weight:700;color:var(--m)">Еквайринг (онлайн оплата)</div>
+                  <div style="font-size:11px;color:var(--m2);margin-top:2px">Для клієнтського сайту — оплата абонементів онлайн</div>
+                </div>
+              </div>
+              <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+                <div class="ff" style="margin:0">
+                  <label>Платіжна система</label>
+                  <select class="fi2" id="acq-provider" onchange="toggleAcqFields()">
+                    <option value="">— Вимкнено —</option>
+                    <option value="wayforpay">WayForPay</option>
+                    <option value="liqpay">LiqPay</option>
+                    <option value="fondy">Fondy</option>
+                  </select>
+                </div>
+                <div id="acq-wayforpay" style="display:none;display:flex;flex-direction:column;gap:10px">
+                  <div class="ff" style="margin:0"><label>Merchant Account</label><input class="fi2" id="acq-merchant" placeholder="your_merchant_account"></div>
+                  <div class="ff" style="margin:0"><label>Secret Key</label><input class="fi2" type="password" id="acq-secret" placeholder="••••••••••••"></div>
+                </div>
+                <div id="acq-liqpay" style="display:none;flex-direction:column;gap:10px">
+                  <div class="ff" style="margin:0"><label>Public Key</label><input class="fi2" id="acq-public-key" placeholder="sandbox_i00000000000001"></div>
+                  <div class="ff" style="margin:0"><label>Private Key</label><input class="fi2" type="password" id="acq-private-key" placeholder="••••••••••••"></div>
+                </div>
+                <div id="acq-fondy" style="display:none;flex-direction:column;gap:10px">
+                  <div class="ff" style="margin:0"><label>Merchant ID</label><input class="fi2" id="acq-merchant-id" placeholder="1396424"></div>
+                  <div class="ff" style="margin:0"><label>Secret Key</label><input class="fi2" type="password" id="acq-fondy-secret" placeholder="••••••••••••"></div>
+                </div>
+                <div class="ff" style="margin:0">
+                  <label>URL клієнтського сайту</label>
+                  <input class="fi2" id="acq-client-url" placeholder="https://creagym-client.github.io/">
+                  <div style="font-size:10px;color:var(--m2);margin-top:3px">Для redirect після оплати</div>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button id="acq-save-btn" onclick="saveAcqSettings()" style="padding:9px 20px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">💾 Зберегти</button>
+                  <button id="acq-edit-btn" onclick="unlockAcqSettings()" style="display:none;padding:9px 20px;border-radius:8px;border:1px solid var(--y);background:var(--ym);color:var(--y);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">✏️ Змінити</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- АВТОЗАКРИТТЯ ЗМІНИ -->
+            <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:14px;overflow:hidden">
+              <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--bd)">
                 <div style="width:40px;height:40px;background:#60A5FA20;border:1px solid #60A5FA30;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px">⏰</div>
                 <div style="flex:1">
                   <div style="font-size:14px;font-weight:700;color:var(--m)">Автозакриття зміни</div>
@@ -1708,7 +1751,7 @@ function gp(id,el){
   if(id==='branches') loadBranches();
   if(id==='staff') loadStaff();
   if(id==='mkt') loadMkt();
-  if(id==='cfg') loadAutoCloseSettings();
+  if(id==='cfg'){loadAutoCloseSettings();loadAcqSettings();}
   if(id==='cfg'){
     // Завантажуємо збережені налаштування
     loadCbSettings().then(async ()=>{
@@ -4920,6 +4963,77 @@ async function deleteStaff(id,name){
     delete _staffBranches[id];
     renderStaff();
   }catch(e){alert('❌ '+(e.message||'Не вдалося видалити'));}
+}
+
+// ===== ЕКВАЙРИНГ =====
+async function loadAcqSettings(){
+  try{
+    const r=await sb.get('settings','?key=in.(acq_provider,acq_merchant,acq_secret,acq_public_key,acq_private_key,acq_merchant_id,acq_fondy_secret,acq_client_url)')||[];
+    const map={};r.forEach(x=>map[x.key]=x.value);
+    const pr=document.getElementById('acq-provider');
+    if(pr&&map.acq_provider){pr.value=map.acq_provider;}
+    if(map.acq_merchant) document.getElementById('acq-merchant').value=map.acq_merchant;
+    if(map.acq_secret) document.getElementById('acq-secret').value=map.acq_secret;
+    if(map.acq_public_key) document.getElementById('acq-public-key').value=map.acq_public_key;
+    if(map.acq_private_key) document.getElementById('acq-private-key').value=map.acq_private_key;
+    if(map.acq_merchant_id) document.getElementById('acq-merchant-id').value=map.acq_merchant_id;
+    if(map.acq_fondy_secret) document.getElementById('acq-fondy-secret').value=map.acq_fondy_secret;
+    if(map.acq_client_url) document.getElementById('acq-client-url').value=map.acq_client_url;
+    toggleAcqFields();
+    if(map.acq_provider) setTimeout(()=>lockAcqSettings(),50);
+  }catch(e){console.warn('loadAcqSettings:',e);}
+}
+
+function toggleAcqFields(){
+  const p=document.getElementById('acq-provider')?.value;
+  ['wayforpay','liqpay','fondy'].forEach(id=>{
+    const el=document.getElementById('acq-'+id);
+    if(el) el.style.display=p===id?'flex':'none';
+  });
+}
+
+function lockAcqSettings(){
+  ['acq-provider','acq-merchant','acq-secret','acq-public-key','acq-private-key','acq-merchant-id','acq-fondy-secret','acq-client-url'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.disabled=true;el.style.opacity='0.5';}
+  });
+  const s=document.getElementById('acq-save-btn');
+  const e=document.getElementById('acq-edit-btn');
+  if(s)s.style.display='none';
+  if(e)e.style.display='flex';
+}
+
+function unlockAcqSettings(){
+  ['acq-provider','acq-merchant','acq-secret','acq-public-key','acq-private-key','acq-merchant-id','acq-fondy-secret','acq-client-url'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.disabled=false;el.style.opacity='1';}
+  });
+  const s=document.getElementById('acq-save-btn');
+  const e=document.getElementById('acq-edit-btn');
+  if(s)s.style.display='flex';
+  if(e)e.style.display='none';
+}
+
+async function saveAcqSettings(){
+  const pairs=[
+    {key:'acq_provider',value:document.getElementById('acq-provider')?.value||''},
+    {key:'acq_merchant',value:document.getElementById('acq-merchant')?.value||''},
+    {key:'acq_secret',value:document.getElementById('acq-secret')?.value||''},
+    {key:'acq_public_key',value:document.getElementById('acq-public-key')?.value||''},
+    {key:'acq_private_key',value:document.getElementById('acq-private-key')?.value||''},
+    {key:'acq_merchant_id',value:document.getElementById('acq-merchant-id')?.value||''},
+    {key:'acq_fondy_secret',value:document.getElementById('acq-fondy-secret')?.value||''},
+    {key:'acq_client_url',value:document.getElementById('acq-client-url')?.value||''},
+  ];
+  const btn=document.getElementById('acq-save-btn');
+  if(btn){btn.textContent='Збереження...';btn.disabled=true;}
+  try{
+    for(const p of pairs.filter(x=>x.value)){
+      await fetch(`${SB_URL}/rest/v1/settings`,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},body:JSON.stringify(p)});
+    }
+    lockAcqSettings();
+  }catch(e){alert('❌ '+e.message);}
+  if(btn){btn.textContent='💾 Зберегти';btn.disabled=false;}
 }
 
 // ===== АВТОЗАКРИТТЯ ЗМІНИ =====
