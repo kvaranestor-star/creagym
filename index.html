@@ -672,6 +672,7 @@ tr:hover td{background:#ffffff03;cursor:pointer}
             <div class="cl-head">
               <span class="cl-title">Клієнти клубу</span>
               <span class="cl-cnt" id="cl-cnt">0 клієнтів</span>
+              <button onclick="openImport()" style="padding:5px 12px;border-radius:7px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer;margin-left:auto">📥 Імпорт з LuckyFit</button>
             </div>
             <div id="cl-table-wrap">
               <div class="loading"><div class="spin"></div>Завантаження клієнтів...</div>
@@ -5358,6 +5359,191 @@ async function saveStreakSettings(){
     btn.parentNode.appendChild(res);setTimeout(()=>res.remove(),3000);
   }catch(e){alert('❌ '+e.message);}
   finally{btn.textContent='💾 Зберегти';btn.disabled=false;}
+}
+
+// ===== ІМПОРТ З LUCKYFIT =====
+function openImport(){
+  const mo=document.createElement('div');
+  mo.id='mo-import';
+  mo.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:4000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)';
+  mo.innerHTML=`
+    <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:14px;width:100%;max-width:700px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--bd2);display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+        <div>
+          <div style="font-size:14px;font-weight:700">📥 Імпорт з LuckyFit</div>
+          <div style="font-size:11px;color:var(--m2);margin-top:2px">Вставте дані з реєстру абонементів LuckyFit</div>
+        </div>
+        <button onclick="document.getElementById('mo-import').remove()" style="width:28px;height:28px;background:var(--p3);border:1px solid var(--bd2);border-radius:6px;cursor:pointer;color:var(--m2)">✕</button>
+      </div>
+      <div style="padding:14px 18px;flex-shrink:0">
+        <div style="font-size:11px;color:var(--m2);margin-bottom:8px">
+          1. LuckyFit → Реєстр абонементів → виділи всі рядки → Ctrl+C<br>
+          2. Вставте нижче → оберіть філію → Імпортувати
+        </div>
+        <select id="import-branch" class="fi2" style="margin-bottom:10px">
+          ${(_branches||[]).map(b=>`<option value="${b.id}">${b.name}</option>`).join('')}
+        </select>
+        <textarea id="import-text" placeholder="Вставте дані тут..." style="width:100%;height:180px;padding:10px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--w);font-family:monospace;font-size:11px;resize:vertical;outline:none"></textarea>
+      </div>
+      <div id="import-preview" style="flex:1;overflow-y:auto;padding:0 18px;display:none"></div>
+      <div style="padding:12px 18px;border-top:1px solid var(--bd2);display:flex;gap:8px;flex-shrink:0">
+        <button onclick="previewImport()" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer">🔍 Переглянути</button>
+        <button id="import-btn" onclick="runImport()" style="flex:2;padding:9px;border-radius:8px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer;display:none">📥 Імпортувати</button>
+      </div>
+    </div>`;
+  document.body.appendChild(mo);
+  mo.onclick=e=>{if(e.target===mo)mo.remove();};
+}
+
+let _importData=[];
+
+function parseLuckyFit(text){
+  const lines=text.trim().split('\n');
+  const result=[];
+  for(const line of lines){
+    const cols=line.split('\t');
+    if(cols.length<8) continue;
+    const subName=cols[0]?.trim();
+    const lastName=cols[1]?.trim();
+    const firstName=cols[2]?.trim();
+    let phone=cols[3]?.trim().replace(/\s/g,'');
+    const email=cols[5]?.trim()||'';
+    const startRaw=cols[7]?.trim();
+    const endRaw=cols[8]?.trim();
+    const price=parseFloat((cols[11]||'0').replace(/\s/g,'').replace(',','.'))||0;
+
+    if(!firstName&&!lastName) continue;
+    if(subName==='Абонемент') continue; // заголовок
+
+    // Форматуємо телефон
+    if(phone&&!phone.startsWith('+')) phone='+'+phone;
+    // Парсимо дату DD.MM.YYYY HH:MM
+    const parseDate=(s)=>{
+      if(!s) return null;
+      const m=s.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+      if(m) return `${m[3]}-${m[2]}-${m[1]}`;
+      return null;
+    };
+    const startDate=parseDate(startRaw);
+    const endDate=parseDate(endRaw);
+
+    result.push({subName,lastName,firstName,phone,email,startDate,endDate,price});
+  }
+  return result;
+}
+
+function previewImport(){
+  const text=document.getElementById('import-text').value.trim();
+  if(!text){alert('Вставте дані');return;}
+  _importData=parseLuckyFit(text);
+  if(!_importData.length){alert('Не вдалось розпізнати дані. Перевірте формат.');return;}
+
+  const preview=document.getElementById('import-preview');
+  preview.style.display='block';
+  preview.innerHTML=`
+    <div style="font-size:11px;font-weight:700;color:var(--m2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">
+      Знайдено ${_importData.length} записів:
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="border-bottom:1px solid var(--bd2)">
+        <th style="text-align:left;padding:4px 6px;color:var(--m2)">Клієнт</th>
+        <th style="text-align:left;padding:4px 6px;color:var(--m2)">Телефон</th>
+        <th style="text-align:left;padding:4px 6px;color:var(--m2)">Абонемент</th>
+        <th style="text-align:left;padding:4px 6px;color:var(--m2)">Термін</th>
+        <th style="text-align:right;padding:4px 6px;color:var(--m2)">Ціна</th>
+      </tr></thead>
+      <tbody>${_importData.map(r=>`<tr style="border-bottom:1px solid var(--bd)">
+        <td style="padding:4px 6px">${r.lastName} ${r.firstName}</td>
+        <td style="padding:4px 6px;color:var(--m2)">${r.phone||'—'}</td>
+        <td style="padding:4px 6px">${r.subName}</td>
+        <td style="padding:4px 6px;color:var(--m2)">${r.startDate||'?'} → ${r.endDate||'?'}</td>
+        <td style="text-align:right;padding:4px 6px;color:var(--y)">${r.price} ₴</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+
+  document.getElementById('import-btn').style.display='flex';
+}
+
+async function runImport(){
+  if(!_importData.length) return;
+  const branchId=document.getElementById('import-branch').value;
+  if(!branchId){alert('Оберіть філію');return;}
+
+  const btn=document.getElementById('import-btn');
+  btn.textContent='Імпортую...';btn.disabled=true;
+
+  let created=0,updated=0,errors=0;
+  const preview=document.getElementById('import-preview');
+  preview.innerHTML=`<div style="padding:20px;text-align:center"><div class="spin" style="margin:0 auto 10px"></div><div style="font-size:12px;color:var(--m2)">Імпортую ${_importData.length} записів...</div></div>`;
+
+  for(let i=0;i<_importData.length;i++){
+    const r=_importData[i];
+    try{
+      // 1. Перевіряємо чи є клієнт за телефоном
+      let client=null;
+      if(r.phone){
+        const existing=await sb.get('clients',`?phone=eq.${encodeURIComponent(r.phone)}&select=*`);
+        if(existing&&existing.length>0) client=existing[0];
+      }
+
+      // 2. Створюємо або оновлюємо клієнта
+      if(!client){
+        const cid='CG-'+Math.random().toString(36).substr(2,6).toUpperCase();
+        const res=await sb.post('clients',{
+          id:cid,
+          first_name:r.firstName,
+          last_name:r.lastName,
+          phone:r.phone||null,
+          status:'active'
+        });
+        client=Array.isArray(res)?res[0]:res;
+        created++;
+      } else {
+        updated++;
+      }
+
+      if(!client?.id) continue;
+
+      // 3. Створюємо абонемент
+      const today=new Date().toISOString().split('T')[0];
+      const isActive=r.endDate&&r.endDate>=today;
+      await sb.post('subscriptions',{
+        client_id:client.id,
+        branch_id:branchId,
+        type_name:r.subName,
+        price:r.price,
+        start_date:r.startDate,
+        end_date:r.endDate,
+        status:isActive?'active':'expired',
+        payment_method:'cash',
+        start_type:'з дати продажу'
+      });
+
+    }catch(e){
+      console.warn('import error:',r,e);
+      errors++;
+    }
+
+    // Оновлюємо прогрес кожні 10 записів
+    if(i%10===0){
+      preview.innerHTML=`<div style="padding:20px;text-align:center"><div class="spin" style="margin:0 auto 10px"></div><div style="font-size:12px;color:var(--m2)">Імпортовано ${i+1} з ${_importData.length}...</div></div>`;
+      await new Promise(r=>setTimeout(r,0));
+    }
+  }
+
+  btn.textContent='📥 Імпортувати';btn.disabled=false;
+  preview.innerHTML=`<div style="padding:16px;text-align:center">
+    <div style="font-size:24px;margin-bottom:10px">✅</div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:8px">Імпорт завершено!</div>
+    <div style="font-size:12px;color:var(--m2)">
+      Нових клієнтів: <b style="color:var(--gr)">${created}</b><br>
+      Вже існували: <b style="color:var(--m)">${updated}</b><br>
+      ${errors?`Помилки: <b style="color:var(--rd)">${errors}</b>`:''}
+    </div>
+  </div>`;
+
+  // Оновлюємо список клієнтів
+  setTimeout(()=>loadClients(),1000);
 }
 
 // ===== АВТОЗАМОВЛЕННЯ =====
