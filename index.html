@@ -1909,7 +1909,7 @@ async function loadStats(){
 
     const today = new Date();
     const in7 = new Date(today); in7.setDate(today.getDate()+7);
-    const expiring = subs.filter(s=>{const d=new Date(s.end_date);return d>=today&&d<=in7;});
+    const expiring = subs.filter(s=>{const d=new Date(s.end_date+'T00:00:00');return d>=today&&d<=in7;});
 
     document.getElementById('cl-badge').textContent=active;
     document.getElementById('goods-badge').textContent=lowStock.length;
@@ -2803,9 +2803,10 @@ async function openDos(id){
   // Блок абонементу
   let subBlock='';
   if(activeSub){
-    const s=new Date(activeSub.start_date),e2=new Date(activeSub.end_date);
-    const pct=Math.max(0,Math.min(100,Math.round((e2-new Date())/(e2-s)*100)));
-    const dl=Math.max(0,Math.round((e2-new Date())/86400000));
+    const s=new Date(activeSub.start_date+'T00:00:00'),e2=new Date(activeSub.end_date+'T00:00:00');
+    const today2=new Date();today2.setHours(0,0,0,0);
+    const pct=Math.max(0,Math.min(100,Math.round((e2-today2)/(e2-s)*100)));
+    const dl=Math.max(0,Math.ceil((e2-today2)/86400000));
     const today=new Date().toISOString().split('T')[0];
     const isActivatedSub=activeSub.started_at||(activeSub.start_type==='з дати продажу');
     const notStarted=!isActivatedSub;
@@ -6714,11 +6715,11 @@ async function admSelectClient(id){
       pct=50; dl=0;
     } else {
       // Активований — рахуємо від started_at або start_date
-      const startD=new Date(activeSub.started_at||activeSub.start_date);
-      const endD=new Date(activeSub.end_date);
-      const now=new Date();
+      const startD=new Date((activeSub.started_at||activeSub.start_date)+'T00:00:00');
+      const endD=new Date(activeSub.end_date+'T00:00:00');
+      const now=new Date();now.setHours(0,0,0,0);
       pct=Math.max(0,Math.min(100,Math.round((endD-now)/(endD-startD)*100)));
-      dl=Math.max(0,Math.round((endD-now)/86400000));
+      dl=Math.max(0,Math.ceil((endD-now)/86400000));
       if(dl===0){ statusLabel='Закінчується сьогодні!'; statusColor='var(--rd)'; statusBg='#EF444414'; }
       else if(dl<=3){ statusLabel='Закінчується ('+dl+' дн)'; statusColor='var(--rd)'; statusBg='#EF444414'; }
       else if(dl<=7){ statusLabel='Скоро закінчується'; statusColor='var(--or)'; statusBg='#F9731614'; }
