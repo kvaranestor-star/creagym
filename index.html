@@ -1064,12 +1064,17 @@ tr:hover td{background:#ffffff03;cursor:pointer}
                   <label>Платіжна система</label>
                   <select class="fi2" id="acq-provider" onchange="toggleAcqFields()">
                     <option value="">— Вимкнено —</option>
+                    <option value="monobank">Monobank</option>
                     <option value="wayforpay">WayForPay</option>
                     <option value="liqpay">LiqPay</option>
                     <option value="fondy">Fondy</option>
                   </select>
                 </div>
-                <div id="acq-wayforpay" style="display:none;display:flex;flex-direction:column;gap:10px">
+                <div id="acq-monobank" style="display:none;flex-direction:column;gap:10px">
+                  <div class="ff" style="margin:0"><label>Token *</label><input class="fi2" type="password" id="acq-mono-token" placeholder="u_..."></div>
+                  <div style="font-size:10px;color:var(--m2)">Отримати токен: <a href="https://api.monobank.ua" target="_blank" style="color:var(--y)">api.monobank.ua</a> → Підключити бізнес акаунт</div>
+                </div>
+                <div id="acq-wayforpay" style="display:none;flex-direction:column;gap:10px">
                   <div class="ff" style="margin:0"><label>Merchant Account</label><input class="fi2" id="acq-merchant" placeholder="your_merchant_account"></div>
                   <div class="ff" style="margin:0"><label>Secret Key</label><input class="fi2" type="password" id="acq-secret" placeholder="••••••••••••"></div>
                 </div>
@@ -5069,7 +5074,7 @@ async function testSms(){
 // ===== ЕКВАЙРИНГ =====
 async function loadAcqSettings(){
   try{
-    const r=await sb.get('settings','?key=in.(acq_provider,acq_merchant,acq_secret,acq_public_key,acq_private_key,acq_merchant_id,acq_fondy_secret,acq_client_url)')||[];
+    const r=await sb.get('settings','?key=in.(acq_provider,acq_merchant,acq_secret,acq_public_key,acq_private_key,acq_merchant_id,acq_fondy_secret,acq_mono_token,acq_client_url)')||[];
     const map={};r.forEach(x=>map[x.key]=x.value);
     const pr=document.getElementById('acq-provider');
     if(pr&&map.acq_provider){pr.value=map.acq_provider;}
@@ -5079,6 +5084,7 @@ async function loadAcqSettings(){
     if(map.acq_private_key) document.getElementById('acq-private-key').value=map.acq_private_key;
     if(map.acq_merchant_id) document.getElementById('acq-merchant-id').value=map.acq_merchant_id;
     if(map.acq_fondy_secret) document.getElementById('acq-fondy-secret').value=map.acq_fondy_secret;
+    if(map.acq_mono_token) document.getElementById('acq-mono-token').value=map.acq_mono_token;
     if(map.acq_client_url) document.getElementById('acq-client-url').value=map.acq_client_url;
     toggleAcqFields();
     if(map.acq_provider) setTimeout(()=>lockAcqSettings(),50);
@@ -5087,14 +5093,14 @@ async function loadAcqSettings(){
 
 function toggleAcqFields(){
   const p=document.getElementById('acq-provider')?.value;
-  ['wayforpay','liqpay','fondy'].forEach(id=>{
+  ['monobank','wayforpay','liqpay','fondy'].forEach(id=>{
     const el=document.getElementById('acq-'+id);
     if(el) el.style.display=p===id?'flex':'none';
   });
 }
 
 function lockAcqSettings(){
-  ['acq-provider','acq-merchant','acq-secret','acq-public-key','acq-private-key','acq-merchant-id','acq-fondy-secret','acq-client-url'].forEach(id=>{
+  ['acq-provider','acq-merchant','acq-secret','acq-public-key','acq-private-key','acq-merchant-id','acq-fondy-secret','acq-mono-token','acq-client-url'].forEach(id=>{
     const el=document.getElementById(id);
     if(el){el.disabled=true;el.style.opacity='0.5';}
   });
@@ -5105,7 +5111,7 @@ function lockAcqSettings(){
 }
 
 function unlockAcqSettings(){
-  ['acq-provider','acq-merchant','acq-secret','acq-public-key','acq-private-key','acq-merchant-id','acq-fondy-secret','acq-client-url'].forEach(id=>{
+  ['acq-provider','acq-merchant','acq-secret','acq-public-key','acq-private-key','acq-merchant-id','acq-fondy-secret','acq-mono-token','acq-client-url'].forEach(id=>{
     const el=document.getElementById(id);
     if(el){el.disabled=false;el.style.opacity='1';}
   });
@@ -5124,6 +5130,7 @@ async function saveAcqSettings(){
     {key:'acq_private_key',value:document.getElementById('acq-private-key')?.value||''},
     {key:'acq_merchant_id',value:document.getElementById('acq-merchant-id')?.value||''},
     {key:'acq_fondy_secret',value:document.getElementById('acq-fondy-secret')?.value||''},
+    {key:'acq_mono_token',value:document.getElementById('acq-mono-token')?.value||''},
     {key:'acq_client_url',value:document.getElementById('acq-client-url')?.value||''},
   ];
   const btn=document.getElementById('acq-save-btn');
