@@ -2346,6 +2346,9 @@ async function syncClientStatuses(){
   }catch(e){ console.warn('syncClientStatuses:',e); }
 }
 
+let _clPage=1;
+const _clPageSize=50;
+
 function renderClients(){
   const list=allClients.filter(c=>{
     const q=filterTxt.toLowerCase();
@@ -2358,7 +2361,12 @@ function renderClients(){
     document.getElementById('cl-table-wrap').innerHTML='<div class="loading" style="color:var(--m2)">Клієнтів не знайдено</div>';
     return;
   }
-  const rows=list.map(c=>{
+
+  const totalPages=Math.ceil(list.length/_clPageSize);
+  if(_clPage>totalPages) _clPage=1;
+  const pageList=list.slice((_clPage-1)*_clPageSize,_clPage*_clPageSize);
+
+  const rows=pageList.map(c=>{
     const st=stMap[c.status]||{cls:'s-exp',l:'Невідомий'};
     const av=c.photo_url
       ?`<img src="${c.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:7px">`
@@ -2372,12 +2380,41 @@ function renderClients(){
       <td><button class="act-b" onclick="event.stopPropagation();openDos('${c.id}')">Досьє</button></td>
     </tr>`;
   }).join('');
-  document.getElementById('cl-table-wrap').innerHTML=`<table><thead><tr><th>Клієнт</th><th>Абонемент</th><th>Візити</th><th>Стать</th><th>Статус</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+
+  // Пагінація
+  const pagBtns=totalPages>1?`
+    <div style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 0;flex-wrap:wrap">
+      <button onclick="clGoPage(1)" ${_clPage===1?'disabled':''} style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;cursor:pointer;${_clPage===1?'opacity:.4':''}">«</button>
+      <button onclick="clGoPage(${_clPage-1})" ${_clPage===1?'disabled':''} style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;cursor:pointer;${_clPage===1?'opacity:.4':''}">‹</button>
+      ${Array.from({length:totalPages},(_, i)=>i+1).filter(p=>Math.abs(p-_clPage)<=2||p===1||p===totalPages).map((p,idx,arr)=>{
+        const prev=arr[idx-1];
+        const dots=prev&&p-prev>1?`<span style="color:var(--m2);padding:0 4px">…</span>`:'';
+        return dots+`<button onclick="clGoPage(${p})" style="padding:5px 10px;border-radius:6px;border:1px solid ${p===_clPage?'var(--y)':'var(--bd2)'};background:${p===_clPage?'var(--y)':'var(--p2)'};color:${p===_clPage?'var(--bg)':'var(--m2)'};font-family:var(--f);font-size:11px;cursor:pointer">${p}</button>`;
+      }).join('')}
+      <button onclick="clGoPage(${_clPage+1})" ${_clPage===totalPages?'disabled':''} style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;cursor:pointer;${_clPage===totalPages?'opacity:.4':''}">›</button>
+      <button onclick="clGoPage(${totalPages})" ${_clPage===totalPages?'disabled':''} style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;cursor:pointer;${_clPage===totalPages?'opacity:.4':''}">»</button>
+      <span style="font-size:11px;color:var(--m2)">${(_clPage-1)*_clPageSize+1}–${Math.min(_clPage*_clPageSize,list.length)} з ${list.length}</span>
+    </div>`:'';
+
+  document.getElementById('cl-table-wrap').innerHTML=`<table><thead><tr><th>Клієнт</th><th>Абонемент</th><th>Візити</th><th>Стать</th><th>Статус</th><th></th></tr></thead><tbody>${rows}</tbody></table>${pagBtns}`;
 }
 
-function filterCl(v){filterTxt=v;renderClients()}
-function filterClSt(v){filterSt=v;renderClients()}
-function filterClG(v){filterGn=v;renderClients()}
+function clGoPage(p){
+  const list=allClients.filter(c=>{
+    const q=filterTxt.toLowerCase();
+    return(!q||[c.first_name,c.last_name,c.phone,c.id].some(f=>(f||'').toLowerCase().includes(q)))
+      &&(!filterSt||c.status===filterSt||(filterSt==='active'&&(c.status==='pending'||c.status==='new')))
+      &&(!filterGn||c.gender===filterGn);
+  });
+  const totalPages=Math.ceil(list.length/_clPageSize);
+  _clPage=Math.max(1,Math.min(p,totalPages));
+  renderClients();
+  document.getElementById('cl-table-wrap').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function filterCl(v){filterTxt=v;_clPage=1;renderClients();}
+function filterClSt(v){filterSt=v;_clPage=1;renderClients();}
+function filterClG(v){filterGn=v;_clPage=1;renderClients();}
 
 // ===== OWNER KASA =====
 let okShift=null, okPeriod='today', okTypeFilter='all', okTxAll=[], okOpType='income';
@@ -5397,9 +5434,65 @@ function openImport(){
 
 let _importData=[];
 
+function detectLuckyFitFormat(lines){
+  // Перевіряємо перший рядок щоб визначити формат
+  const first=lines[0]?.split('\t');
+  if(!first) return 'unknown';
+  // Реєстр абонементів: перша колонка = назва абонементу (СТАНДАРТ, ПАРНИЙ, etc)
+  // Реєстр клієнтів: перша колонка = "Прізвище Ім'я" (слово пробіл слово)
+  const col0=first[0]?.trim();
+  const col1=first[1]?.trim();
+  // Якщо col1 починається з 380 — це реєстр клієнтів
+  if(col1&&col1.match(/^380/)) return 'clients';
+  // Якщо col3 починається з 380 — це реєстр абонементів
+  const col3=first[3]?.trim();
+  if(col3&&col3.match(/^380/)) return 'subscriptions';
+  return 'clients';
+}
+
 function parseLuckyFit(text){
-  const lines=text.trim().split('\n');
+  const lines=text.trim().split('\n').filter(l=>l.trim());
+  if(!lines.length) return [];
+  const format=detectLuckyFitFormat(lines);
+  
+  if(format==='clients'){
+    return parseLuckyFitClients(lines);
+  } else {
+    return parseLuckyFitSubscriptions(lines);
+  }
+}
+
+function parseLuckyFitClients(lines){
   const result=[];
+  for(const line of lines){
+    const cols=line.split('\t');
+    if(cols.length<2) continue;
+    const fullName=cols[0]?.trim();
+    if(!fullName) continue;
+    // Прізвище Ім'я — перше слово прізвище, решта ім'я
+    const parts=fullName.split(/\s+/);
+    const lastName=parts[0]||'';
+    const firstName=parts.slice(1).join(' ')||'';
+    if(!lastName) continue;
+    let phone=cols[1]?.trim().replace(/\s/g,'')||'';
+    if(phone&&!phone.startsWith('+')) phone='+'+phone;
+    // Валідація телефону (10-15 цифр)
+    if(phone&&phone.replace(/\D/g,'').length>15) continue;
+    const email=cols[2]?.trim().includes('@')?cols[2].trim():'';
+    const price=parseFloat((cols[6]||cols[5]||'0').replace(/\s/g,'').replace(',','.'))||0;
+    result.push({subName:null,lastName,firstName,phone,email,startDate:null,endDate:null,price});
+  }
+  return result;
+}
+
+function parseLuckyFitSubscriptions(lines){
+  const result=[];
+  const parseDate=(s)=>{
+    if(!s) return null;
+    const m=s.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+    if(m) return `${m[3]}-${m[2]}-${m[1]}`;
+    return null;
+  };
   for(const line of lines){
     const cols=line.split('\t');
     if(cols.length<8) continue;
@@ -5411,22 +5504,11 @@ function parseLuckyFit(text){
     const startRaw=cols[7]?.trim();
     const endRaw=cols[8]?.trim();
     const price=parseFloat((cols[11]||'0').replace(/\s/g,'').replace(',','.'))||0;
-
     if(!firstName&&!lastName) continue;
-    if(subName==='Абонемент') continue; // заголовок
-
-    // Форматуємо телефон
+    if(subName==='Абонемент') continue;
     if(phone&&!phone.startsWith('+')) phone='+'+phone;
-    // Парсимо дату DD.MM.YYYY HH:MM
-    const parseDate=(s)=>{
-      if(!s) return null;
-      const m=s.match(/(\d{2})\.(\d{2})\.(\d{4})/);
-      if(m) return `${m[3]}-${m[2]}-${m[1]}`;
-      return null;
-    };
     const startDate=parseDate(startRaw);
     const endDate=parseDate(endRaw);
-
     result.push({subName,lastName,firstName,phone,email,startDate,endDate,price});
   }
   return result;
@@ -5438,27 +5520,28 @@ function previewImport(){
   _importData=parseLuckyFit(text);
   if(!_importData.length){alert('Не вдалось розпізнати дані. Перевірте формат.');return;}
 
+  const hasSubscriptions=_importData.some(r=>r.subName&&r.endDate);
   const preview=document.getElementById('import-preview');
   preview.style.display='block';
   preview.innerHTML=`
-    <div style="font-size:11px;font-weight:700;color:var(--m2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">
-      Знайдено ${_importData.length} записів:
+    <div style="padding:8px 0;font-size:11px;color:var(--m2)">
+      Формат: <b style="color:var(--y)">${hasSubscriptions?'Реєстр абонементів':'Реєстр клієнтів'}</b> · Знайдено: <b style="color:var(--gr)">${_importData.length}</b> записів
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:11px">
       <thead><tr style="border-bottom:1px solid var(--bd2)">
         <th style="text-align:left;padding:4px 6px;color:var(--m2)">Клієнт</th>
         <th style="text-align:left;padding:4px 6px;color:var(--m2)">Телефон</th>
-        <th style="text-align:left;padding:4px 6px;color:var(--m2)">Абонемент</th>
-        <th style="text-align:left;padding:4px 6px;color:var(--m2)">Термін</th>
+        ${hasSubscriptions?'<th style="text-align:left;padding:4px 6px;color:var(--m2)">Абонемент</th><th style="text-align:left;padding:4px 6px;color:var(--m2)">Термін</th>':''}
         <th style="text-align:right;padding:4px 6px;color:var(--m2)">Ціна</th>
       </tr></thead>
-      <tbody>${_importData.map(r=>`<tr style="border-bottom:1px solid var(--bd)">
+      <tbody>${_importData.slice(0,20).map(r=>`<tr style="border-bottom:1px solid var(--bd)">
         <td style="padding:4px 6px">${r.lastName} ${r.firstName}</td>
         <td style="padding:4px 6px;color:var(--m2)">${r.phone||'—'}</td>
-        <td style="padding:4px 6px">${r.subName}</td>
-        <td style="padding:4px 6px;color:var(--m2)">${r.startDate||'?'} → ${r.endDate||'?'}</td>
-        <td style="text-align:right;padding:4px 6px;color:var(--y)">${r.price} ₴</td>
-      </tr>`).join('')}</tbody>
+        ${hasSubscriptions?`<td style="padding:4px 6px">${r.subName||'—'}</td><td style="padding:4px 6px;color:var(--m2)">${r.startDate||'?'} → ${r.endDate||'?'}</td>`:''}
+        <td style="text-align:right;padding:4px 6px;color:var(--y)">${r.price?r.price+' ₴':'—'}</td>
+      </tr>`).join('')}
+      ${_importData.length>20?`<tr><td colspan="5" style="padding:4px 6px;color:var(--m2);text-align:center">...і ще ${_importData.length-20} записів</td></tr>`:''}
+      </tbody>
     </table>`;
 
   document.getElementById('import-btn').style.display='flex';
@@ -5504,20 +5587,42 @@ async function runImport(){
 
       if(!client?.id) continue;
 
-      // 3. Створюємо абонемент
-      const today=new Date().toISOString().split('T')[0];
-      const isActive=r.endDate&&r.endDate>=today;
-      await sb.post('subscriptions',{
-        client_id:client.id,
-        branch_id:branchId,
-        type_name:r.subName,
-        price:r.price,
-        start_date:r.startDate,
-        end_date:r.endDate,
-        status:isActive?'active':'expired',
-        payment_method:'cash',
-        start_type:'з дати продажу'
-      });
+      // 3. Якщо є абонемент — шукаємо або створюємо тип
+      if(r.subName){
+        let typeId=null;
+        // Шукаємо існуючий тип по назві
+        const existingType=await sb.get('subscription_types',`?name=eq.${encodeURIComponent(r.subName)}&select=id&limit=1`);
+        if(existingType&&existingType.length>0){
+          typeId=existingType[0].id;
+        } else {
+          // Створюємо новий тип (ненастроєний — власник налаштує пізніше)
+          const newType=await sb.post('subscription_types',{
+            name:r.subName,
+            price:r.price||0,
+            days:30,
+            is_active:true,
+            is_network:false,
+            branch_id:branchId
+          });
+          typeId=(Array.isArray(newType)?newType[0]:newType)?.id||null;
+        }
+
+        // 4. Створюємо абонемент
+        const today=new Date().toISOString().split('T')[0];
+        const isActive=r.endDate&&r.endDate>=today;
+        await sb.post('subscriptions',{
+          client_id:client.id,
+          branch_id:branchId,
+          type_id:typeId||null,
+          type_name:r.subName,
+          price:r.price,
+          start_date:r.startDate,
+          end_date:r.endDate,
+          status:isActive?'active':'expired',
+          payment_method:'cash',
+          start_type:'з дати продажу'
+        });
+      }
 
     }catch(e){
       console.warn('import error:',r,e);
