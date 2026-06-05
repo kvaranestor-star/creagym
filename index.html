@@ -2347,7 +2347,7 @@ async function syncClientStatuses(){
 }
 
 let _clPage=1;
-const _clPageSize=50;
+const _clPageSize=30;
 
 function renderClients(){
   const list=allClients.filter(c=>{
@@ -2784,7 +2784,11 @@ async function openDos(id){
   let purchases=[], activeSub=null;
   try{purchases=await sb.get('sales',`?client_id=eq.${id}&order=created_at.desc&limit=5`);}catch(e){}
   try{
-    const subs=await sb.get('subscriptions',`?client_id=eq.${id}&status=eq.active&order=end_date.desc&limit=1`);
+    // Спочатку активний/заморожений, якщо немає — останній будь-який
+    let subs=await sb.get('subscriptions',`?client_id=eq.${id}&status=in.(active,frozen)&order=end_date.desc&limit=1`);
+    if(!subs||!subs.length){
+      subs=await sb.get('subscriptions',`?client_id=eq.${id}&order=end_date.desc&limit=1`);
+    }
     activeSub=subs&&subs.length?subs[0]:null;
   }catch(e){}
   // Підраховуємо візити: загалом і у поточній філії
