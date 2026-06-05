@@ -26,7 +26,8 @@ export default async function handler(req, res) {
           destination: description || 'Абонемент',
           basketOrder: [{ name: name || description, qty: 1, sum: amount * 100, unit: 'шт' }]
         },
-        redirectUrl: redirectUrl
+        redirectUrl: redirectUrl.split('?')[0],
+        webHookUrl: redirectUrl
       })
     });
 
