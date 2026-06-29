@@ -673,6 +673,7 @@ tr:hover td{background:#ffffff03;cursor:pointer}
               <span class="cl-title">Клієнти клубу</span>
               <span class="cl-cnt" id="cl-cnt">0 клієнтів</span>
               <button onclick="openImport()" style="padding:5px 12px;border-radius:7px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer;margin-left:auto">📥 Імпорт з LuckyFit</button>
+              <button onclick="exportClients()" style="padding:5px 12px;border-radius:7px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer;margin-left:8px">⬇️ Експорт</button>
             </div>
             <div id="cl-table-wrap">
               <div class="loading"><div class="spin"></div>Завантаження клієнтів...</div>
@@ -2431,6 +2432,35 @@ function renderClients(){
     </div>`:'';
 
   document.getElementById('cl-table-wrap').innerHTML=`<table><thead><tr><th>Клієнт</th><th>Абонемент</th><th>Візити</th><th>Стать</th><th>Статус</th><th></th></tr></thead><tbody>${rows}</tbody></table>${pagBtns}`;
+}
+
+function exportClients(){
+  // Експортуємо клієнтів (з урахуванням активних фільтрів) у CSV для Excel
+  const list=allClients.filter(c=>{
+    const q=filterTxt.toLowerCase();
+    return(!q||[c.first_name,c.last_name,c.phone,c.id].some(f=>(f||'').toLowerCase().includes(q)))
+      &&(!filterSt||c.status===filterSt||(filterSt==='active'&&(c.status==='pending'||c.status==='new')))
+      &&(!filterGn||c.gender===filterGn);
+  });
+  if(!list.length){ alert('Немає клієнтів для експорту'); return; }
+
+  const esc=v=>{ v=(v==null?'':String(v)); return /[",;\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+  const header=['Прізвище','Ім\'я','Телефон','Дата народження','Стать','Поточний абонемент','Безперервний стаж'];
+  const rows=list.map(c=>{
+    const sub=(subsByClient[c.id]||[]).find(s=>s.status==='active'||s.status==='frozen')?.type_name||'';
+    const gender=c.gender==='М'?'Чоловік':(c.gender==='Ж'?'Жінка':(c.gender||''));
+    const streak=c.streak?('x'+c.streak):'x0';
+    return [c.last_name||'',c.first_name||'',c.phone||'',c.birth_date||'',gender,sub,streak].map(esc).join(';');
+  });
+  const csv='\ufeff'+[header.join(';'),...rows].join('\r\n'); // BOM + ; — щоб Excel UA правильно розбив колонки
+
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const d=new Date().toLocaleDateString('uk-UA').replace(/\./g,'-');
+  a.href=url; a.download=`creagym_clients_${d}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
 }
 
 function clGoPage(p){
