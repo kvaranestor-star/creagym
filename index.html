@@ -882,7 +882,7 @@ tr:hover td{background:#ffffff03;cursor:pointer}
                 <div style="width:40px;height:40px;background:var(--ym);border:1px solid var(--y)30;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px">🔥</div>
                 <div style="flex:1">
                   <div style="font-size:14px;font-weight:700;color:var(--m)">Безперервна серія</div>
-                  <div style="font-size:11px;color:var(--m2);margin-top:2px">Система знижок за безперервну купівлю мережевих абонементів</div>
+                  <div style="font-size:11px;color:var(--m2);margin-top:2px">Система знижок за безперервну купівлю абонементів (типи обираєш нижче)</div>
                 </div>
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
                   <span style="font-size:11px;color:var(--m2)" id="streak-enabled-lbl">Увімкнено</span>
@@ -1740,6 +1740,7 @@ function setupAdminApp(u){
   document.getElementById('adm-av').textContent=u.initials;
   document.getElementById('adm-nm').textContent=u.name;
   document.getElementById('adm-role').textContent='ADMIN';
+  loadStreakSettings(); // інакше касир продає по дефолтних знижках, а не по налаштованих власником
 }
 
 async function updateAdmBranchBadge(branchId){
@@ -2889,7 +2890,7 @@ async function openDos(id){
           <div style="flex:1">
             <div style="font-size:14px;font-weight:800;color:var(--y)">Серія x${c.streak||0}</div>
             <div style="font-size:10px;color:var(--m2);margin-top:2px">
-              ${(c.streak||0)>=1?`Знижка на наступний мережевий абонемент: <b style="color:var(--or)">-${getStreakDiscount((c.streak||0)+1)}%</b>`:'Без знижки — перший абонемент'}
+              ${(c.streak||0)>=1?`Знижка на наступний абонемент: <b style="color:var(--or)">-${getStreakDiscount((c.streak||0)+1)}%</b>`:'Без знижки — перший абонемент'}
             </div>
           </div>
           <div style="font-size:16px;font-weight:800;color:var(--y)">${getStreakDiscount(c.streak||0)>0?`-${getStreakDiscount(c.streak||0)}%`:''}</div>
@@ -2906,7 +2907,7 @@ async function openDos(id){
             Скинути
           </button>
         </div>
-        <div style="font-size:10px;color:var(--m2);margin-top:8px">Серія автоматично збільшується при купівлі мережевого абонементу протягом 14 днів після закінчення попереднього</div>
+        <div style="font-size:10px;color:var(--m2);margin-top:8px">Серія автоматично збільшується при купівлі абонементу (з обраних типів) у межах вікна після закінчення попереднього</div>
       </div>
     </div>
     ${subBlock}
@@ -7255,8 +7256,8 @@ function admOpenSell(id){
       :`<span style="font-size:9px;padding:2px 6px;border-radius:10px;background:var(--ym);color:var(--y);font-weight:700;margin-left:4px">🏢 Локальний</span>`;
     const pairBadge=s.is_pair?`<span style="font-size:9px;padding:2px 6px;border-radius:10px;background:#A855F720;color:#C084FC;font-weight:700;margin-left:4px">👥 Парний</span>`:'';
     let priceHtml=`${(s.price||0).toLocaleString('uk-UA')} ₴`;
-    if(s.is_network&&!s.is_pair&&clientStreak>=1){
-      const disc=getStreakDiscount(nextStreak);
+    if(!s.is_pair&&clientStreak>=1&&isLoyaltyType(s.id,s.is_network)){
+      const disc=getStreakDiscount(nextStreak, s.id);
       if(disc>0){
         const discPrice=Math.round(s.price*(1-disc/100));
         priceHtml=`<div style="text-align:right"><div style="text-decoration:line-through;color:var(--m2);font-size:10px">${(s.price||0).toLocaleString('uk-UA')} ₴</div><div style="color:var(--y);font-weight:700">${discPrice.toLocaleString('uk-UA')} ₴ <span style="font-size:9px;color:var(--or)">-${disc}%</span></div></div>`;
@@ -7336,19 +7337,21 @@ async function admConfirmSell(){
     : null;
 
   // ===== ЛОГІКА СЕРІЇ =====
-  // Серія діє тільки для мережевих абонементів
+  // Серія діє для типів, обраних у списку лояльності (локальні + мережеві)
   let newStreak=1;
   let discountPct=0;
   let finalPrice=s.price;
 
-  if(s.is_network&&!s.is_pair){
-    // Перевіряємо останній абонемент клієнта
+  const countsForStreak = _streakSettings.enabled && !s.is_pair && isLoyaltyType(s.id, s.is_network);
+
+  if(countsForStreak){
+    // Останній абонемент клієнта, що бере участь у лояльності
     let lastSub=null;
     try{
       const prevSubs=await sb.get('subscriptions',
-        `?client_id=eq.${admSellCl.id}&status=in.(active,expired)&order=end_date.desc&limit=1`
+        `?client_id=eq.${admSellCl.id}&status=in.(active,expired)&order=end_date.desc&limit=10`
       )||[];
-      lastSub=prevSubs[0]||null;
+      lastSub=prevSubs.find(ps=>!ps.is_pair && isLoyaltyType(ps.type_id, ps.is_network))||null;
     }catch(e){}
 
     const currentStreak=admSellCl.streak||0;
@@ -7409,8 +7412,8 @@ async function admConfirmSell(){
       partner_name:s.is_pair?(admSellPartner.last_name+' '+admSellPartner.first_name):null
     });
 
-    // Оновлюємо серію клієнта
-    if(s.is_network){
+    // Оновлюємо серію клієнта (якщо тип бере участь у лояльності)
+    if(countsForStreak){
       await sb.patch('clients',`id=eq.${admSellCl.id}`,{
         streak:newStreak,
         streak_updated_at:new Date().toISOString(),
@@ -7464,7 +7467,7 @@ let _streakSettings={enabled:true, window:14, step:3, max:33};
 
 async function loadStreakSettings(){
   try{
-    const rows=await sb.get('settings','?key=in.(streak_enabled,streak_window,streak_discounts)');
+    const rows=await sb.get('settings','?key=in.(streak_enabled,streak_window,streak_discounts,streak_sub_types)');
     if(rows&&rows.length){
       rows.forEach(r=>{
         if(r.key==='streak_enabled') _streakSettings.enabled=r.value!=='false';
@@ -7489,6 +7492,14 @@ function getStreakDiscount(streak, typeId=null){
   const idx=streak-1;
   if(idx<_streakDiscounts.length) return _streakDiscounts[idx]||0;
   return _streakDiscounts[_streakDiscounts.length-1]||0;
+}
+
+// Чи бере тип участь у системі лояльності (серії).
+// Якщо власник обрав список типів — діє він (і локальні, і мережеві).
+// Якщо список порожній — стара поведінка: лише мережеві.
+function isLoyaltyType(typeId, isNetwork){
+  if(_streakSubTypes&&_streakSubTypes.length>0) return _streakSubTypes.includes(typeId);
+  return !!isNetwork;
 }
 
 let _streakSubTypes=[];
