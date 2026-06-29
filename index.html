@@ -5922,8 +5922,8 @@ function generateAutoOrderPDF(data){
 .sd-i{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;transition:background .12s;border-top:1px solid var(--bd)}
 .sd-i:first-child{border-top:none}
 .sd-i:hover{background:var(--p3)}
-.sd-av2{width:30px;height:30px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;background:var(--yd);color:var(--y);overflow:hidden}
-.sd-av2 img{width:100%;height:100%;object-fit:cover;border-radius:7px}
+.sd-av2{width:48px;height:48px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;background:var(--yd);color:var(--y);overflow:hidden}
+.sd-av2 img{width:100%;height:100%;object-fit:cover;border-radius:9px}
 .reg-body2{display:flex;gap:14px;padding:14px 18px;flex:1;overflow:hidden}
 .reg-main{flex:1;display:flex;flex-direction:column;gap:10px;min-width:0}
 .reg-panel{width:255px;flex-shrink:0;display:flex;flex-direction:column;gap:10px}
@@ -6707,7 +6707,7 @@ function admSearch(v){
     const stL={active:'Активний',expired:'Прострочений',trial:'Пробний',frozen:'Заморожений'};
     drop.innerHTML=res.map(c=>{
       const av=c.photo_url?`<img src="${c.photo_url}" alt="">`:`<span>${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}</span>`;
-      return `<div class="sd-i" onclick="admSelectClient('${c.id}')"><div class="sd-av2">${av}</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600">${c.last_name} ${c.first_name}</div><div style="font-size:10px;color:var(--m2)">${c.phone||''}</div></div><span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;color:${stM[c.status]||'#777'};background:${stM[c.status]||'#777'}18">${stL[c.status]||'—'}</span></div>`;
+      return `<div class="sd-i" onclick="admSelectClient('${c.id}')"><div class="sd-av2">${av}</div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">${c.last_name} ${c.first_name}</div><div style="font-size:11px;color:var(--m2)">${c.phone||''}</div></div><span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;color:${stM[c.status]||'#777'};background:${stM[c.status]||'#777'}18">${stL[c.status]||'—'}</span></div>`;
     }).join('');
     drop.classList.add('sh');
   },200);
@@ -6944,6 +6944,21 @@ async function admAddPhoto(clientId){
   };
 
   document.getElementById('adm-cam-cancel').onclick=cleanup;
+
+  // Чи є взагалі камера на цьому пристрої — якщо ні, ховаємо кнопку
+  (async()=>{
+    try{
+      if(!navigator.mediaDevices||!navigator.mediaDevices.enumerateDevices) throw 0;
+      const devs=await navigator.mediaDevices.enumerateDevices();
+      const hasCam=devs.some(d=>d.kind==='videoinput');
+      if(!hasCam){
+        const cs=document.getElementById('adm-cam-start');
+        if(cs){ cs.style.display='none'; }
+        const ff=document.getElementById('adm-cam-file');
+        if(ff){ ff.style.background='var(--y)'; ff.style.color='#000'; ff.style.borderColor='var(--y)'; }
+      }
+    }catch(e){}
+  })();
 
   // Файл
   document.getElementById('adm-cam-file').onclick=()=>{
