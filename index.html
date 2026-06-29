@@ -6785,6 +6785,14 @@ async function admSelectClient(id){
     <div class="cl-card2">
       <button onclick="clearAdmClient()" title="Закрити" style="position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;border:1px solid var(--bd2);background:var(--p3);color:var(--m2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2">✕</button>
       <div class="cl-prof2"><div class="cl-ph2">${av}</div><div><div class="cl-nm2">${c.last_name} ${c.first_name}</div><div style="font-size:11px;color:var(--m2);margin-top:2px">${c.phone||'—'}</div><div style="font-size:10px;color:var(--m);margin-top:1px">${c.id} · Відвідувань: <b style="color:var(--y)">${branchVisits}</b> у цій філії · ${totalVisits} всього</div></div></div>
+      ${!c.photo_url?`<div style="margin:8px 0;padding:10px 12px;background:#EF444414;border:1px solid #EF444440;border-radius:8px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">📸</span>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:800;color:var(--rd)">Немає фото клієнта!</div>
+          <div style="font-size:10px;color:var(--m2);margin-top:1px">Терміново зробіть фото клієнта</div>
+        </div>
+        <button onclick="admAddPhoto('${c.id}')" style="padding:6px 12px;border-radius:6px;background:var(--rd);border:none;color:#fff;font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">📷 Додати</button>
+      </div>`:''}
       ${(()=>{
         const sl=getStreakLabel(c.streak||0);
         if(!sl) return '';
@@ -6814,6 +6822,36 @@ async function admSelectClient(id){
         <button class="ca pr" onclick="admOpenSell('${c.id}')">🎫 Продати абонемент</button>
       </div>
     </div>`;
+}
+
+async function admAddPhoto(clientId){
+  const inp=document.createElement('input');
+  inp.type='file'; inp.accept='image/*'; inp.capture='environment';
+  inp.onchange=()=>{
+    const file=inp.files&&inp.files[0]; if(!file)return;
+    const r=new FileReader();
+    r.onload=e=>{
+      const img=new Image();
+      img.onload=async()=>{
+        const canvas=document.createElement('canvas');
+        canvas.width=150;canvas.height=150;
+        const ctx=canvas.getContext('2d');
+        const size=Math.min(img.width,img.height);
+        ctx.drawImage(img,(img.width-size)/2,(img.height-size)/2,size,size,0,0,150,150);
+        const data=canvas.toDataURL('image/jpeg',0.65);
+        try{
+          await sb.patch('clients',`id=eq.${clientId}`,{photo_url:data});
+          const c=admClients.find(x=>x.id===clientId); if(c)c.photo_url=data;
+          if(typeof allClients!=='undefined'){const gc=allClients.find(x=>x.id===clientId); if(gc)gc.photo_url=data;}
+          admSelectClient(clientId);
+        }catch(err){alert('❌ '+err.message);}
+      };
+      img.onerror=()=>alert('❌ Не вдалося обробити зображення');
+      img.src=e.target.result;
+    };
+    r.readAsDataURL(file);
+  };
+  inp.click();
 }
 
 async function admFreezeSub(subId, clientId, maxDays){
