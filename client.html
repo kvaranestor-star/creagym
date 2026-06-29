@@ -158,6 +158,7 @@ select.fi{cursor:pointer}
         <button class="tab active" onclick="setTab('register')">Реєстрація</button>
       </div>
       <div class="err" id="reg-err"></div>
+      <div id="reg-step1">
       <div class="fi-row">
         <div class="ff"><div class="fi-label">Прізвище *</div>
           <input class="fi" id="reg-last" placeholder="Іванов">
@@ -190,7 +191,23 @@ select.fi{cursor:pointer}
       <div class="ff"><div class="fi-label">Повторіть пароль *</div>
         <input class="fi" id="reg-pass2" type="password" placeholder="••••••••">
       </div>
-      <button class="btn btn-y" onclick="doRegister()">Зареєструватись</button>
+      <button class="btn btn-y" id="reg-send-btn" onclick="doRegister()">Зареєструватись</button>
+      </div>
+
+      <div id="reg-step2" style="display:none">
+        <p style="font-size:13px;color:var(--m2);margin-bottom:6px;text-align:center">Ми надіслали код підтвердження на <b id="reg-phone-disp" style="color:var(--y)"></b></p>
+        <div id="reg-timer" style="text-align:center;font-size:12px;color:var(--y);font-weight:700;margin-bottom:12px"></div>
+        <div class="code-inputs">
+          <input class="code-inp" id="rc1" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" oninput="nextCode(this,'rc2')" onpaste="pasteCode(event)" onkeydown="codeKey(event,this,null)">
+          <input class="code-inp" id="rc2" inputmode="numeric" pattern="[0-9]*" oninput="nextCode(this,'rc3')" onpaste="pasteCode(event)" onkeydown="codeKey(event,this,'rc1')">
+          <input class="code-inp" id="rc3" inputmode="numeric" pattern="[0-9]*" oninput="nextCode(this,'rc4')" onpaste="pasteCode(event)" onkeydown="codeKey(event,this,'rc2')">
+          <input class="code-inp" id="rc4" inputmode="numeric" pattern="[0-9]*" oninput="nextCode(this,null)" onpaste="pasteCode(event)" onkeydown="codeKey(event,this,'rc3')">
+        </div>
+        <div style="height:12px"></div>
+        <button class="btn btn-y" id="reg-confirm-btn" onclick="confirmRegCode()">Підтвердити та зареєструватись</button>
+        <button class="btn btn-ghost" id="reg-resend-btn" onclick="resendRegCode()" style="margin-top:8px;display:none">🔄 Надіслати новий код</button>
+        <button class="btn btn-ghost" onclick="regBackToForm()" style="margin-top:8px">← Змінити дані</button>
+      </div>
     </div>
 
     <!-- ВІДНОВЛЕННЯ ПАРОЛЮ -->
@@ -352,7 +369,13 @@ function setTab(tab){
   document.getElementById('form-register').style.display='none';
   document.getElementById('form-recover').style.display='none';
   if(tab==='login') document.getElementById('form-login').style.display='flex';
-  else if(tab==='register') document.getElementById('form-register').style.display='flex';
+  else if(tab==='register'){
+    document.getElementById('form-register').style.display='flex';
+    document.getElementById('reg-step1').style.display='block';
+    document.getElementById('reg-step2').style.display='none';
+    if(_regTimerInterval) clearInterval(_regTimerInterval);
+    hideErr('reg-err');
+  }
   else if(tab==='recover'){
     document.getElementById('form-recover').style.display='flex';
     document.getElementById('recover-step1').style.display='block';
@@ -374,12 +397,23 @@ function showScreen(id){
   if(id==='scr-profile') loadProfile();
 }
 
+// Нормалізація телефону: дописує + ; вимагає код країни 380
+function normalizePhone(raw){
+  let digits=(raw||'').replace(/\D/g,'');
+  if(digits.startsWith('00')) digits=digits.slice(2); // міжнародний префікс 00
+  if(!digits) return {ok:false, error:'Введіть номер телефону'};
+  if(digits.startsWith('380')) return {ok:true, phone:'+'+digits};
+  return {ok:false, error:'Введіть код країни, напр. +380671234567'};
+}
+
 // ===== LOGIN =====
 async function doLogin(){
   hideErr('login-err');
-  const ident=document.getElementById('login-id').value.trim();
+  const rawId=document.getElementById('login-id').value.trim();
+  const np=normalizePhone(rawId);
+  const ident=np.ok?np.phone:rawId; // для входу не блокуємо, просто нормалізуємо якщо можемо
   const pass=document.getElementById('login-pass').value;
-  if(!ident||!pass){showErr('login-err','Заповніть всі поля');return;}
+  if(!rawId||!pass){showErr('login-err','Заповніть всі поля');return;}
   const hash=await sha256(pass);
   const r=await get('clients',`?phone=eq.${encodeURIComponent(ident)}&password_hash=eq.${encodeURIComponent(hash)}&select=*`);
   if(!r||!r.length){
@@ -398,18 +432,24 @@ async function doLogin(){
 }
 
 // ===== REGISTER =====
+let _pendingReg=null, _regCode=null, _regSending=false, _regTimerInterval=null;
+
 async function doRegister(){
+  if(_regSending) return;
   hideErr('reg-err');
   const last=document.getElementById('reg-last').value.trim();
   const first=document.getElementById('reg-first').value.trim();
-  const phone=document.getElementById('reg-phone').value.trim();
+  const phoneRaw=document.getElementById('reg-phone').value.trim();
   const gender=document.getElementById('reg-gender').value;
   const birth=document.getElementById('reg-birth').value;
   const city=document.getElementById('reg-city').value.trim();
   const pass=document.getElementById('reg-pass').value;
   const pass2=document.getElementById('reg-pass2').value;
 
-  if(!last||!first||!phone||!pass){showErr('reg-err',"Заповніть обов'язкові поля: прізвище, ім'я, телефон, пароль");return;}
+  if(!last||!first||!phoneRaw||!pass){showErr('reg-err',"Заповніть обов'язкові поля: прізвище, ім'я, телефон, пароль");return;}
+  const np=normalizePhone(phoneRaw);
+  if(!np.ok){showErr('reg-err',np.error);return;}
+  const phone=np.phone;
   if(pass.length<6){showErr('reg-err','Пароль мінімум 6 символів');return;}
   if(pass!==pass2){showErr('reg-err','Паролі не співпадають');return;}
 
@@ -423,31 +463,127 @@ async function doRegister(){
     if(age<12){showErr('reg-err','⛔ Вхід недоступний. За правилами клубу мінімальний вік — 12 років.');return;}
   }
 
-  const btn=document.querySelector('#form-register .btn-y');
-  btn.textContent='...';btn.disabled=true;
-
+  _regSending=true;
+  const btn=document.getElementById('reg-send-btn');
+  if(btn){btn.textContent='Перевірка…';btn.disabled=true;}
   try{
-    // Перевіряємо телефон
+    // Телефон не зайнятий?
     const byPhone=await get('clients',`?phone=eq.${encodeURIComponent(phone)}&select=id`);
     if(byPhone&&byPhone.length>0){showErr('reg-err','Клієнт з таким номером телефону вже існує');return;}
 
     const hash=await sha256(pass);
+    _pendingReg={last,first,phone,gender,birth,city,hash};
+
+    // Надсилаємо SMS-код підтвердження
+    if(btn) btn.textContent='Надсилання SMS…';
+    const sent=await sendRegCode(phone);
+    if(!sent){showErr('reg-err','Не вдалось надіслати SMS. Спробуйте пізніше.');return;}
+
+    document.getElementById('reg-phone-disp').textContent=phone;
+    document.getElementById('reg-step1').style.display='none';
+    document.getElementById('reg-step2').style.display='block';
+    ['rc1','rc2','rc3','rc4'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('rc1')?.focus();
+    startRegTimer(10*60);
+  }catch(e){showErr('reg-err','Помилка: '+e.message);}
+  finally{ _regSending=false; if(btn){btn.textContent='Зареєструватись';btn.disabled=false;} }
+}
+
+// Генерує код, зберігає в БД (10 хв), шле SMS
+async function sendRegCode(phone){
+  _regCode=String(Math.floor(1000+Math.random()*9000));
+  const expiresAt=new Date(Date.now()+10*60*1000).toISOString();
+  try{
+    await fetch(`${SB_URL}/rest/v1/sms_codes?phone=eq.${encodeURIComponent(phone)}`,{
+      method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    });
+    await post('sms_codes',{phone,code:_regCode,expires_at:expiresAt,used:false});
+  }catch(e){console.warn('reg sms_codes save:',e);}
+  return await sendSms(phone,`CREAGYM: код підтвердження ${_regCode}`);
+}
+
+async function resendRegCode(){
+  if(!_pendingReg) return;
+  const btn=document.getElementById('reg-resend-btn');
+  if(btn){btn.disabled=true;btn.textContent='Надсилання…';}
+  const sent=await sendRegCode(_pendingReg.phone);
+  if(btn){btn.disabled=false;btn.textContent='🔄 Надіслати новий код';}
+  if(!sent){showErr('reg-err','Не вдалось надіслати SMS.');return;}
+  hideErr('reg-err');
+  ['rc1','rc2','rc3','rc4'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('rc1')?.focus();
+  startRegTimer(10*60);
+}
+
+function regBackToForm(){
+  if(_regTimerInterval) clearInterval(_regTimerInterval);
+  document.getElementById('reg-step2').style.display='none';
+  document.getElementById('reg-step1').style.display='block';
+  hideErr('reg-err');
+}
+
+function startRegTimer(seconds){
+  const timerEl=document.getElementById('reg-timer');
+  const resendBtn=document.getElementById('reg-resend-btn');
+  if(resendBtn) resendBtn.style.display='none';
+  if(_regTimerInterval) clearInterval(_regTimerInterval);
+  let left=seconds;
+  const update=()=>{
+    if(!timerEl) return;
+    const m=Math.floor(left/60), s=left%60;
+    timerEl.textContent=`Код дійсний: ${m}:${s.toString().padStart(2,'0')}`;
+    if(left<=0){
+      clearInterval(_regTimerInterval);
+      timerEl.textContent='Код застарів';
+      timerEl.style.color='var(--rd)';
+      if(resendBtn) resendBtn.style.display='flex';
+    }
+    left--;
+  };
+  update();
+  _regTimerInterval=setInterval(update,1000);
+}
+
+// Підтвердження коду і створення акаунту
+async function confirmRegCode(){
+  hideErr('reg-err');
+  if(!_pendingReg){showErr('reg-err','Дані реєстрації втрачено. Почніть спочатку.');regBackToForm();return;}
+  const entered=['rc1','rc2','rc3','rc4'].map(id=>document.getElementById(id).value).join('');
+  if(entered.length!==4){showErr('reg-err','Введіть 4-значний код з SMS');return;}
+
+  const btn=document.getElementById('reg-confirm-btn');
+  if(btn){btn.disabled=true;btn.textContent='Перевірка…';}
+  try{
+    // Перевіряємо код
+    let valid=false;
+    try{
+      const now=new Date().toISOString();
+      const codes=await get('sms_codes',`?phone=eq.${encodeURIComponent(_pendingReg.phone)}&code=eq.${entered}&used=eq.false&expires_at=gte.${now}&order=created_at.desc&limit=1`);
+      if(codes&&codes.length){ valid=true; await patch('sms_codes',`id=eq.${codes[0].id}`,{used:true}); }
+    }catch(e){ valid=(entered===_regCode); }
+    if(!valid&&entered===_regCode) valid=true; // запасна локальна перевірка
+    if(!valid){showErr('reg-err','Невірний або застарілий код. Спробуйте ще раз.');return;}
+
+    // Створюємо акаунт
+    const p=_pendingReg;
     const cid='CG-'+Math.random().toString(36).substr(2,6).toUpperCase();
     const r=await post('clients',{
-      id:cid,first_name:first,last_name:last,
-      phone,gender:gender||null,
-      birth_date:birth||null,city:city||null,
-      password_hash:hash,status:'new'
+      id:cid,first_name:p.first,last_name:p.last,
+      phone:p.phone,gender:p.gender||null,
+      birth_date:p.birth||null,city:p.city||null,
+      password_hash:p.hash,status:'new'
     });
     const cl=Array.isArray(r)?r[0]:r;
     if(!cl?.id){showErr('reg-err',cl?.message||'Помилка реєстрації');return;}
+    if(_regTimerInterval) clearInterval(_regTimerInterval);
+    _pendingReg=null; _regCode=null;
     curClient=cl;
     localStorage.setItem('cg_client',JSON.stringify(curClient));
-    toast('✅ Реєстрацію успішно завершено!');
+    toast('✅ Номер підтверджено! Реєстрацію завершено.');
     loadHome();
     showScreen('scr-home');
   }catch(e){showErr('reg-err','Помилка: '+e.message);}
-  finally{btn.textContent='Зареєструватись';btn.disabled=false;}
+  finally{ if(btn){btn.disabled=false;btn.textContent='Підтвердити та зареєструватись';} }
 }
 
 // ===== RECOVER PASSWORD =====
@@ -456,8 +592,11 @@ async function sendRecoverCode(){
   if(_recoverSending) return; // захист від повторних кліків (інакше летить купа SMS)
   hideErr('recover-err');
   document.getElementById('recover-ok').classList.remove('show');
-  const phone=document.getElementById('recover-phone').value.trim();
-  if(!phone){showErr('recover-err','Введіть номер телефону');return;}
+  const phoneRaw=document.getElementById('recover-phone').value.trim();
+  if(!phoneRaw){showErr('recover-err','Введіть номер телефону');return;}
+  const np=normalizePhone(phoneRaw);
+  if(!np.ok){showErr('recover-err',np.error);return;}
+  const phone=np.phone;
 
   _recoverSending=true;
   const btn=document.getElementById('recover-send-btn');
@@ -540,24 +679,28 @@ async function resendCode(){
   if(_recoverTimerInterval) clearInterval(_recoverTimerInterval);
 }
 
-// Заповнити всі 4 поля коду з рядка цифр
-function fillCode(str){
+// Визначаємо групу полів коду за префіксом id (rc* = реєстрація, c* = відновлення)
+function _codeGroup(el){
+  return (el&&el.id&&el.id.startsWith('rc'))
+    ? {ids:['rc1','rc2','rc3','rc4'], btn:'reg-confirm-btn'}
+    : {ids:['c1','c2','c3','c4'], btn:'recover-confirm-btn'};
+}
+function fillCodeGroup(str,g){
   const digits=String(str||'').replace(/\D/g,'').slice(0,4).split('');
-  const ids=['c1','c2','c3','c4'];
-  ids.forEach((id,i)=>{const el=document.getElementById(id);if(el)el.value=digits[i]||'';});
-  if(digits.length>=4){ document.getElementById('recover-confirm-btn')?.focus(); }
-  else { const nx=ids[digits.length]; document.getElementById(nx||'c4')?.focus(); }
+  g.ids.forEach((id,i)=>{const el=document.getElementById(id);if(el)el.value=digits[i]||'';});
+  if(digits.length>=4){ document.getElementById(g.btn)?.focus(); }
+  else { document.getElementById(g.ids[digits.length]||g.ids[3])?.focus(); }
 }
 function nextCode(el,nextId){
   let v=el.value.replace(/\D/g,'');
-  if(v.length>1){ fillCode(v); return; } // вставка/автозаповнення всього коду в одне поле
+  if(v.length>1){ fillCodeGroup(v,_codeGroup(el)); return; } // вставка/автозаповнення всього коду
   el.value=v;
   if(v&&nextId) document.getElementById(nextId)?.focus();
 }
 function pasteCode(e){
   e.preventDefault();
   const txt=((e.clipboardData||window.clipboardData)?.getData('text'))||'';
-  fillCode(txt);
+  fillCodeGroup(txt,_codeGroup(e.target));
 }
 function codeKey(e,el,prevId){
   if(e.key==='Backspace'&&!el.value&&prevId){ e.preventDefault(); const p=document.getElementById(prevId); if(p){p.value='';p.focus();} }
