@@ -6850,7 +6850,7 @@ async function admSelectClient(id){
   document.getElementById('adm-main').innerHTML=`
     <div class="cl-card2">
       <button onclick="clearAdmClient()" title="Закрити" style="position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;border:1px solid var(--bd2);background:var(--p3);color:var(--m2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2">✕</button>
-      <div class="cl-prof2"><div class="cl-ph2">${av}</div><div><div class="cl-nm2">${c.last_name} ${c.first_name}</div><div style="font-size:11px;color:var(--m2);margin-top:2px">${c.phone||'—'}</div><div style="font-size:10px;color:var(--m);margin-top:1px">${c.id} · Відвідувань: <b style="color:var(--y)">${branchVisits}</b> у цій філії · ${totalVisits} всього</div></div></div>
+      <div class="cl-prof2"><div class="cl-ph2" onclick="admAddPhoto('${c.id}')" style="cursor:pointer;position:relative" title="Змінити фото">${av}<span style="position:absolute;bottom:-3px;right:-3px;width:19px;height:19px;border-radius:50%;background:var(--y);color:#000;font-size:10px;display:flex;align-items:center;justify-content:center;border:2px solid var(--p)">📷</span></div><div style="flex:1"><div class="cl-nm2">${c.last_name} ${c.first_name}</div><div style="font-size:11px;color:var(--m2);margin-top:2px">${c.phone||'—'}</div><div style="font-size:10px;color:var(--m);margin-top:1px">${c.id} · Відвідувань: <b style="color:var(--y)">${branchVisits}</b> у цій філії · ${totalVisits} всього</div></div>${c.photo_url?`<button onclick="admAddPhoto('${c.id}')" style="align-self:flex-start;padding:6px 11px;border-radius:7px;background:var(--p3);border:1px solid var(--bd2);color:var(--m);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">🔄 Переробити фото</button>`:''}</div>
       ${!c.photo_url?`<div style="margin:8px 0;padding:10px 12px;background:#EF444414;border:1px solid #EF444440;border-radius:8px;display:flex;align-items:center;gap:10px">
         <span style="font-size:18px">📸</span>
         <div style="flex:1">
@@ -6895,33 +6895,77 @@ async function admSelectClient(id){
 }
 
 async function admAddPhoto(clientId){
-  const inp=document.createElement('input');
-  inp.type='file'; inp.accept='image/*'; inp.capture='environment';
-  inp.onchange=()=>{
-    const file=inp.files&&inp.files[0]; if(!file)return;
-    const r=new FileReader();
-    r.onload=e=>{
-      const img=new Image();
-      img.onload=async()=>{
-        const canvas=document.createElement('canvas');
-        canvas.width=150;canvas.height=150;
-        const ctx=canvas.getContext('2d');
-        const size=Math.min(img.width,img.height);
-        ctx.drawImage(img,(img.width-size)/2,(img.height-size)/2,size,size,0,0,150,150);
-        const data=canvas.toDataURL('image/jpeg',0.65);
-        try{
-          await sb.patch('clients',`id=eq.${clientId}`,{photo_url:data});
-          const c=admClients.find(x=>x.id===clientId); if(c)c.photo_url=data;
-          if(typeof allClients!=='undefined'){const gc=allClients.find(x=>x.id===clientId); if(gc)gc.photo_url=data;}
-          admSelectClient(clientId);
-        }catch(err){alert('❌ '+err.message);}
-      };
-      img.onerror=()=>alert('❌ Не вдалося обробити зображення');
-      img.src=e.target.result;
-    };
-    r.readAsDataURL(file);
+  const ov=document.createElement('div');
+  ov.id='adm-photo-ov';
+  ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:16px';
+  const bs='padding:11px 14px;border-radius:10px;border:1px solid var(--bd2);background:var(--p2);color:var(--m);font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer;width:100%';
+  ov.innerHTML=`<div style="background:var(--p);border:1px solid var(--bd2);border-radius:16px;padding:18px;width:100%;max-width:360px;text-align:center" onclick="event.stopPropagation()">
+    <div style="font-size:15px;font-weight:800;margin-bottom:14px">Фото клієнта</div>
+    <video id="adm-cam-video" autoplay playsinline muted style="display:none;width:100%;border-radius:12px;background:#000;aspect-ratio:1/1;object-fit:cover;margin-bottom:10px"></video>
+    <div id="adm-cam-menu" style="display:flex;flex-direction:column;gap:8px">
+      <button id="adm-cam-start" style="${bs}">📷 Камера браузера</button>
+      <button id="adm-cam-file" style="${bs}">📁 Завантажити файл</button>
+      <button id="adm-cam-cancel" style="${bs};background:transparent;color:var(--m2);border-color:transparent">Скасувати</button>
+    </div>
+    <button id="adm-cam-shot" style="display:none;${bs};background:var(--y);color:#000;border-color:var(--y)">✅ Зробити фото</button>
+  </div>`;
+  document.body.appendChild(ov);
+
+  let stream=null;
+  const cleanup=()=>{ try{ if(stream)stream.getTracks().forEach(t=>t.stop()); }catch(e){} ov.remove(); };
+  ov.onclick=cleanup;
+
+  const save=async(dataUrl)=>{
+    try{
+      await sb.patch('clients',`id=eq.${clientId}`,{photo_url:dataUrl});
+      const c=admClients.find(x=>x.id===clientId); if(c)c.photo_url=dataUrl;
+      if(typeof allClients!=='undefined'){const gc=allClients.find(x=>x.id===clientId); if(gc)gc.photo_url=dataUrl;}
+      cleanup();
+      admSelectClient(clientId);
+    }catch(err){ alert('❌ '+err.message); }
   };
-  inp.click();
+  const processImg=(srcDataUrl)=>{
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas'); canvas.width=150; canvas.height=150;
+      const ctx=canvas.getContext('2d');
+      const size=Math.min(img.width,img.height);
+      ctx.drawImage(img,(img.width-size)/2,(img.height-size)/2,size,size,0,0,150,150);
+      save(canvas.toDataURL('image/jpeg',0.65));
+    };
+    img.onerror=()=>alert('❌ Не вдалося обробити зображення');
+    img.src=srcDataUrl;
+  };
+
+  document.getElementById('adm-cam-cancel').onclick=cleanup;
+
+  // Файл
+  document.getElementById('adm-cam-file').onclick=()=>{
+    const inp=document.createElement('input');
+    inp.type='file'; inp.accept='image/*';
+    inp.onchange=()=>{ const f=inp.files&&inp.files[0]; if(!f)return; const r=new FileReader(); r.onload=e=>processImg(e.target.result); r.readAsDataURL(f); };
+    inp.click();
+  };
+
+  // Камера браузера
+  document.getElementById('adm-cam-start').onclick=async()=>{
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:720},height:{ideal:720}},audio:false});
+      const v=document.getElementById('adm-cam-video');
+      v.srcObject=stream; v.style.display='block';
+      document.getElementById('adm-cam-menu').style.display='none';
+      document.getElementById('adm-cam-shot').style.display='block';
+    }catch(err){
+      alert('❌ Камера недоступна: '+(err.message||err.name)+'\nДозволь доступ до камери або скористайся «Завантажити файл».');
+    }
+  };
+  document.getElementById('adm-cam-shot').onclick=()=>{
+    const v=document.getElementById('adm-cam-video');
+    if(!v.videoWidth){ alert('Камера ще завантажується, зачекай мить.'); return; }
+    const c=document.createElement('canvas'); c.width=v.videoWidth; c.height=v.videoHeight;
+    c.getContext('2d').drawImage(v,0,0);
+    processImg(c.toDataURL('image/jpeg',0.9));
+  };
 }
 
 async function admFreezeSub(subId, clientId, minDays){
