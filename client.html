@@ -762,6 +762,7 @@ async function confirmRecoverCode(){
 // ===== HOME =====
 async function loadHome(){
   if(!curClient)return;
+  if(!(await validateSession())) return;
   document.getElementById('hdr-name').textContent=curClient.first_name||'';
   document.getElementById('home-hi').textContent=`Привіт, ${curClient.first_name}! 👋`;
 
@@ -1054,6 +1055,7 @@ async function loadVisits(){
 // ===== PROFILE =====
 async function loadProfile(){
   if(!curClient)return;
+  if(!(await validateSession())) return;
   const subs=await get('subscriptions',`?client_id=eq.${curClient.id}&order=created_at.desc&limit=5`)||[];
   const stL={active:'✅ Активний',frozen:'❄️ Заморожений',expired:'❌ Прострочений',pending:'⏳ Очікує',returned:'↩ Повернений'};
   document.getElementById('profile-content').innerHTML=`
@@ -1079,7 +1081,24 @@ async function loadProfile(){
     <button class="btn btn-ghost" onclick="logout()">Вийти</button>`;
 }
 
-function logout(){if(!confirm('Вийти?'))return;localStorage.removeItem('cg_client');curClient=null;setTab('login');showScreen('scr-auth');}
+// Перевіряє, що акаунт ще існує в БД. Якщо видалений — чистить сесію і кидає на вхід.
+async function validateSession(){
+  if(!curClient) return false;
+  try{
+    const chk=await get('clients',`?id=eq.${encodeURIComponent(curClient.id)}&select=id`);
+    if(!chk||!chk.length){
+      localStorage.removeItem('cg_client');
+      localStorage.removeItem('cg_pending');
+      curClient=null;
+      setTab('login');
+      showScreen('scr-auth');
+      return false;
+    }
+  }catch(e){ /* немає мережі — лишаємо як є */ }
+  return true;
+}
+
+function logout(){if(!confirm('Вийти?'))return;localStorage.removeItem('cg_client');localStorage.removeItem('cg_pending');curClient=null;setTab('login');showScreen('scr-auth');}
 
 // ===== SMS =====
 const SMS_PROXY='https://creagym-one.vercel.app/api/sms';
@@ -1164,18 +1183,7 @@ async function init(){
   const saved=localStorage.getItem('cg_client');
   if(saved){
     curClient=JSON.parse(saved);
-    // Перевіряємо, що акаунт ще існує (міг бути видалений адміном)
-    try{
-      const chk=await get('clients',`?id=eq.${encodeURIComponent(curClient.id)}&select=id`);
-      if(!chk||!chk.length){
-        localStorage.removeItem('cg_client');
-        localStorage.removeItem('cg_pending');
-        curClient=null;
-        setTab('login');
-        showScreen('scr-auth');
-        return;
-      }
-    }catch(e){ /* немає мережі — не викидаємо, лишаємо як є */ }
+    if(!(await validateSession())) return; // видалений акаунт — на вхід
     const urlParams=new URLSearchParams(window.location.search);
     if(urlParams.get('order')||localStorage.getItem('cg_pending')){
       window.history.replaceState({},'',window.location.pathname);
