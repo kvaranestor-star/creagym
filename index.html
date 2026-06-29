@@ -6933,6 +6933,55 @@ async function admUnfreezeSub(subId, clientId){
   }catch(e){alert('❌ '+e.message);}
 }
 
+// Підбір шафки для клієнта за його статтю. Повертає {key,keyGroup} або null (скасовано)
+async function admAssignLocker(c){
+  try{
+    const branchLockers=await sb.get('lockers',`?branch_id=eq.${_currentBranch?.id}&is_active=eq.true&order=locker_group.asc,number.asc`)||[];
+    if(branchLockers.length){
+      const usedKeys=new Set(admInClub.map(x=>x.key+':'+(x.keyGroup||'')));
+      const gender=c.gender||'';
+      const allFree=branchLockers.filter(l=>!usedKeys.has(l.number+':'+(l.locker_group||'')));
+      const freeLockers=allFree.filter(l=>{
+        const g=l.locker_group||'Загальна';
+        if(gender==='М') return g==='Чоловіча'||g==='Загальна';
+        if(gender==='Ж') return g==='Жіноча'||g==='Загальна';
+        return true;
+      });
+      if(freeLockers.length){
+        const picked=await showLockerPicker(freeLockers, c.last_name+' '+c.first_name, gender);
+        if(picked===null) return null;
+        if(picked===0) return {key:0,keyGroup:''};
+        return {key:picked.number, keyGroup:picked.group||''};
+      } else {
+        const gl=gender==='М'?'чоловічих':gender==='Ж'?'жіночих':'';
+        const useAny=confirm(`⚠️ Немає вільних ${gl} шафок для ${c.last_name} ${c.first_name}!\n\nЗареєструвати без шафки?`);
+        if(!useAny) return null;
+        return {key:0,keyGroup:''};
+      }
+    } else {
+      const manualKey=prompt(`Введіть номер ключа для ${c.last_name} ${c.first_name}:\n(або скасуйте щоб без ключа)`);
+      if(manualKey===null) return null;
+      return {key:parseInt(manualKey)||0, keyGroup:''};
+    }
+  }catch(e){ console.warn('locker load:',e); return {key:Math.floor(Math.random()*99)+1, keyGroup:''}; }
+}
+// Запис входу в in_club (upsert)
+async function admPersistEntryDB(clientId,key,keyGroup){
+  try{
+    if(_currentBranch?.id){
+      await fetch(`${SB_URL}/rest/v1/in_club`,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},body:JSON.stringify({client_id:clientId,branch_id:_currentBranch.id,key_number:key||0,locker_group:keyGroup||'',checked_in_by:curUser?.name||'admin'})});
+    }
+  }catch(e){console.warn('in_club post:',e);}
+}
+// Запис візиту
+async function admRecordVisitDB(client){
+  try{
+    await sb.post('visits',{client_id:client.id,registered_by:curUser?.name||'admin',visited_at:new Date().toISOString()});
+    const nv=(client.visits||0)+1;
+    await sb.patch('clients',`id=eq.${client.id}`,{visits:nv});
+    client.visits=nv;
+  }catch(e){console.warn('visit record:',e);}
+}
 async function admCheckIn(id){
   const c=admClients.find(x=>x.id===id);if(!c)return;
 
@@ -7008,95 +7057,71 @@ async function admCheckIn(id){
     }
   }catch(e){console.warn('sub check:',e);}
 
+  // Якщо немає власного абонементу — можливо це 2-й учасник парного
+  if(!hasSub){
+    try{
+      const ps=await sb.get('subscriptions',`?partner_client_id=eq.${id}&status=eq.active&order=end_date.desc&limit=1`)||[];
+      if(ps.length&&ps[0].is_pair){ hasSub=true; subForActivation=ps[0]; }
+    }catch(e){}
+  }
+
   if(!hasSub){
     alert(`⛔ Вхід заборонено!\n\n${c.last_name} ${c.first_name} не має активного абонементу.\nСпочатку продайте абонемент.`);
     return;
   }
 
-  // Вибір шафки — завантажуємо список і показуємо діалог
-  let key=null;
-  let keyGroup='';
-  try{
-    const branchLockers=await sb.get('lockers',`?branch_id=eq.${_currentBranch?.id}&is_active=eq.true&order=locker_group.asc,number.asc`)||[];
-    if(branchLockers.length){
-      const usedKeys=new Set(admInClub.map(x=>x.key+':'+(x.keyGroup||'')));
-      // Фільтр по статі клієнта
-      const gender=c.gender||'';
-      const allFree=branchLockers.filter(l=>!usedKeys.has(l.number+':'+(l.locker_group||'')));
-      const freeLockers=allFree.filter(l=>{
-        const g=l.locker_group||'Загальна';
-        if(gender==='М') return g==='Чоловіча'||g==='Загальна';
-        if(gender==='Ж') return g==='Жіноча'||g==='Загальна';
-        return true; // стать не вказана — всі
-      });
-      if(freeLockers.length){
-        const picked=await showLockerPicker(freeLockers, c.last_name+' '+c.first_name, gender);
-        if(picked===null) return;
-        if(picked===0){key=0;}
-        else{key=picked.number; keyGroup=picked.group||'';}
-      } else {
-        const useAny=confirm(`⚠️ Всі шафки (${branchLockers.length}) зайняті!\n\nВсе одно зареєструвати вхід без шафки?`);
-        if(!useAny) return;
-        key=0;
+  // Визначаємо учасників (для парного — обидва), у потрібному порядку: 1-й, 2-й
+  const isPair=!!(subForActivation&&subForActivation.is_pair&&subForActivation.partner_client_id);
+  const getCl=async(cid)=>{let cl=admClients.find(x=>x.id===cid);if(cl)return cl;try{const r=await sb.get('clients',`?id=eq.${cid}&limit=1`);return(r&&r[0])||null;}catch(e){return null;}};
+  let members=[];
+  if(isPair){
+    const holder=await getCl(subForActivation.client_id);
+    const partner=await getCl(subForActivation.partner_client_id);
+    if(holder) members.push(holder);
+    if(partner) members.push(partner);
+  } else { members.push(c); }
+
+  // Хто вже в залі — пропускаємо; якщо хтось в іншому залі — блокуємо вхід пари
+  const toEnter=[];
+  for(const m of members){
+    if(admInClub.find(x=>x.id===m.id)) continue;
+    try{
+      const rows=await sb.get('in_club',`?client_id=eq.${m.id}`)||[];
+      if(rows.find(r=>r.branch_id!==_currentBranch?.id)){
+        alert(`⛔ ${m.last_name} ${m.first_name} зараз в іншому залі — пара не може зайти разом.`);
+        return;
       }
-    } else {
-      // Шафок немає — вводимо номер вручну або без ключа
-      const manualKey=prompt(`Введіть номер ключа для ${c.last_name} ${c.first_name}:\n(або скасуйте щоб зареєструвати без ключа)`);
-      if(manualKey===null) return;
-      key=parseInt(manualKey)||0;
+    }catch(e){}
+    toEnter.push(m);
+  }
+  if(!toEnter.length){ alert('ℹ️ Усі учасники вже зареєстровані в залі.'); return; }
+
+  // Видаємо ключі по черзі: спершу 1-му, потім 2-му. Шафки — за статтю кожного.
+  const added=[];
+  for(const m of toEnter){
+    const a=await admAssignLocker(m);
+    if(a===null){ // скасування — відкочуємо вже доданих
+      added.forEach(e=>{admInClub=admInClub.filter(x=>x!==e);});
+      admRenderICP();
+      return;
     }
-  }catch(e){
-    console.warn('locker load:',e);
-    key=Math.floor(Math.random()*99)+1;
+    const entry={...m,key:a.key,keyGroup:a.keyGroup};
+    admInClub.push(entry); added.push(entry);
+    admRenderICP();
   }
 
-  admInClub.push({...c,key,keyGroup});
-  admRenderICP();
+  // Пишемо в БД (in_club + візити)
+  for(const e of added){ await admPersistEntryDB(e.id,e.key,e.keyGroup); await admRecordVisitDB(e); }
 
-  // Зберігаємо у БД (in_club по філії) — upsert щоб не губилось при повторному вході
-  try{
-    if(_currentBranch?.id){
-      // Використовуємо upsert через Prefer: resolution=merge-duplicates
-      await fetch(`${SB_URL}/rest/v1/in_club`,{
-        method:'POST',
-        headers:{
-          'apikey':SB_KEY,
-          'Authorization':'Bearer '+SB_KEY,
-          'Content-Type':'application/json',
-          'Prefer':'resolution=merge-duplicates'
-        },
-        body:JSON.stringify({
-          client_id:id,
-          branch_id:_currentBranch.id,
-          key_number:key||0,
-          locker_group:keyGroup||'',
-          checked_in_by:curUser?.name||'admin'
-        })
-      });
-    }
-  }catch(e){console.warn('in_club post:',e);}
-
-  // Записуємо візит у таблицю visits
-  try{
-    await sb.post('visits',{
-      client_id:id,
-      registered_by:curUser?.name||'admin',
-      visited_at:new Date().toISOString()
-    });
-    // Збільшуємо лічильник у клієнта
-    const newVisits=(c.visits||0)+1;
-    await sb.patch('clients',`id=eq.${id}`,{visits:newVisits});
-    c.visits=newVisits;
-  }catch(e){console.warn('visit record:',e);}
-
-  // Якщо абонемент не активований — питаємо
-  const today=todayStr();
+  // Активація абонементу при першому вході (один раз на пару)
+  const gsym=g=>g==='М'?'👨':g==='Ж'?'👩':'•';
+  const keysMsg=added.map(e=>`${gsym(e.gender)} ${e.last_name} ${e.first_name} — 🔑 ${e.key?('№'+e.key+(e.keyGroup?' ('+e.keyGroup+')':'')):'без ключа'}`).join('\n');
   const isActivated=subForActivation&&(subForActivation.started_at||(subForActivation.start_type==='з дати продажу'));
   if(subForActivation&&!isActivated){
-    const activate=confirm(`✅ ${c.last_name} ${c.first_name} зареєстрований\n🔑 Виданий ключ №${key}\n\n📋 Абонемент "${subForActivation.type_name}" ще не активований.\nЦе перший вхід — активувати абонемент?`);
-    if(activate) await activateSubscription(subForActivation.id,id,true);
+    const activate=confirm(`✅ Зареєстровано:\n${keysMsg}\n\n📋 Абонемент "${subForActivation.type_name}" ще не активований.\nЦе перший вхід — активувати?`);
+    if(activate) await activateSubscription(subForActivation.id,subForActivation.client_id,true);
   } else {
-    alert(`✅ ${c.last_name} ${c.first_name} зареєстрований\n🔑 Виданий ключ №${key}`);
+    alert(`✅ Зареєстровано:\n${keysMsg}`);
   }
   admSelectClient(id);
 }
