@@ -1520,6 +1520,9 @@ const sb = {
 let passVis=false, curUser=null;
 let allClients=[], filterTxt='', filterSt='', filterGn='';
 let subsByClient={};
+// Локальна дата YYYY-MM-DD без зсуву в UTC (toISOString конвертує в UTC і ламає день)
+function dateStr(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function todayStr(){return dateStr(new Date());}
 
 function togglePass(){
   passVis=!passVis;
@@ -2310,7 +2313,7 @@ const stMap={
 async function syncClientStatuses(){
   if(!allClients.length) return;
   try{
-    const today=new Date().toISOString().split('T')[0];
+    const today=todayStr();
     const allSubs=await sb.get('subscriptions','?status=in.(active,frozen,expired)&order=end_date.desc&select=client_id,status,started_at,start_type,end_date,type_name');
     subsByClient={};
     (allSubs||[]).forEach(s=>{ if(!subsByClient[s.client_id]) subsByClient[s.client_id]=[]; subsByClient[s.client_id].push(s); });
@@ -2529,7 +2532,7 @@ async function okLoadTx(){
       filter=`?shift_id=eq.${okShift.id}&order=created_at.desc`;
     } else {
       // Зміни немає — фільтр по часі + філії
-      const today=new Date().toISOString().split('T')[0];
+      const today=todayStr();
       filter='?order=created_at.desc&limit=300';
       if(okPeriod==='today')filter=`?created_at=gte.${today}T00:00:00&order=created_at.desc`;
       else if(okPeriod==='week'){const w=new Date();w.setDate(w.getDate()-7);filter=`?created_at=gte.${w.toISOString()}&order=created_at.desc`;}
@@ -2812,7 +2815,7 @@ async function openDos(id){
     const today2=new Date();today2.setHours(0,0,0,0);
     const pct=Math.max(0,Math.min(100,Math.round((e2-today2)/(e2-s)*100)));
     const dl=Math.max(0,Math.ceil((e2-today2)/86400000));
-    const today=new Date().toISOString().split('T')[0];
+    const today=todayStr();
     const isActivatedSub=activeSub.started_at||(activeSub.start_type==='з дати продажу');
     const notStarted=!isActivatedSub;
     subBlock=`
@@ -3508,7 +3511,7 @@ async function openAddIncome(){
     mo.onclick=function(e){if(e.target===mo)closeIncomeMo();};
     document.body.appendChild(mo);
   } else { mo.style.display='flex'; mo.innerHTML=''; }
-  const today=new Date().toISOString().split('T')[0];
+  const today=todayStr();
   mo.innerHTML=`
     <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;width:100%;max-width:780px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--bd2);flex-shrink:0">
@@ -5626,7 +5629,7 @@ async function runImport(){
         }
 
         // 4. Створюємо абонемент
-        const today=new Date().toISOString().split('T')[0];
+        const today=todayStr();
         const isActive=r.endDate&&r.endDate>=today;
         await sb.post('subscriptions',{
           client_id:client.id,
@@ -6516,7 +6519,7 @@ function admSwitchBranch(id){
 async function syncAdminClientStatuses(){
   if(!admClients.length){admRenderClients();return;}
   try{
-    const today=new Date().toISOString().split('T')[0];
+    const today=todayStr();
     const allSubs=await sb.get('subscriptions','?status=in.(active,frozen)&select=client_id,status,started_at,start_type,end_date');
     const subsByClient={};
     (allSubs||[]).forEach(s=>{ if(!subsByClient[s.client_id]) subsByClient[s.client_id]=[]; subsByClient[s.client_id].push(s); });
@@ -6701,11 +6704,11 @@ async function admSelectClient(id){
     }
   }catch(e){}
   const isIn=admInClub.find(x=>x.id===id);
-  const today=new Date().toISOString().split('T')[0];
+  const today=todayStr();
 
   let subBlock='';
   if(activeSub){
-    const today2=new Date().toISOString().split('T')[0];
+    const today2=todayStr();
     const isActivated=activeSub.started_at||(activeSub.start_type==='з дати продажу');
     const isFrozen=activeSub.status==='frozen';
     const notStarted=!isActivated&&!isFrozen;
@@ -6859,7 +6862,7 @@ async function admFreezeSub(subId, clientId, maxDays){
   if(!days||days<=0) return;
   if(days>maxDays){alert(`❌ Максимум ${maxDays} днів заморозки для цього абонементу`);return;}
   try{
-    const today=new Date().toISOString().split('T')[0];
+    const today=todayStr();
     // Переносимо end_date вперед на кількість днів заморозки
     const sub=await sb.get('subscriptions',`?id=eq.${subId}&select=end_date`);
     const curEnd=sub?.[0]?.end_date;
@@ -6867,7 +6870,7 @@ async function admFreezeSub(subId, clientId, maxDays){
     if(curEnd){
       const e=new Date(curEnd+'T00:00:00');
       e.setDate(e.getDate()+days);
-      newEnd=e.toISOString().split('T')[0];
+      newEnd=dateStr(e);
     }
     await sb.patch('subscriptions',`id=eq.${subId}`,{
       status:'frozen',
@@ -7050,7 +7053,7 @@ async function admCheckIn(id){
   }catch(e){console.warn('visit record:',e);}
 
   // Якщо абонемент не активований — питаємо
-  const today=new Date().toISOString().split('T')[0];
+  const today=todayStr();
   const isActivated=subForActivation&&(subForActivation.started_at||(subForActivation.start_type==='з дати продажу'));
   if(subForActivation&&!isActivated){
     const activate=confirm(`✅ ${c.last_name} ${c.first_name} зареєстрований\n🔑 Виданий ключ №${key}\n\n📋 Абонемент "${subForActivation.type_name}" ще не активований.\nЦе перший вхід — активувати абонемент?`);
@@ -7066,11 +7069,11 @@ async function activateSubscription(subId, clientId, silent=false){
     const subs=await sb.get('subscriptions',`?id=eq.${subId}&select=*`);
     if(!subs||!subs.length)return;
     const sub=subs[0];
-    const today=new Date().toISOString().split('T')[0];
+    const today=todayStr();
     // Перераховуємо end_date від сьогодні
     const endDate=new Date();
     endDate.setDate(endDate.getDate()+(sub.days||30));
-    const endDateStr=endDate.toISOString().split('T')[0];
+    const endDateStr=dateStr(endDate);
     await sb.patch('subscriptions',`id=eq.${subId}`,{
       started_at:today,
       start_date:today,
@@ -7178,11 +7181,11 @@ async function admConfirmSell(){
   }
   const s=admSubTypes.find(x=>x.id===admSelSub);if(!s)return;
   const today=new Date();
-  const startDate=today.toISOString().split('T')[0];
+  const startDate=dateStr(today);
   const numDays=parseInt(s.days)||30;
   const isFromSale=(s.start_type||'з дати продажу')==='з дати продажу';
   const endDate=isFromSale
-    ? new Date(today.getFullYear(),today.getMonth(),today.getDate()+numDays).toISOString().split('T')[0]
+    ? dateStr(new Date(today.getFullYear(),today.getMonth(),today.getDate()+numDays))
     : null;
 
   // ===== ЛОГІКА СЕРІЇ =====
@@ -7469,7 +7472,7 @@ async function kasaLoadTx(){
       filter=`?shift_id=eq.${kasaShift.id}&order=created_at.desc`;
     } else {
       // Немає зміни — фільтр по часі
-      const today=new Date().toISOString().split('T')[0];
+      const today=todayStr();
       if(kasaPeriod==='today') filter=`?created_at=gte.${today}T00:00:00&order=created_at.desc`;
       else if(kasaPeriod==='week'){const w=new Date();w.setDate(w.getDate()-7);filter=`?created_at=gte.${w.toISOString()}&order=created_at.desc`;}
       else if(kasaPeriod==='month'){const m=new Date();m.setMonth(m.getMonth()-1);filter=`?created_at=gte.${m.toISOString()}&order=created_at.desc`;}
