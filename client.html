@@ -1164,6 +1164,18 @@ async function init(){
   const saved=localStorage.getItem('cg_client');
   if(saved){
     curClient=JSON.parse(saved);
+    // Перевіряємо, що акаунт ще існує (міг бути видалений адміном)
+    try{
+      const chk=await get('clients',`?id=eq.${encodeURIComponent(curClient.id)}&select=id`);
+      if(!chk||!chk.length){
+        localStorage.removeItem('cg_client');
+        localStorage.removeItem('cg_pending');
+        curClient=null;
+        setTab('login');
+        showScreen('scr-auth');
+        return;
+      }
+    }catch(e){ /* немає мережі — не викидаємо, лишаємо як є */ }
     const urlParams=new URLSearchParams(window.location.search);
     if(urlParams.get('order')||localStorage.getItem('cg_pending')){
       window.history.replaceState({},'',window.location.pathname);
