@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CREAGYM</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0A0A0A;--p1:#111;--p2:#1A1A1A;--p3:#222;--p4:#2A2A2A;
+  --y:#FFD300;--yd:#FFD30012;--ym:#FFD30028;--yb:#FFD30050;
+  --w:#FFF;--m:#555;--m2:#777;--m3:#999;
+  --bd:#ffffff08;--bd2:#ffffff12;--bd3:#ffffff1e;
+  --gr:#22C55E;--rd:#EF4444;--bl:#3B82F6;--or:#F97316;
+  --f:'Montserrat',sans-serif;
+}
+html,body{background:var(--bg);font-family:var(--f);color:var(--w);min-height:100vh}
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+
+/* AUTH */
+#scr-auth{background:var(--bg);position:relative}
+#scr-auth::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--bd) 1px,transparent 1px),linear-gradient(90deg,var(--bd) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0}
+#scr-auth::after{content:'';position:fixed;top:-160px;left:50%;transform:translateX(-50%);width:500px;height:340px;background:radial-gradient(ellipse,#FFD30014 0%,transparent 70%);pointer-events:none;z-index:0}
+.auth-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:32px 16px 60px;gap:20px;overflow-y:auto;position:relative;z-index:1}
+.auth-logo{text-align:center}
+.auth-lb{width:56px;height:56px;background:var(--y);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:var(--bg);margin:0 auto 10px}
+.auth-logo h1{font-size:22px;font-weight:900;letter-spacing:.12em;color:var(--w)}
+.auth-logo p{font-size:10px;color:var(--m2);letter-spacing:.2em;text-transform:uppercase;margin-top:3px}
+.auth-form{width:100%;max-width:400px;background:var(--p1);border:1px solid var(--bd2);border-radius:14px;padding:20px 18px;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:10px}
+.auth-form::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--y);border-radius:18px 18px 0 0}
+.auth-form h2{font-size:15px;font-weight:700;margin-bottom:16px}
+
+/* TABS */
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--p2);border-radius:9px;padding:3px;margin-bottom:16px}
+.tab{border:none;background:transparent;color:var(--m2);font-family:var(--f);font-size:11px;font-weight:700;letter-spacing:.06em;padding:8px;border-radius:7px;cursor:pointer;transition:all .15s;text-transform:uppercase}
+.tab.active{background:var(--y);color:var(--bg)}
+
+/* INPUTS */
+.fi{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--w);font-family:var(--f);font-size:12px;outline:none;transition:border-color .15s}
+.fi:focus{border-color:var(--yb)}
+.fi::placeholder{color:var(--m)}
+select.fi{cursor:pointer}
+.fi-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ff{display:flex;flex-direction:column;gap:5px}
+.fi-label{font-size:10px;font-weight:700;color:var(--m2);text-transform:uppercase;letter-spacing:.07em}
+
+/* BUTTONS */
+.btn{width:100%;padding:12px;border-radius:9px;border:none;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.04em;transition:all .12s}
+.btn-y{background:var(--y);color:var(--bg)}
+.btn-y:hover{background:#FFE033}
+.btn-ghost{background:var(--p2);color:var(--m2);border:1px solid var(--bd2)}
+.btn-link{background:none;border:none;color:var(--y);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.02em}
+
+/* ERROR/OK */
+.err{display:none;padding:9px 12px;border-radius:8px;background:#EF444414;border:1px solid #EF444430;color:var(--rd);font-size:11px;font-weight:500}
+.err.show{display:block}
+.ok{display:none;padding:9px 12px;border-radius:8px;background:#22C55E14;border:1px solid #22C55E30;color:var(--gr);font-size:11px;font-weight:500}
+.ok.show{display:block}
+
+/* HEADER */
+.hdr{padding:0 14px;height:48px;display:flex;align-items:center;justify-content:space-between;background:var(--p1);border-bottom:1px solid var(--bd2);position:sticky;top:0;z-index:100;flex-shrink:0}
+.hdr-logo{font-size:15px;font-weight:900;letter-spacing:.12em;color:var(--y)}
+.hdr-back{width:30px;height:30px;border-radius:7px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* MAIN */
+.main-wrap{flex:1;overflow-y:auto;padding:12px 12px 88px}
+
+/* CARDS */
+.card{background:var(--p1);border:1px solid var(--bd2);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.card h3{font-size:9px;font-weight:700;color:var(--m2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+
+/* SUB CARD */
+.sub-active{background:linear-gradient(135deg,var(--p1),#1a1200);border:1px solid var(--yb);border-radius:12px;padding:12px 14px;margin-bottom:10px;position:relative;overflow:hidden}
+.sub-active::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--y)}
+.sub-prog-wrap{height:4px;background:var(--p3);border-radius:2px;margin:10px 0}
+.sub-prog{height:100%;border-radius:2px;background:var(--y);transition:width .3s}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.04em}
+.badge-gr{background:#22C55E14;color:var(--gr);border:1px solid #22C55E20}
+.badge-rd{background:#EF444414;color:var(--rd);border:1px solid #EF444420}
+.badge-bl{background:#3B82F614;color:var(--bl);border:1px solid #3B82F620}
+.badge-or{background:#F9731614;color:var(--or);border:1px solid #F9731620}
+
+/* SUB ITEMS */
+.sub-item{background:var(--p1);border:1px solid var(--bd2);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s,background .15s}
+.sub-item:active{border-color:var(--y);background:var(--yd)}
+
+/* BOTTOM NAV */
+.bnav{position:fixed;bottom:0;left:0;right:0;background:var(--p1);border-top:1px solid var(--bd2);display:flex;padding:6px 0 calc(6px + env(safe-area-inset-bottom))}
+.bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 2px;border:none;background:none;cursor:pointer;color:var(--m2);font-family:var(--f);font-size:9px;font-weight:600;letter-spacing:.04em;transition:color .15s}
+.bnav-btn.active{color:var(--y)}
+.bnav-icon{font-size:18px;line-height:1}
+
+/* HISTORY */
+.hist-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd)}
+.hist-item:last-child{border-bottom:none}
+
+/* MODAL */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)}
+.mo.open{display:flex}
+.mo-body{background:var(--p1);border:1px solid var(--bd2);border-radius:16px 16px 0 0;width:100%;max-width:480px;padding:18px 16px calc(18px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px;max-height:90vh;overflow-y:auto}
+.mo-body::before{content:'';display:block;width:36px;height:4px;background:var(--bd3);border-radius:2px;margin:0 auto -4px}
+
+/* SPINNER */
+.spin{width:20px;height:20px;border:2px solid var(--bd2);border-top-color:var(--y);border-radius:50%;animation:sp .7s linear infinite;margin:40px auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* TOAST */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--gr);color:#fff;padding:9px 18px;border-radius:9px;font-size:12px;font-weight:700;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;letter-spacing:.03em}
+.toast.show{opacity:1}
+
+/* CODE INPUTS */
+.code-inputs{display:flex;gap:8px;justify-content:center}
+.code-inp{width:50px;height:56px;border-radius:10px;border:1px solid var(--bd2);background:var(--p2);color:var(--w);font-size:24px;font-weight:800;text-align:center;font-family:var(--f);outline:none;transition:border-color .15s}
+.code-inp:focus{border-color:var(--y)}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- ===== AUTH ===== -->
+<div class="screen active" id="scr-auth">
+  <div class="auth-wrap">
+    <div class="auth-logo">
+      <div class="auth-lb">CG</div>
+      <h1>CREAGYM</h1>
+      <p>Твій фітнес-клуб</p>
+    </div>
+
+    <!-- ВХІД -->
+    <div class="auth-form" id="form-login">
+      <div class="tabs">
+        <button class="tab active" onclick="setTab('login')">Вхід</button>
+        <button class="tab" onclick="setTab('register')">Реєстрація</button>
+      </div>
+      <div class="err" id="login-err"></div>
+      <div class="ff"><div class="fi-label">Номер телефону</div>
+        <input class="fi" id="login-id" type="text" placeholder="+380670000000" autocomplete="username">
+      </div>
+      <div class="ff"><div class="fi-label">Пароль</div>
+        <input class="fi" id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn btn-y" onclick="doLogin()">Увійти</button>
+      <div style="text-align:center">
+        <button class="btn-link" onclick="setTab('recover')">Забули пароль?</button>
+      </div>
+    </div>
+
+    <!-- РЕЄСТРАЦІЯ -->
+    <div class="auth-form" id="form-register" style="display:none">
+      <div class="tabs">
+        <button class="tab" onclick="setTab('login')">Вхід</button>
+        <button class="tab active" onclick="setTab('register')">Реєстрація</button>
+      </div>
+      <div class="err" id="reg-err"></div>
+      <div class="fi-row">
+        <div class="ff"><div class="fi-label">Прізвище *</div>
+          <input class="fi" id="reg-last" placeholder="Іванов">
+        </div>
+        <div class="ff"><div class="fi-label">Ім'я *</div>
+          <input class="fi" id="reg-first" placeholder="Іван">
+        </div>
+      </div>
+      <div class="ff"><div class="fi-label">Телефон *</div>
+        <input class="fi" id="reg-phone" type="tel" placeholder="+380670000000">
+      </div>
+      <div class="fi-row">
+        <div class="ff"><div class="fi-label">Стать</div>
+          <select class="fi" id="reg-gender">
+            <option value="">—</option>
+            <option value="М">Чоловік</option>
+            <option value="Ж">Жінка</option>
+          </select>
+        </div>
+        <div class="ff"><div class="fi-label">Дата народження</div>
+          <input class="fi" id="reg-birth" type="date">
+        </div>
+      </div>
+      <div class="ff"><div class="fi-label">Місто</div>
+        <input class="fi" id="reg-city" placeholder="Житомир">
+      </div>
+      <div class="ff"><div class="fi-label">Пароль *</div>
+        <input class="fi" id="reg-pass" type="password" placeholder="мінімум 6 символів">
+      </div>
+      <div class="ff"><div class="fi-label">Повторіть пароль *</div>
+        <input class="fi" id="reg-pass2" type="password" placeholder="••••••••">
+      </div>
+      <button class="btn btn-y" onclick="doRegister()">Зареєструватись</button>
+    </div>
+
+    <!-- ВІДНОВЛЕННЯ ПАРОЛЮ -->
+    <div class="auth-form" id="form-recover" style="display:none">
+      <h2>🔐 Відновлення паролю</h2>
+      <div class="err" id="recover-err"></div>
+      <div class="ok" id="recover-ok"></div>
+      <div id="recover-step1">
+        <div class="ff" style="margin-bottom:12px"><div class="fi-label">Номер телефону</div>
+          <input class="fi" id="recover-phone" type="tel" placeholder="+380670000000">
+        </div>
+        <button class="btn btn-y" id="recover-send-btn" onclick="sendRecoverCode()">Надіслати код</button>
+      </div>
+      <div id="recover-step2" style="display:none">
+        <p style="font-size:13px;color:var(--m2);margin-bottom:6px;text-align:center">Введіть 4-значний код з SMS</p>
+        <div id="recover-timer" style="text-align:center;font-size:12px;color:var(--y);font-weight:700;margin-bottom:12px"></div>
+        <div class="code-inputs">
+          <input class="code-inp" id="c1" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" oninput="nextCode(this,'c2')" onpaste="pasteCode(event)" onkeydown="codeKey(event,this,null)">
+          <input class="code-inp" id="c2" inputmode="numeric" pattern="[0-9]*" oninput="nextCode(this,'c3')" onpaste="pasteCode(event)" onkeydown="codeKey(event,this,'c1')">
+          <input class="code-inp" id="c3" inputmode="numeric" pattern="[0-9]*" oninput="nextCode(this,'c4')" onpaste="pasteCode(event)" onkeydown="codeKey(event,this,'c2')">
+          <input class="code-inp" id="c4" inputmode="numeric" pattern="[0-9]*" oninput="nextCode(this,null)" onpaste="pasteCode(event)" onkeydown="codeKey(event,this,'c3')">
+        </div>
+        <div style="height:12px"></div>
+        <div id="new-pass-block" style="display:none;flex-direction:column;gap:10px">
+          <div class="ff"><div class="fi-label">Новий пароль</div>
+            <input class="fi" id="recover-new-pass" type="password" placeholder="мінімум 6 символів">
+          </div>
+          <div class="ff"><div class="fi-label">Повторіть пароль</div>
+            <input class="fi" id="recover-new-pass2" type="password" placeholder="мінімум 6 символів">
+          </div>
+        </div>
+        <button class="btn btn-y" id="recover-confirm-btn" onclick="confirmRecoverCode()">Підтвердити код</button>
+        <button class="btn btn-ghost" id="resend-btn" onclick="resendCode()" style="margin-top:8px;display:none">🔄 Надіслати новий код</button>
+      </div>
+      <button class="btn-link" onclick="setTab('login')" style="text-align:center;margin-top:4px">← Назад до входу</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ГОЛОВНА ===== -->
+<div class="screen" id="scr-home">
+  <div class="hdr"><div class="hdr-logo">CREAGYM</div><div style="font-size:11px;color:var(--m2);font-weight:600" id="hdr-name"></div></div>
+  <div class="main-wrap">
+    <div style="padding:2px 0 12px"><h2 id="home-hi" style="font-size:20px;font-weight:700"></h2></div>
+    <div id="home-sub"></div>
+    <div class="card">
+      <h3>Швидкі дії</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button onclick="showScreen('scr-shop')" style="padding:14px 10px;border-radius:10px;background:var(--ym);border:1px solid #FFD30030;color:var(--y);font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer">🎫 Купити абонемент</button>
+        <button onclick="showScreen('scr-visits')" style="padding:14px 10px;border-radius:10px;background:var(--p2);border:1px solid var(--bd2);color:var(--m);font-family:var(--f);font-size:13px;font-weight:600;cursor:pointer">📋 Відвідування</button>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h3 style="margin:0">Наші зали</h3>
+        <button onclick="loadHome()" style="padding:3px 8px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;cursor:pointer">🔄 Оновити</button>
+      </div>
+      <div id="home-branches"></div>
+    </div>
+  </div>
+  <div class="bnav">
+    <button class="bnav-btn active" onclick="showScreen('scr-home')"><div class="bnav-icon">🏠</div>Головна</button>
+    <button class="bnav-btn" onclick="showScreen('scr-shop')"><div class="bnav-icon">🎫</div>Абонементи</button>
+    <button class="bnav-btn" onclick="showScreen('scr-visits')"><div class="bnav-icon">📋</div>Відвідування</button>
+    <button class="bnav-btn" onclick="showScreen('scr-products')"><div class="bnav-icon">🛍</div>Магазин</button>
+    <button class="bnav-btn" onclick="showScreen('scr-profile')"><div class="bnav-icon">👤</div>Профіль</button>
+  </div>
+</div>
+
+<!-- ===== МАГАЗИН ===== -->
+<div class="screen" id="scr-shop">
+  <div class="hdr"><button class="hdr-back" onclick="showScreen('scr-home')">←</button><div class="hdr-logo">Абонементи</div><div style="width:32px"></div></div>
+  <div class="main-wrap"><div id="shop-list"><div class="spin"></div></div></div>
+</div>
+
+<!-- ===== ВІДВІДУВАННЯ ===== -->
+<div class="screen" id="scr-visits">
+  <div class="hdr"><button class="hdr-back" onclick="showScreen('scr-home')">←</button><div class="hdr-logo">Відвідування</div><div style="width:32px"></div></div>
+  <div class="main-wrap"><div id="visits-list"><div class="spin"></div></div></div>
+</div>
+
+<!-- ===== ПРОФІЛЬ ===== -->
+<div class="screen" id="scr-profile">
+  <div class="hdr"><button class="hdr-back" onclick="showScreen('scr-home')">←</button><div class="hdr-logo">Профіль</div><div style="width:32px"></div></div>
+  <div class="main-wrap"><div id="profile-content"><div class="spin"></div></div></div>
+</div>
+
+<!-- ===== МАГАЗИН ТОВАРІВ ===== -->
+<div class="screen" id="scr-products">
+  <div class="hdr"><button class="hdr-back" onclick="showScreen('scr-home')">←</button><div class="hdr-logo">Магазин</div><div style="width:32px"></div></div>
+  <div class="main-wrap">
+    <p style="font-size:13px;color:var(--m2);margin-bottom:16px">Товари доступні в наших залах</p>
+    <div id="products-list"><div class="spin"></div></div>
+  </div>
+</div>
+
+<!-- ===== МОДАЛКА ОПЛАТИ ===== -->
+<div class="mo" id="mo-pay">
+  <div class="mo-body">
+    
+    <h3>Оплата абонементу</h3>
+    <div class="sub-item" style="cursor:default">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <div style="font-size:15px;font-weight:700" id="pay-name"></div>
+        <div style="font-size:18px;font-weight:800;color:var(--y)" id="pay-price"></div>
+      </div>
+      <div style="font-size:12px;color:var(--m2)" id="pay-meta"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--p2);border-radius:10px">
+      <span style="font-size:13px;color:var(--m2)">До сплати:</span>
+      <span style="font-size:20px;font-weight:800;color:var(--y)" id="pay-total"></span>
+    </div>
+    <div id="pay-methods"></div>
+    <button class="btn btn-ghost" onclick="closePay()">Скасувати</button>
+  </div>
+</div>
+
+<script>
+const SB_URL='https://rkknbltiylsvmycbbyde.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJra25ibHRpeWxzdm15Y2JieWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNzkyMTksImV4cCI6MjA5Mjc1NTIxOX0.SrXSluAh8TMcXoCqVZLk_mylTSwzBu8tJDuUSudD-mA';
+
+let curClient=null;
+let _subTypes=[];
+let _acqSettings={};
+let _smsCode=null;
+let _recoverClientId=null;
+
+// ===== API =====
+async function api(method,table,params='',data=null){
+  const opts={method,headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'}};
+  if(data) opts.body=JSON.stringify(data);
+  if(method==='POST') opts.headers['Prefer']='return=representation';
+  const r=await fetch(`${SB_URL}/rest/v1/${table}${params}`,opts);
+  const text=await r.text();
+  return text?JSON.parse(text):null;
+}
+const get=(t,p)=>api('GET',t,p);
+const post=(t,d)=>api('POST',t,'',d);
+const patch=(t,f,d)=>api('PATCH',t,'?'+f,d);
+
+async function sha256(str){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function toast(msg,color='#22C55E'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.style.background=color;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+function showErr(id,msg){const e=document.getElementById(id);e.textContent=msg;e.classList.add('show');}
+function hideErr(id){document.getElementById(id).classList.remove('show');}
+function showOk(id,msg){const e=document.getElementById(id);e.textContent=msg;e.classList.add('show');}
+
+// ===== TABS =====
+function setTab(tab){
+  document.getElementById('form-login').style.display='none';
+  document.getElementById('form-register').style.display='none';
+  document.getElementById('form-recover').style.display='none';
+  if(tab==='login') document.getElementById('form-login').style.display='flex';
+  else if(tab==='register') document.getElementById('form-register').style.display='flex';
+  else if(tab==='recover'){
+    document.getElementById('form-recover').style.display='flex';
+    document.getElementById('recover-step1').style.display='block';
+    document.getElementById('recover-step2').style.display='none';
+    hideErr('recover-err');
+    document.getElementById('recover-ok').classList.remove('show');
+  }
+}
+
+// ===== SCREEN =====
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id)?.classList.add('active');
+  const map={'scr-home':0,'scr-shop':1,'scr-visits':2,'scr-products':3,'scr-profile':4};
+  document.querySelectorAll('.bnav-btn').forEach((b,i)=>b.classList.toggle('active',i===map[id]));
+  if(id==='scr-shop') loadShop();
+  if(id==='scr-products'){_selectedProductBranchId=null;loadProducts();}
+  if(id==='scr-visits') loadVisits();
+  if(id==='scr-profile') loadProfile();
+}
+
+// ===== LOGIN =====
+async function doLogin(){
+  hideErr('login-err');
+  const ident=document.getElementById('login-id').value.trim();
+  const pass=document.getElementById('login-pass').value;
+  if(!ident||!pass){showErr('login-err','Заповніть всі поля');return;}
+  const hash=await sha256(pass);
+  const r=await get('clients',`?phone=eq.${encodeURIComponent(ident)}&password_hash=eq.${encodeURIComponent(hash)}&select=*`);
+  if(!r||!r.length){
+    const exists=await get('clients',`?phone=eq.${encodeURIComponent(ident)}&select=id,password_hash`);
+    if(exists&&exists.length>0&&!exists[0].password_hash){
+      showErr('login-err','Ваш акаунт створено адміністратором. Натисніть "Забули пароль?" щоб встановити пароль.');
+    } else {
+      showErr('login-err','Невірний телефон/email або пароль');
+    }
+    return;
+  }
+  curClient=r[0];
+  localStorage.setItem('cg_client',JSON.stringify(curClient));
+  loadHome();
+  showScreen('scr-home');
+}
+
+// ===== REGISTER =====
+async function doRegister(){
+  hideErr('reg-err');
+  const last=document.getElementById('reg-last').value.trim();
+  const first=document.getElementById('reg-first').value.trim();
+  const phone=document.getElementById('reg-phone').value.trim();
+  const gender=document.getElementById('reg-gender').value;
+  const birth=document.getElementById('reg-birth').value;
+  const city=document.getElementById('reg-city').value.trim();
+  const pass=document.getElementById('reg-pass').value;
+  const pass2=document.getElementById('reg-pass2').value;
+
+  if(!last||!first||!phone||!pass){showErr('reg-err',"Заповніть обов'язкові поля: прізвище, ім'я, телефон, пароль");return;}
+  if(pass.length<6){showErr('reg-err','Пароль мінімум 6 символів');return;}
+  if(pass!==pass2){showErr('reg-err','Паролі не співпадають');return;}
+
+  // Перевіряємо вік — мінімум 12 років
+  if(birth){
+    const birthDate=new Date(birth);
+    const today=new Date();
+    let age=today.getFullYear()-birthDate.getFullYear();
+    const m=today.getMonth()-birthDate.getMonth();
+    if(m<0||(m===0&&today.getDate()<birthDate.getDate())) age--;
+    if(age<12){showErr('reg-err','⛔ Вхід недоступний. За правилами клубу мінімальний вік — 12 років.');return;}
+  }
+
+  const btn=document.querySelector('#form-register .btn-y');
+  btn.textContent='...';btn.disabled=true;
+
+  try{
+    // Перевіряємо телефон
+    const byPhone=await get('clients',`?phone=eq.${encodeURIComponent(phone)}&select=id`);
+    if(byPhone&&byPhone.length>0){showErr('reg-err','Клієнт з таким номером телефону вже існує');return;}
+
+    const hash=await sha256(pass);
+    const cid='CG-'+Math.random().toString(36).substr(2,6).toUpperCase();
+    const r=await post('clients',{
+      id:cid,first_name:first,last_name:last,
+      phone,gender:gender||null,
+      birth_date:birth||null,city:city||null,
+      password_hash:hash,status:'new'
+    });
+    const cl=Array.isArray(r)?r[0]:r;
+    if(!cl?.id){showErr('reg-err',cl?.message||'Помилка реєстрації');return;}
+    curClient=cl;
+    localStorage.setItem('cg_client',JSON.stringify(curClient));
+    toast('✅ Реєстрацію успішно завершено!');
+    loadHome();
+    showScreen('scr-home');
+  }catch(e){showErr('reg-err','Помилка: '+e.message);}
+  finally{btn.textContent='Зареєструватись';btn.disabled=false;}
+}
+
+// ===== RECOVER PASSWORD =====
+let _recoverSending=false;
+async function sendRecoverCode(){
+  if(_recoverSending) return; // захист від повторних кліків (інакше летить купа SMS)
+  hideErr('recover-err');
+  document.getElementById('recover-ok').classList.remove('show');
+  const phone=document.getElementById('recover-phone').value.trim();
+  if(!phone){showErr('recover-err','Введіть номер телефону');return;}
+
+  _recoverSending=true;
+  const btn=document.getElementById('recover-send-btn');
+  const btnTxt=btn?btn.textContent:'';
+  if(btn){ btn.disabled=true; btn.style.opacity='0.6'; btn.style.cursor='not-allowed'; btn.textContent='Надсилання…'; }
+  try{
+    const clients=await get('clients',`?phone=eq.${encodeURIComponent(phone)}&select=id,first_name`);
+    if(!clients||!clients.length){showErr('recover-err','Клієнта з таким номером не знайдено');return;}
+
+    _recoverClientId=clients[0].id;
+    _recoverPhone=phone;
+
+    // Генеруємо 4-значний код
+    _smsCode=String(Math.floor(1000+Math.random()*9000));
+
+    // Зберігаємо код в БД з часом дії 10 хвилин
+    const expiresAt=new Date(Date.now()+10*60*1000).toISOString();
+    try{
+      // Видаляємо старі коди для цього номера
+      await fetch(`${SB_URL}/rest/v1/sms_codes?phone=eq.${encodeURIComponent(phone)}`,{
+        method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+      });
+      // Зберігаємо новий код
+      await post('sms_codes',{phone,code:_smsCode,expires_at:expiresAt,used:false});
+    }catch(e){console.warn('sms_codes save:',e);}
+
+    const sent=await sendSms(phone,`CREAGYM: ваш код ${_smsCode}`);
+    if(!sent){
+      showErr('recover-err','Не вдалось надіслати SMS. Спробуйте пізніше.');
+      return;
+    }
+    showOk('recover-ok','SMS відправлено! Перевірте телефон.');
+
+    document.getElementById('recover-step1').style.display='none';
+    document.getElementById('recover-step2').style.display='block';
+    startRecoverTimer(10*60);
+  } finally {
+    _recoverSending=false;
+    if(btn){ btn.disabled=false; btn.style.opacity=''; btn.style.cursor=''; btn.textContent=btnTxt||'Надіслати код'; }
+  }
+}
+
+let _recoverPhone=null;
+let _recoverTimerInterval=null;
+
+function startRecoverTimer(seconds){
+  const timerEl=document.getElementById('recover-timer');
+  const resendBtn=document.getElementById('resend-btn');
+  if(resendBtn) resendBtn.style.display='none';
+  if(_recoverTimerInterval) clearInterval(_recoverTimerInterval);
+  let left=seconds;
+  const update=()=>{
+    if(!timerEl) return;
+    const m=Math.floor(left/60);
+    const s=left%60;
+    timerEl.textContent=`Код дійсний: ${m}:${s.toString().padStart(2,'0')}`;
+    if(left<=0){
+      clearInterval(_recoverTimerInterval);
+      timerEl.textContent='Код застарів';
+      timerEl.style.color='var(--rd)';
+      if(resendBtn) resendBtn.style.display='flex';
+    }
+    left--;
+  };
+  update();
+  _recoverTimerInterval=setInterval(update,1000);
+}
+
+async function resendCode(){
+  document.getElementById('c1').value='';
+  document.getElementById('c2').value='';
+  document.getElementById('c3').value='';
+  document.getElementById('c4').value='';
+  document.getElementById('new-pass-block').style.display='none';
+  document.getElementById('recover-confirm-btn').textContent='Підтвердити код';
+  hideErr('recover-err');
+  document.getElementById('recover-ok').classList.remove('show');
+  document.getElementById('recover-step1').style.display='block';
+  document.getElementById('recover-step2').style.display='none';
+  if(_recoverTimerInterval) clearInterval(_recoverTimerInterval);
+}
+
+// Заповнити всі 4 поля коду з рядка цифр
+function fillCode(str){
+  const digits=String(str||'').replace(/\D/g,'').slice(0,4).split('');
+  const ids=['c1','c2','c3','c4'];
+  ids.forEach((id,i)=>{const el=document.getElementById(id);if(el)el.value=digits[i]||'';});
+  if(digits.length>=4){ document.getElementById('recover-confirm-btn')?.focus(); }
+  else { const nx=ids[digits.length]; document.getElementById(nx||'c4')?.focus(); }
+}
+function nextCode(el,nextId){
+  let v=el.value.replace(/\D/g,'');
+  if(v.length>1){ fillCode(v); return; } // вставка/автозаповнення всього коду в одне поле
+  el.value=v;
+  if(v&&nextId) document.getElementById(nextId)?.focus();
+}
+function pasteCode(e){
+  e.preventDefault();
+  const txt=((e.clipboardData||window.clipboardData)?.getData('text'))||'';
+  fillCode(txt);
+}
+function codeKey(e,el,prevId){
+  if(e.key==='Backspace'&&!el.value&&prevId){ e.preventDefault(); const p=document.getElementById(prevId); if(p){p.value='';p.focus();} }
+}
+
+async function confirmRecoverCode(){
+  hideErr('recover-err');
+  const entered=[
+    document.getElementById('c1').value,
+    document.getElementById('c2').value,
+    document.getElementById('c3').value,
+    document.getElementById('c4').value
+  ].join('');
+
+  const newPassBlock=document.getElementById('new-pass-block');
+  const isCodeConfirmed=newPassBlock&&newPassBlock.style.display!=='none';
+
+  if(!isCodeConfirmed){
+    if(entered.length!==4){showErr('recover-err','Введіть 4-значний код');return;}
+    
+    // Перевіряємо код в БД
+    try{
+      const now=new Date().toISOString();
+      const codes=await get('sms_codes',`?phone=eq.${encodeURIComponent(_recoverPhone)}&code=eq.${entered}&used=eq.false&expires_at=gte.${now}&order=created_at.desc&limit=1`);
+      if(!codes||!codes.length){
+        showErr('recover-err','Невірний або застарілий код. Спробуйте ще раз.');return;
+      }
+      // Позначаємо код як використаний
+      await patch('sms_codes',`id=eq.${codes[0].id}`,{used:true});
+    }catch(e){
+      // Fallback — перевіряємо локально
+      if(entered!==_smsCode){showErr('recover-err','Невірний код. Спробуйте ще раз.');return;}
+    }
+    
+    // Код правильний
+    if(_recoverTimerInterval) clearInterval(_recoverTimerInterval);
+    document.getElementById('recover-timer').textContent='';
+    newPassBlock.style.display='flex';
+    document.getElementById('recover-confirm-btn').textContent='Змінити пароль';
+    document.getElementById('recover-ok').classList.remove('show');
+    document.getElementById('resend-btn').style.display='none';
+    return;
+  }
+
+  // Крок 2 — змінюємо пароль
+  const newPass=document.getElementById('recover-new-pass').value;
+  const newPass2=document.getElementById('recover-new-pass2').value;
+  if(!newPass||newPass.length<6){showErr('recover-err','Пароль мінімум 6 символів');return;}
+  if(newPass!==newPass2){showErr('recover-err','Паролі не співпадають');return;}
+
+  const hash=await sha256(newPass);
+  await patch('clients',`id=eq.${_recoverClientId}`,{password_hash:hash});
+  if(_recoverTimerInterval) clearInterval(_recoverTimerInterval);
+  toast('✅ Пароль успішно змінено!');
+  _smsCode=null;_recoverClientId=null;_recoverPhone=null;
+  setTab('login');
+}
+
+// ===== HOME =====
+async function loadHome(){
+  if(!curClient)return;
+  document.getElementById('hdr-name').textContent=curClient.first_name||'';
+  document.getElementById('home-hi').textContent=`Привіт, ${curClient.first_name}! 👋`;
+
+  const subs=await get('subscriptions',`?client_id=eq.${curClient.id}&status=in.(active,frozen)&order=end_date.desc&limit=1`)||[];
+  const sub=subs[0];
+  const el=document.getElementById('home-sub');
+  if(sub){
+    const endD=new Date(sub.end_date+'T00:00:00');
+    const today=new Date();today.setHours(0,0,0,0);
+    const dl=Math.ceil((endD-today)/(1000*60*60*24));
+    const pct=Math.max(0,Math.min(100,Math.round(dl/30*100)));
+    const frozen=sub.status==='frozen';
+    el.innerHTML=`<div class="sub-active">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div style="font-size:16px;font-weight:800">${sub.type_name}</div>
+        <span class="badge ${frozen?'badge-bl':dl<=3?'badge-rd':'badge-gr'}">${frozen?'❄️ Заморожено':dl<=3?'⚠️ Закінчується':'✅ Активний'}</span>
+      </div>
+      <div class="sub-prog-wrap"><div class="sub-prog" style="width:${pct}%;background:${frozen?'var(--bl)':dl<=3?'var(--rd)':'var(--y)'}"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--m2)">
+        <span>Залишилось: ${dl} дн.</span>
+        <span>до ${endD.toLocaleDateString('uk-UA')}</span>
+      </div>
+    </div>`;
+  } else {
+    el.innerHTML=`<div class="card" style="text-align:center;padding:20px">
+      <div style="font-size:32px;margin-bottom:8px">🎫</div>
+      <div style="font-weight:700;margin-bottom:6px">Немає активного абонементу</div>
+      <button onclick="showScreen('scr-shop')" style="margin-top:8px;padding:10px 20px;border-radius:10px;border:none;background:var(--y);color:var(--bg);font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer">Купити абонемент</button>
+    </div>`;
+  }
+
+  const branches=await get('branches','?is_active=eq.true&order=created_at.asc')||[];
+  const inClub=await get('in_club','?select=branch_id')||[];
+  
+  // Рахуємо по філіях
+  const countMap={};
+  inClub.forEach(x=>{countMap[x.branch_id]=(countMap[x.branch_id]||0)+1;});
+
+  document.getElementById('home-branches').innerHTML=branches.map(b=>{
+    const cnt=countMap[b.id]||0;
+    const color=cnt===0?'var(--m2)':cnt<10?'var(--gr)':cnt<20?'var(--or)':'var(--rd)';
+    const label=cnt===0?'Порожньо':cnt===1?'1 людина':cnt<5?`${cnt} людини`:`${cnt} людей`;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--bd)">
+      <div style="font-size:22px">🏋️</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600">${b.name}</div>
+        ${b.address?`<div style="font-size:11px;color:var(--m2);font-weight:600">${b.address}</div>`:''}
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:15px;font-weight:800;color:${color}">${cnt}</div>
+        <div style="font-size:10px;color:${color}">${label}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ===== SHOP =====
+let _selectedBranchId=null;
+let _selectedProductBranchId=null;
+let _allBranches=[];
+
+async function loadShop(){
+  const el=document.getElementById('shop-list');
+  el.innerHTML='<div class="spin"></div>';
+  const sets=await get('settings','?key=in.(acq_provider,acq_merchant,acq_public_key,acq_mono_token,acq_client_url)')||[];
+  sets.forEach(s=>_acqSettings[s.key]=s.value);
+  _allBranches=await get('branches','?is_active=eq.true&order=created_at.asc')||[];
+
+  // Якщо зал не вибраний - показуємо вибір
+  if(!_selectedBranchId&&_allBranches.length>1){
+    el.innerHTML=`<div class="card">
+      <h3>Оберіть зал</h3>
+      ${_allBranches.map(b=>`<div onclick="selectBranch('${b.id}')" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;border:1px solid var(--bd2);background:var(--p2);margin-bottom:8px;cursor:pointer">
+        <div style="font-size:24px">🏋️</div>
+        <div><div style="font-size:14px;font-weight:700">${b.name}</div>
+        ${b.address?`<div style="font-size:11px;color:var(--m2);font-weight:600">${b.address}</div>`:''}</div>
+        <div style="margin-left:auto;color:var(--y)">→</div>
+      </div>`).join('')}
+    </div>`;
+    return;
+  }
+  if(!_selectedBranchId&&_allBranches.length===1) _selectedBranchId=_allBranches[0].id;
+
+  const branch=_allBranches.find(b=>b.id===_selectedBranchId);
+
+  // Завантажуємо мережеві + локальні абонементи цього залу
+  const [networkTypes, localTypes] = await Promise.all([
+    get('subscription_types','?is_active=eq.true&is_network=eq.true&order=price.asc')||[],
+    get('subscription_types',`?is_active=eq.true&is_network=eq.false&branch_id=eq.${_selectedBranchId}&order=price.asc`)||[]
+  ]);
+  _subTypes=[...(networkTypes||[]),...(localTypes||[])];
+
+  if(!_subTypes.length){
+    el.innerHTML=`<div style="text-align:center;color:var(--m2);padding:40px 0">
+      <div style="font-size:32px;margin-bottom:10px">🎫</div>
+      <div>Немає доступних абонементів</div>
+      <button onclick="_selectedBranchId=null;loadShop()" style="margin-top:16px;padding:8px 16px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:12px;cursor:pointer">← Змінити зал</button>
+    </div>`;
+    return;
+  }
+
+  const streak=curClient?.streak||0;
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+    <div style="font-size:18px">🏋️</div>
+    <div style="font-size:14px;font-weight:700">${branch?.name||'Зал'}</div>
+    <button onclick="_selectedBranchId=null;loadShop()" style="margin-left:auto;padding:4px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;cursor:pointer">Змінити</button>
+  </div>
+  ${_subTypes.map(t=>{
+    const disc=streak>=1?Math.min(streak*3,33):0;
+    const fp=disc?Math.round(t.price*(1-disc/100)):t.price;
+    const isNetwork=t.is_network;
+    return `<div class="sub-item" onclick="openPay('${t.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div>
+          <div style="font-size:15px;font-weight:700">${t.name}</div>
+          <span style="font-size:10px;padding:2px 6px;border-radius:10px;${isNetwork?'background:#60A5FA20;color:#60A5FA':'background:var(--ym);color:var(--y)'}">${isNetwork?'🌐 Мережевий':'🏢 Локальний'}</span>
+        </div>
+        <div style="text-align:right">
+          ${disc?`<div style="text-decoration:line-through;color:var(--m2);font-size:11px">${t.price} ₴</div>`:''}
+          <div style="font-size:18px;font-weight:800;color:var(--y)">${fp} ₴</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--m2);margin-top:4px">${t.days} ${t.duration_unit||'дн.'} · ${t.class_name||'Клубний'}${disc?` · 🔥 -${disc}% серія`:''}</div>
+      ${t.description?`<div style="font-size:12px;color:var(--m2);margin-top:6px">${t.description}</div>`:''}
+      ${!_acqSettings.acq_provider?'<div style="font-size:11px;color:var(--or);margin-top:6px">⚠️ Оплата тільки в залі</div>':''}
+    </div>`;
+  }).join('')}`;
+}
+
+function selectBranch(id){
+  _selectedBranchId=id;
+  loadShop();
+}
+
+// ===== PRODUCTS =====
+async function loadProducts(){
+  const el=document.getElementById('products-list');
+  if(!el)return;
+  el.innerHTML='<div class="spin"></div>';
+
+  // Якщо зал не вибраний
+  if(!_selectedProductBranchId){
+    if(!_allBranches.length) _allBranches=await get('branches','?is_active=eq.true&order=created_at.asc')||[];
+    if(_allBranches.length===1) _selectedProductBranchId=_allBranches[0].id;
+    else if(_allBranches.length>1){
+      el.innerHTML=`<div class="card">
+        <h3>Оберіть зал</h3>
+        ${_allBranches.map(b=>`<div onclick="_selectedProductBranchId='${b.id}';loadProducts()" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;border:1px solid var(--bd2);background:var(--p2);margin-bottom:8px;cursor:pointer">
+          <div style="font-size:24px">🏋️</div>
+          <div style="font-size:14px;font-weight:700">${b.name}</div>
+          <div style="margin-left:auto;color:var(--y)">→</div>
+        </div>`).join('')}
+      </div>`;
+      return;
+    }
+  }
+
+  const prods=await get('products',`?branch_id=eq.${_selectedProductBranchId}&stock=gt.0&order=category.asc,name.asc`)||[];
+  
+  if(!prods.length){
+    el.innerHTML='<div style="text-align:center;color:var(--m2);padding:40px 0">Немає товарів у продажу</div>';
+    return;
+  }
+
+  // Групуємо по категоріям
+  const cats={};
+  prods.forEach(p=>{
+    const cat=p.category||'Інше';
+    if(!cats[cat]) cats[cat]=[];
+    cats[cat].push(p);
+  });
+
+  const branch=_allBranches.find(b=>b.id===_selectedProductBranchId);
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+    <div style="font-size:18px">🏋️</div>
+    <div style="font-size:14px;font-weight:700">${branch?.name||'Зал'}</div>
+    <button onclick="_selectedProductBranchId=null;loadProducts()" style="margin-left:auto;padding:4px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;cursor:pointer">Змінити</button>
+  </div>
+  <p style="font-size:12px;color:var(--m2);margin-bottom:12px">Придбати можна в залі у адміністратора</p>`+
+  Object.entries(cats).map(([cat,items])=>`
+    <div class="card">
+      <h3>${cat}</h3>
+      ${items.map(p=>`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--bd)">
+        <div style="font-size:28px">${p.emoji||'📦'}</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600">${p.name}</div>
+          ${p.description?`<div style="font-size:11px;color:var(--m2);font-weight:600">${p.description}</div>`:''}
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:16px;font-weight:800;color:var(--y)">${p.price} ₴</div>
+          <div style="font-size:10px;color:var(--m2)">в наявності</div>
+        </div>
+      </div>`).join('')}
+    </div>`).join('');
+}
+
+// ===== PAY =====
+let _payId=null;
+function openPay(id){
+  const t=_subTypes.find(x=>x.id===id);if(!t)return;
+  _payId=id;
+  const streak=curClient?.streak||0;
+  const disc=streak>=1?Math.min(streak*3,33):0;
+  const fp=disc?Math.round(t.price*(1-disc/100)):t.price;
+  document.getElementById('pay-name').textContent=t.name;
+  document.getElementById('pay-price').textContent=fp+' ₴';
+  document.getElementById('pay-meta').textContent=`${t.days} ${t.duration_unit||'дн.'}${disc?' · 🔥 -'+disc+'% знижка серії':''}`;
+  document.getElementById('pay-total').textContent=fp+' ₴';
+  const p=_acqSettings.acq_provider;
+  document.getElementById('pay-methods').innerHTML=p
+    ?`<button class="btn btn-y" onclick="doPay('${id}',${fp})">💳 Оплатити онлайн</button>`
+    :`<div style="text-align:center;padding:12px;color:var(--m2);font-size:13px">Онлайн оплата не налаштована.<br>Зверніться до адміністратора залу.</div>`;
+  document.getElementById('mo-pay').classList.add('open');
+}
+
+function closePay(){document.getElementById('mo-pay').classList.remove('open');}
+
+async function doPay(subId,amount){
+  const t=_subTypes.find(x=>x.id===subId);if(!t)return;
+  const orderRef='CG-'+Date.now();
+  const clientUrl=_acqSettings.acq_client_url||window.location.origin+window.location.pathname;
+  localStorage.setItem('cg_pending',JSON.stringify({orderRef,subId,amount}));
+  const p=_acqSettings.acq_provider;
+  const form=document.createElement('form');
+  form.method='POST';form.style.display='none';
+  if(p==='monobank'){
+    try{
+      const monoRes=await fetch('https://creagym-one.vercel.app/api/monobank',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          token:_acqSettings.acq_mono_token,
+          amount,
+          orderId:orderRef,
+          description:t.name,
+          name:t.name,
+          redirectUrl:clientUrl
+        })
+      });
+      const monoData=await monoRes.json();
+      if(monoData.pageUrl){
+        localStorage.setItem('cg_pending',JSON.stringify({orderRef,subId,amount}));
+        toast('Переходимо до Monobank...');
+        setTimeout(()=>window.location.href=monoData.pageUrl,500);
+      } else {
+        alert('❌ '+JSON.stringify(monoData));
+      }
+    }catch(e){alert('❌ '+e.message);}
+    return;
+  } else if(p==='wayforpay'){
+    form.action='https://secure.wayforpay.com/pay';
+    const f={merchantAccount:_acqSettings.acq_merchant,merchantDomainName:window.location.hostname,
+      orderReference:orderRef,orderDate:Math.floor(Date.now()/1000),amount,currency:'UAH',
+      productName:t.name,productCount:1,productPrice:amount,
+      clientFirstName:curClient.first_name||'',clientLastName:curClient.last_name||'',
+      clientEmail:curClient.email||'',clientPhone:curClient.phone||'',
+      returnUrl:clientUrl+'?order='+orderRef+'&sub='+subId};
+    Object.entries(f).forEach(([k,v])=>{const i=document.createElement('input');i.type='hidden';i.name=k;i.value=v;form.appendChild(i);});
+  } else if(p==='liqpay'){
+    form.action='https://www.liqpay.ua/api/3/checkout';
+    const data=btoa(JSON.stringify({version:3,action:'pay',public_key:_acqSettings.acq_public_key,amount,currency:'UAH',description:t.name,order_id:orderRef,result_url:clientUrl+'?order='+orderRef+'&sub='+subId}));
+    [{name:'data',value:data},{name:'signature',value:''}].forEach(({name,value})=>{const i=document.createElement('input');i.type='hidden';i.name=name;i.value=value;form.appendChild(i);});
+  }
+  document.body.appendChild(form);
+  toast('Переходимо до оплати...');
+  setTimeout(()=>form.submit(),500);
+}
+
+// ===== VISITS =====
+async function loadVisits(){
+  if(!curClient)return;
+  const el=document.getElementById('visits-list');
+  el.innerHTML='<div class="spin"></div>';
+  const visits=await get('visits',`?client_id=eq.${curClient.id}&order=visited_at.desc&limit=50`)||[];
+  const branches=await get('branches','?select=id,name')||[];
+  const bMap={};branches.forEach(b=>bMap[b.id]=b.name);
+  if(!visits.length){el.innerHTML='<div style="text-align:center;color:var(--m2);padding:40px 0">Ще немає відвідувань</div>';return;}
+  el.innerHTML=`<div class="card"><h3>Відвідування (${visits.length})</h3>
+    ${visits.map(v=>{
+      const d=new Date(v.visited_at);
+      return `<div class="hist-item">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--gr);flex-shrink:0"></div>
+        <div><div style="font-size:13px;font-weight:600">${d.toLocaleDateString('uk-UA',{day:'2-digit',month:'long'})} о ${d.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})}</div>
+        ${v.branch_id&&bMap[v.branch_id]?`<div style="font-size:11px;color:var(--m2);font-weight:600">🏋️ ${bMap[v.branch_id]}</div>`:''}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ===== PROFILE =====
+async function loadProfile(){
+  if(!curClient)return;
+  const subs=await get('subscriptions',`?client_id=eq.${curClient.id}&order=created_at.desc&limit=5`)||[];
+  const stL={active:'✅ Активний',frozen:'❄️ Заморожений',expired:'❌ Прострочений',pending:'⏳ Очікує',returned:'↩ Повернений'};
+  document.getElementById('profile-content').innerHTML=`
+    <div class="card" style="margin-bottom:12px">
+      <h3>Особисті дані</h3>
+      ${[['Ім\'я',`${curClient.first_name||''} ${curClient.last_name||''}`],
+         ['Телефон',curClient.phone||'—'],['Стать',curClient.gender==='М'?'Чоловік':curClient.gender==='Ж'?'Жінка':'—'],
+         ['Місто',curClient.city||'—'],
+         curClient.streak>0?['🔥 Серія',`x${curClient.streak} · знижка -${Math.min(curClient.streak*3,33)}%`]:null
+      ].filter(Boolean).map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bd);font-size:13px">
+        <span style="color:var(--m2)">${l}</span><span style="font-weight:600">${v}</span>
+      </div>`).join('')}
+    </div>
+    <div class="card" style="margin-bottom:12px">
+      <h3>Абонементи</h3>
+      ${subs.length?subs.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd)">
+        <div><div style="font-size:13px;font-weight:600">${s.type_name}</div>
+        <div style="font-size:11px;color:var(--m2);font-weight:600">${new Date(s.created_at).toLocaleDateString('uk-UA')}</div></div>
+        <div style="text-align:right"><div style="font-size:12px">${stL[s.status]||s.status}</div>
+        <div style="font-size:12px;color:var(--m2)">${s.price} ₴</div></div>
+      </div>`).join(''):'<div style="color:var(--m2);font-size:13px">Немає абонементів</div>'}
+    </div>
+    <button class="btn btn-ghost" onclick="logout()">Вийти</button>`;
+}
+
+function logout(){if(!confirm('Вийти?'))return;localStorage.removeItem('cg_client');curClient=null;setTab('login');showScreen('scr-auth');}
+
+// ===== SMS =====
+const SMS_PROXY='https://creagym-one.vercel.app/api/sms';
+
+async function sendSms(phone,message){
+  const sets=await get('settings','?key=in.(turbosms_token,turbosms_sender)')||[];
+  const map={};sets.forEach(s=>map[s.key]=s.value);
+  if(!map.turbosms_token) return false;
+  try{
+    const r=await fetch(SMS_PROXY,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({phone,message,token:map.turbosms_token,sender:map.turbosms_sender||'CREAGYM'})
+    });
+    const d=await r.json();
+    return d.response_status==='OK'||d.response_code===0||(d.response_result&&d.response_result.length>0);
+  }catch(e){return false;}
+}
+
+// ===== INIT =====
+async function activateAfterPayment(){
+  const pending=localStorage.getItem('cg_pending');
+  if(!pending) return;
+  const {orderRef,subId,amount}=JSON.parse(pending);
+  if(!subId||!curClient) return;
+
+  // Перевіряємо чи абонемент вже є
+  const existing=await get('subscriptions',`?client_id=eq.${curClient.id}&type_id=eq.${subId}&order=created_at.desc&limit=1`)||[];
+  if(existing.length>0){
+    const lastSub=existing[0];
+    const fiveMinAgo=new Date(Date.now()-10*60*1000);
+    if(new Date(lastSub.created_at)>fiveMinAgo){
+      localStorage.removeItem('cg_pending');
+      toast('✅ Абонемент активовано!');
+      return;
+    }
+  }
+
+  // Завантажуємо тип абонементу
+  const types=await get('subscription_types',`?id=eq.${subId}`)||[];
+  const t=types[0];
+  if(!t) return;
+
+  // Визначаємо дати
+  const today=new Date().toISOString().split('T')[0];
+  let endDate=null;
+  if(t.start_type==='з дати продажу'){
+    const end=new Date();
+    end.setDate(end.getDate()+parseInt(t.days||30));
+    endDate=end.toISOString().split('T')[0];
+  }
+
+  // Створюємо абонемент
+  const disc=curClient.streak>=1?Math.min(curClient.streak*3,33):0;
+  await post('subscriptions',{
+    client_id:curClient.id,
+    type_id:subId,
+    type_name:t.name,
+    price:amount,
+    original_price:t.price,
+    discount_pct:disc,
+    streak_at_purchase:curClient.streak||0,
+    start_date:today,
+    end_date:endDate,
+    status:t.start_type==='з дати продажу'?'active':'pending',
+    payment_method:'card',
+    start_type:t.start_type||'з дати продажу',
+    branch_id:_selectedBranchId||null
+  });
+
+  // Оновлюємо серію клієнта
+  const newStreak=(curClient.streak||0)+1;
+  await patch('clients',`id=eq.${curClient.id}`,{streak:newStreak,status:'active'});
+  curClient.streak=newStreak;
+  localStorage.setItem('cg_client',JSON.stringify(curClient));
+
+  localStorage.removeItem('cg_pending');
+  toast('✅ Абонемент успішно активовано!');
+}
+
+async function init(){
+  const saved=localStorage.getItem('cg_client');
+  if(saved){
+    curClient=JSON.parse(saved);
+    const urlParams=new URLSearchParams(window.location.search);
+    if(urlParams.get('order')||localStorage.getItem('cg_pending')){
+      window.history.replaceState({},'',window.location.pathname);
+      await activateAfterPayment();
+    }
+    loadHome();
+    showScreen('scr-home');
+  }
+}
+init();
+</script>
+</body>
+</html>
