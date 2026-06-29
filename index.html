@@ -2325,9 +2325,17 @@ async function syncClientStatuses(){
   if(!allClients.length) return;
   try{
     const today=todayStr();
-    const allSubs=await sb.get('subscriptions','?status=in.(active,frozen,expired)&order=end_date.desc&select=client_id,status,started_at,start_type,end_date,type_name');
+    const allSubs=await sb.get('subscriptions','?status=in.(active,frozen,expired)&order=end_date.desc&select=client_id,status,started_at,start_type,end_date,type_name,is_pair,partner_client_id');
     subsByClient={};
-    (allSubs||[]).forEach(s=>{ if(!subsByClient[s.client_id]) subsByClient[s.client_id]=[]; subsByClient[s.client_id].push(s); });
+    (allSubs||[]).forEach(s=>{
+      if(!subsByClient[s.client_id]) subsByClient[s.client_id]=[];
+      subsByClient[s.client_id].push(s);
+      // Парний абонемент показуємо й 2-му учаснику
+      if(s.is_pair&&s.partner_client_id){
+        if(!subsByClient[s.partner_client_id]) subsByClient[s.partner_client_id]=[];
+        subsByClient[s.partner_client_id].push(s);
+      }
+    });
 
     for(const c of allClients){
       const subs=subsByClient[c.id]||[];
@@ -6540,9 +6548,16 @@ async function syncAdminClientStatuses(){
   if(!admClients.length){admRenderClients();return;}
   try{
     const today=todayStr();
-    const allSubs=await sb.get('subscriptions','?status=in.(active,frozen)&select=client_id,status,started_at,start_type,end_date');
+    const allSubs=await sb.get('subscriptions','?status=in.(active,frozen)&select=client_id,status,started_at,start_type,end_date,is_pair,partner_client_id');
     const subsByClient={};
-    (allSubs||[]).forEach(s=>{ if(!subsByClient[s.client_id]) subsByClient[s.client_id]=[]; subsByClient[s.client_id].push(s); });
+    (allSubs||[]).forEach(s=>{
+      if(!subsByClient[s.client_id]) subsByClient[s.client_id]=[];
+      subsByClient[s.client_id].push(s);
+      if(s.is_pair&&s.partner_client_id){
+        if(!subsByClient[s.partner_client_id]) subsByClient[s.partner_client_id]=[];
+        subsByClient[s.partner_client_id].push(s);
+      }
+    });
 
     for(const c of admClients){
       const subs=subsByClient[c.id]||[];
