@@ -1440,6 +1440,14 @@ tr:hover td{background:#ffffff03;cursor:pointer}
         </div>
       </label>
 
+      <label style="margin-top:8px;padding:12px 14px;background:var(--p2);border:1px solid var(--bd2);border-radius:8px;display:flex;align-items:center;gap:10px;cursor:pointer">
+        <input type="checkbox" id="sub-pair" style="width:18px;height:18px;cursor:pointer;accent-color:var(--y)">
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:600;color:var(--m)">👥 Парний (спліт)</div>
+          <div style="font-size:10px;color:var(--m2);margin-top:2px">Оформляється на двох клієнтів за одну ціну. При продажу обираєте 2-го учасника.</div>
+        </div>
+      </label>
+
       <div class="f-as" style="margin-top:4px">
         <button class="f-b se" onclick="closeMoD('mo-sub')">Скасувати</button>
         <button class="f-b pr" onclick="saveSub()">Зберегти абонемент</button>
@@ -2131,6 +2139,7 @@ function openSubModal(id=null){
   document.getElementById('sub-vis-month-unlim').checked=true;
   document.getElementById('price-preview').style.display='none';
   const swNet=document.getElementById('sub-network');if(swNet)swNet.checked=false;
+  const swPair=document.getElementById('sub-pair');if(swPair)swPair.checked=false;
   document.getElementById('srv-list').innerHTML=`<div class="srv-row"><div class="srv-name"><select class="fs fi2-sm" style="width:100%"><option>Тренажерний зал</option><option>Групове тренування</option><option>Персональне тренування</option><option>Масаж</option><option>Басейн</option><option>Сауна</option></select></div><input class="fi2-sm srv-qty" type="number" placeholder="—"><select class="fs fi2-sm srv-unit"><option>Необм.</option><option>1 год.</option><option>Разів</option></select><button class="sub-del-b" onclick="this.parentElement.remove()">✕</button></div>`;
 
   if(id){
@@ -2153,6 +2162,7 @@ function openSubModal(id=null){
       document.getElementById('sub-vis-month').value=vMU?'':s.visits_per_month;
       document.getElementById('sub-vis-month').disabled=vMU;
       const swNet2=document.getElementById('sub-network');if(swNet2)swNet2.checked=!!s.is_network;
+      const swPair2=document.getElementById('sub-pair');if(swPair2)swPair2.checked=!!s.is_pair;
       updatePricePreview();
     }
   }
@@ -2212,6 +2222,7 @@ async function saveSub(){
   }));
 
   const isNetwork=document.getElementById('sub-network')?.checked||false;
+  const isPair=document.getElementById('sub-pair')?.checked||false;
 
   const data={
     name,
@@ -2228,6 +2239,7 @@ async function saveSub(){
     services:services,
     is_active:true,
     is_network:isNetwork,
+    is_pair:isPair,
     // Якщо мережевий — branch_id null, інакше — поточна філія
     branch_id:isNetwork?null:(_currentBranch?.id||null)
   };
@@ -6220,6 +6232,15 @@ function generateAutoOrderPDF(data){
     <div class="mo2-bd">
       <div style="font-size:11px;color:var(--m2)" id="adm-sell-cl">Клієнт: —</div>
       <div class="sub-opts2" id="adm-sub-opts"></div>
+      <div class="ff2" id="adm-pair-wrap" style="display:none">
+        <label>👥 2-й учасник (парний абонемент)</label>
+        <div id="adm-pair-chosen" style="display:none;align-items:center;gap:8px;padding:8px 11px;background:#A855F714;border:1px solid #A855F740;border-radius:8px;margin-bottom:6px">
+          <span style="font-size:12px;font-weight:600;color:#C084FC" id="adm-pair-chosen-nm"></span>
+          <button onclick="admClearPartner()" style="margin-left:auto;padding:2px 8px;border-radius:5px;background:var(--p3);border:1px solid var(--bd2);color:var(--m2);font-family:var(--f);font-size:11px;cursor:pointer">Змінити</button>
+        </div>
+        <input id="adm-pair-search" type="text" placeholder="Пошук 2-го клієнта за ім'ям/телефоном..." oninput="admPairSearch(this.value)" style="width:100%;background:var(--p2);border:1px solid var(--bd2);border-radius:8px;padding:8px 11px;color:var(--w);font-family:var(--f);font-size:12px;outline:none">
+        <div id="adm-pair-list" style="max-height:170px;overflow-y:auto;margin-top:6px"></div>
+      </div>
       <div class="ff2" id="adm-pm-wrap" style="display:none"><label>Спосіб оплати</label><div class="pm2"><button class="pmb on" id="adm-pm-cash" onclick="admSelPM('cash')">💵 Готівка</button><button class="pmb" id="adm-pm-card" onclick="admSelPM('card')">💳 Картка</button></div></div>
       <div class="fa2" id="adm-sell-btn" style="display:none"><button class="fb2 se" onclick="admCloseMoD('adm-sell')">Скасувати</button><button class="fb2 pr" onclick="admConfirmSell()">Підтвердити продаж</button></div>
     </div>
@@ -6312,7 +6333,7 @@ function generateAutoOrderPDF(data){
 </div>
 
 <script>
-let admClients=[],admProducts=[],admSubTypes=[],admInClub=[],admCart=[],admSelSub=null,admPayM='cash',admSellCl=null,admClFilterTxt='';
+let admClients=[],admProducts=[],admSubTypes=[],admInClub=[],admCart=[],admSelSub=null,admPayM='cash',admSellCl=null,admClFilterTxt='',admSellPartner=null;
 
 
 async function loadAdminData(){
@@ -6675,6 +6696,16 @@ async function admSelectClient(id){
   let subs=[];
   try{subs=await sb.get('subscriptions',`?client_id=eq.${id}&order=end_date.desc&limit=3`)}catch(e){}
   const activeSub=subs.find(x=>x.status==='active')||null;
+  // Чи цей клієнт — 2-й учасник чужого парного абонементу
+  let partnerOfSub=null,pairOwnerName='';
+  try{
+    const ps=await sb.get('subscriptions',`?partner_client_id=eq.${id}&status=in.(active,frozen)&order=end_date.desc&limit=1`);
+    partnerOfSub=(ps&&ps.length)?ps[0]:null;
+  }catch(e){}
+  if(partnerOfSub){
+    const owner=admClients.find(x=>x.id===partnerOfSub.client_id);
+    pairOwnerName=owner?(owner.last_name+' '+owner.first_name):'1-й учасник';
+  }
   const av=c.photo_url?`<img src="${c.photo_url}" style="width:100%;height:100%;object-fit:cover">`:`${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}`;
   // Підраховуємо візити: загалом і у поточній філії
   let totalVisits=c.visits||0;
@@ -6751,6 +6782,8 @@ async function admSelectClient(id){
     const networkBadge=isNetwork
       ?`<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:#60A5FA20;color:#60A5FA;font-weight:700;margin-left:6px">🌐 Мережевий</span>`
       :`<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:var(--ym);color:var(--y);font-weight:700;margin-left:6px">🏢 ${subBranchName||'Локальний'}</span>`;
+    const pairBadge=activeSub.is_pair?`<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:#A855F720;color:#C084FC;font-weight:700;margin-left:6px">👥 Парний</span>`:'';
+    const pairRow=activeSub.is_pair&&activeSub.partner_name?`<div style="font-size:10px;color:#C084FC;margin-top:6px;display:flex;align-items:center;gap:5px"><span>👥</span><span>2-й учасник: <b>${activeSub.partner_name}</b></span></div>`:'';
 
     // Кнопки заморозки
     const freezeDaysMax=subType?.freeze_days||14;
@@ -6761,9 +6794,10 @@ async function admSelectClient(id){
 
     subBlock=`<div class="cl-sub2">
       <div class="cl-sub-hd2">
-        <div class="cl-sub-nm2">${activeSub.type_name}${networkBadge}</div>
+        <div class="cl-sub-nm2">${activeSub.type_name}${networkBadge}${pairBadge}</div>
         <span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;background:${statusBg};color:${statusColor}">${statusLabel}</span>
       </div>
+      ${pairRow}
       <div class="sub-pr"><div class="sub-pr-f" style="width:${pct}%;background:${isFrozen?'var(--bl)':dl<=3&&!notStarted?'var(--rd)':'var(--y)'}"></div></div>
       <div class="sub-dt">
         <span style="color:${dl<=3&&!notStarted&&!isFrozen?'var(--rd)':'inherit'}">${daysInfo}</span>
@@ -6812,6 +6846,10 @@ async function admSelectClient(id){
       ${inOtherBranch?`<div style="margin:8px 0;padding:8px 12px;background:#F9731614;border:1px solid #F9731630;border-radius:8px;font-size:11px;color:var(--or);display:flex;align-items:center;gap:8px">
         <span style="font-size:14px">⚠️</span>
         <span>Зараз у залі <b>"${inOtherBranch.branchName}"</b>${inOtherBranch.key?` · 🔑 ключ №${inOtherBranch.key}`:''}</span>
+      </div>`:''}
+      ${partnerOfSub?`<div style="margin:8px 0;padding:8px 12px;background:#A855F714;border:1px solid #A855F740;border-radius:8px;font-size:11px;color:#C084FC;display:flex;align-items:center;gap:8px">
+        <span style="font-size:14px">👥</span>
+        <span>2-й учасник парного абонементу <b>"${partnerOfSub.type_name}"</b> (1-й: ${pairOwnerName})${partnerOfSub.end_date?` · діє до ${new Date(partnerOfSub.end_date+'T00:00:00').toLocaleDateString('uk-UA')}`:''}</span>
       </div>`:''}
       ${subBlock}
       ${purchasesHtml}
@@ -7136,8 +7174,12 @@ function admOpenInClub(){
 
 function admOpenSell(id){
   const c=admClients.find(x=>x.id===id);if(!c)return;
-  admSellCl=c;admSelSub=null;admPayM='cash';
+  admSellCl=c;admSelSub=null;admPayM='cash';admSellPartner=null;
   document.getElementById('adm-sell-cl').textContent='Клієнт: '+c.last_name+' '+c.first_name;
+  document.getElementById('adm-pair-wrap').style.display='none';
+  document.getElementById('adm-pair-chosen').style.display='none';
+  document.getElementById('adm-pair-search').value='';
+  document.getElementById('adm-pair-list').innerHTML='';
   document.getElementById('adm-pm-wrap').style.display='none';
   document.getElementById('adm-sell-btn').style.display='none';
   document.getElementById('adm-pm-cash').classList.add('on');
@@ -7148,15 +7190,16 @@ function admOpenSell(id){
     const networkBadge=s.is_network
       ?`<span style="font-size:9px;padding:2px 6px;border-radius:10px;background:#60A5FA20;color:#60A5FA;font-weight:700;margin-left:4px">🌐 Мережевий</span>`
       :`<span style="font-size:9px;padding:2px 6px;border-radius:10px;background:var(--ym);color:var(--y);font-weight:700;margin-left:4px">🏢 Локальний</span>`;
+    const pairBadge=s.is_pair?`<span style="font-size:9px;padding:2px 6px;border-radius:10px;background:#A855F720;color:#C084FC;font-weight:700;margin-left:4px">👥 Парний</span>`:'';
     let priceHtml=`${(s.price||0).toLocaleString('uk-UA')} ₴`;
-    if(s.is_network&&clientStreak>=1){
+    if(s.is_network&&!s.is_pair&&clientStreak>=1){
       const disc=getStreakDiscount(nextStreak);
       if(disc>0){
         const discPrice=Math.round(s.price*(1-disc/100));
         priceHtml=`<div style="text-align:right"><div style="text-decoration:line-through;color:var(--m2);font-size:10px">${(s.price||0).toLocaleString('uk-UA')} ₴</div><div style="color:var(--y);font-weight:700">${discPrice.toLocaleString('uk-UA')} ₴ <span style="font-size:9px;color:var(--or)">-${disc}%</span></div></div>`;
       }
     }
-    return `<div class="soi" id="asoi-${s.id}" onclick="admSelSub2('${s.id}')"><div style="flex:1"><div class="soi-nm">${s.name}${networkBadge}</div><div class="soi-meta">${s.days} ${s.duration_unit||'дн.'} · ${s.class_name||''}</div></div><div class="soi-p">${priceHtml}</div></div>`;
+    return `<div class="soi" id="asoi-${s.id}" onclick="admSelSub2('${s.id}')"><div style="flex:1"><div class="soi-nm">${s.name}${networkBadge}${pairBadge}</div><div class="soi-meta">${s.days} ${s.duration_unit||'дн.'} · ${s.class_name||''}</div></div><div class="soi-p">${priceHtml}</div></div>`;
   }).join(''):'<div style="font-size:12px;color:var(--m2)">Немає активних абонементів. Додайте їх у панелі власника.</div>';
   admOpenMo('adm-sell');
 }
@@ -7164,8 +7207,44 @@ function admSelSub2(id){
   document.querySelectorAll('.soi').forEach(el=>el.classList.remove('sel'));
   document.getElementById('asoi-'+id)?.classList.add('sel');
   admSelSub=id;
+  const s=admSubTypes.find(x=>x.id===id);
+  const isPair=!!(s&&s.is_pair);
+  // Скидаємо вибір партнера при зміні абонементу
+  admSellPartner=null;
+  document.getElementById('adm-pair-chosen').style.display='none';
+  document.getElementById('adm-pair-search').value='';
+  document.getElementById('adm-pair-list').innerHTML='';
+  document.getElementById('adm-pair-wrap').style.display=isPair?'block':'none';
   document.getElementById('adm-pm-wrap').style.display='flex';
+  // Для парного — кнопку продажу показуємо лише після вибору 2-го учасника
+  document.getElementById('adm-sell-btn').style.display=isPair?'none':'flex';
+}
+function admPairSearch(v){
+  const q=(v||'').toLowerCase().trim();
+  const list=document.getElementById('adm-pair-list');
+  if(!q){list.innerHTML='';return;}
+  const matches=admClients.filter(c=>c.id!==admSellCl?.id&&((c.last_name||'')+' '+(c.first_name||'')+' '+(c.phone||'')).toLowerCase().includes(q)).slice(0,12);
+  if(!matches.length){list.innerHTML='<div style="font-size:11px;color:var(--m2);padding:8px">Нікого не знайдено</div>';return;}
+  list.innerHTML=matches.map(c=>`<div onclick="admSelPartner('${c.id}')" style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;cursor:pointer;border:1px solid transparent" onmouseover="this.style.background='var(--p2)'" onmouseout="this.style.background='transparent'">
+    <div style="font-size:12px;font-weight:600">${c.last_name} ${c.first_name}</div>
+    <div style="font-size:10px;color:var(--m2);margin-left:auto">${c.phone||''}</div>
+  </div>`).join('');
+}
+function admSelPartner(id){
+  const c=admClients.find(x=>x.id===id);if(!c)return;
+  admSellPartner=c;
+  document.getElementById('adm-pair-chosen-nm').textContent=c.last_name+' '+c.first_name+(c.phone?' · '+c.phone:'');
+  document.getElementById('adm-pair-chosen').style.display='flex';
+  document.getElementById('adm-pair-search').value='';
+  document.getElementById('adm-pair-list').innerHTML='';
   document.getElementById('adm-sell-btn').style.display='flex';
+}
+function admClearPartner(){
+  admSellPartner=null;
+  document.getElementById('adm-pair-chosen').style.display='none';
+  document.getElementById('adm-pair-search').value='';
+  document.getElementById('adm-pair-list').innerHTML='';
+  document.getElementById('adm-sell-btn').style.display='none';
 }
 function admSelPM(m){
   admPayM=m;
@@ -7180,6 +7259,11 @@ async function admConfirmSell(){
     return;
   }
   const s=admSubTypes.find(x=>x.id===admSelSub);if(!s)return;
+  // Парний абонемент — обовʼязково 2-й учасник
+  if(s.is_pair){
+    if(!admSellPartner){alert('👥 Оберіть 2-го учасника для парного абонементу');return;}
+    if(admSellPartner.id===admSellCl.id){alert('❌ 2-й учасник не може бути тим самим клієнтом');return;}
+  }
   const today=new Date();
   const startDate=dateStr(today);
   const numDays=parseInt(s.days)||30;
@@ -7194,7 +7278,7 @@ async function admConfirmSell(){
   let discountPct=0;
   let finalPrice=s.price;
 
-  if(s.is_network){
+  if(s.is_network&&!s.is_pair){
     // Перевіряємо останній абонемент клієнта
     let lastSub=null;
     try{
@@ -7255,7 +7339,10 @@ async function admConfirmSell(){
       start_type:s.start_type||'з дати продажу',
       streak_at_purchase:newStreak,
       discount_pct:discountPct,
-      original_price:s.price
+      original_price:s.price,
+      is_pair:!!s.is_pair,
+      partner_client_id:s.is_pair?admSellPartner.id:null,
+      partner_name:s.is_pair?(admSellPartner.last_name+' '+admSellPartner.first_name):null
     });
 
     // Оновлюємо серію клієнта
@@ -7271,6 +7358,15 @@ async function admConfirmSell(){
       await sb.patch('clients',`id=eq.${admSellCl.id}`,{status:'active'});
       const cl=admClients.find(x=>x.id===admSellCl.id);
       if(cl) cl.status='active';
+    }
+
+    // Парний — активуємо й 2-го учасника
+    if(s.is_pair&&admSellPartner){
+      try{
+        await sb.patch('clients',`id=eq.${admSellPartner.id}`,{status:'active'});
+        const pcl=admClients.find(x=>x.id===admSellPartner.id);
+        if(pcl) pcl.status='active';
+      }catch(e){}
     }
 
     const saleResult=await sb.post('sales',{
