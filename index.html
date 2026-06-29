@@ -1362,10 +1362,17 @@ tr:hover td{background:#ffffff03;cursor:pointer}
 
         <div class="form-group">
           <div class="form-group-title">Заморозка</div>
-          <div style="font-size:11px;color:var(--m2);margin-bottom:8px">Клієнт або адміністратор зможе заморозити абонемент на вказану кількість днів</div>
-          <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-size:11px;color:var(--m2);margin-bottom:8px">Клієнт або адміністратор зможе заморозити абонемент у межах від мінімуму до максимуму днів</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <div class="ff" style="flex:none">
-              <label>Кількість днів заморозки</label>
+              <label>Мінімум днів</label>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                <input class="fi2-sm" type="number" id="sub-freeze-days-min" placeholder="1" value="1" min="0" style="max-width:100px">
+                <span style="font-size:12px;color:var(--m2)">днів</span>
+              </div>
+            </div>
+            <div class="ff" style="flex:none">
+              <label>Максимум днів</label>
               <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
                 <input class="fi2-sm" type="number" id="sub-freeze-days" placeholder="14" value="14" style="max-width:100px">
                 <span style="font-size:12px;color:var(--m2)">днів</span>
@@ -2130,6 +2137,7 @@ function openSubModal(id=null){
   document.getElementById('sub-dur-unit').value='Доба';
   document.getElementById('sub-start').value='з моменту першого входу';
   document.getElementById('sub-freeze-days').value='14';
+  const sfdMin=document.getElementById('sub-freeze-days-min');if(sfdMin)sfdMin.value='1';
   document.getElementById('sub-vis-day').value='';
   document.getElementById('sub-vis-day').disabled=true;
   document.getElementById('sub-vis-day-unlim').checked=true;
@@ -2152,6 +2160,7 @@ function openSubModal(id=null){
       document.getElementById('sub-dur-unit').value=s.duration_unit||'Доба';
       document.getElementById('sub-start').value=s.start_type||'з моменту першого входу';
       document.getElementById('sub-freeze-days').value=s.freeze_days||14;
+      const sfdMin2=document.getElementById('sub-freeze-days-min');if(sfdMin2)sfdMin2.value=(s.freeze_days_min??1);
       const vDU=s.visits_per_day===null||s.visits_per_day===undefined;
       document.getElementById('sub-vis-day-unlim').checked=vDU;
       document.getElementById('sub-vis-day').value=vDU?'':s.visits_per_day;
@@ -2232,6 +2241,7 @@ async function saveSub(){
     duration_unit:document.getElementById('sub-dur-unit').value,
     start_type:document.getElementById('sub-start').value,
     freeze_days:parseInt(document.getElementById('sub-freeze-days').value)||14,
+    freeze_days_min:parseInt(document.getElementById('sub-freeze-days-min')?.value)||0,
     visits_per_day:visDay,
     visits_per_month:visMonth,
     schedule:document.getElementById('sub-schedule').value,
@@ -6801,8 +6811,9 @@ async function admSelectClient(id){
 
     // Кнопки заморозки
     const freezeDaysMax=subType?.freeze_days||14;
+    const freezeDaysMin=subType?.freeze_days_min||0;
     const freezeBtn=(!isFrozen&&!notStarted&&dl>0)
-      ?`<button onclick="admFreezeSub('${activeSub.id}','${c.id}',${freezeDaysMax})" style="padding:4px 10px;border-radius:6px;background:#3B82F614;border:1px solid #3B82F630;color:var(--bl);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer">❄️ Заморозити</button>`:'';
+      ?`<button onclick="admFreezeSub('${activeSub.id}','${c.id}',${freezeDaysMax},${freezeDaysMin})" style="padding:4px 10px;border-radius:6px;background:#3B82F614;border:1px solid #3B82F630;color:var(--bl);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer">❄️ Заморозити</button>`:'';
     const unfreezeBtn=isFrozen
       ?`<button onclick="admUnfreezeSub('${activeSub.id}','${c.id}')" style="padding:4px 10px;border-radius:6px;background:#22C55E14;border:1px solid #22C55E30;color:var(--gr);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer">▶ Розморозити</button>`:'';
 
@@ -6909,9 +6920,12 @@ async function admAddPhoto(clientId){
   inp.click();
 }
 
-async function admFreezeSub(subId, clientId, maxDays){
-  const days=parseInt(prompt(`Заморозити абонемент.\nМаксимум днів: ${maxDays}\n\nВкажіть кількість днів заморозки:`)||'0');
+async function admFreezeSub(subId, clientId, maxDays, minDays){
+  minDays=parseInt(minDays)||0;
+  const rangeTxt=minDays>0?`Від ${minDays} до ${maxDays} днів`:`Максимум днів: ${maxDays}`;
+  const days=parseInt(prompt(`Заморозити абонемент.\n${rangeTxt}\n\nВкажіть кількість днів заморозки:`)||'0');
   if(!days||days<=0) return;
+  if(minDays>0&&days<minDays){alert(`❌ Мінімум ${minDays} днів заморозки для цього абонементу`);return;}
   if(days>maxDays){alert(`❌ Максимум ${maxDays} днів заморозки для цього абонементу`);return;}
   try{
     const today=todayStr();
