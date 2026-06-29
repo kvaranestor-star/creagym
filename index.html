@@ -2397,7 +2397,7 @@ function renderClients(){
       <span style="font-size:11px;color:var(--m2)">${(_clPage-1)*_clPageSize+1}–${Math.min(_clPage*_clPageSize,list.length)} з ${list.length}</span>
     </div>`:'';
 
-  document.getElementById('cl-table-wrap').innerHTML=`<div id="cl-table-scroll" style="max-height:calc(100vh - 280px);overflow-y:auto;border-radius:0 0 12px 12px"><table><thead style="position:sticky;top:0;background:var(--p2);z-index:1"><tr><th>Клієнт</th><th>Абонемент</th><th>Візити</th><th>Стать</th><th>Статус</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${pagBtns}`;
+  document.getElementById('cl-table-wrap').innerHTML=`<table><thead><tr><th>Клієнт</th><th>Абонемент</th><th>Візити</th><th>Стать</th><th>Статус</th><th></th></tr></thead><tbody>${rows}</tbody></table>${pagBtns}`;
 }
 
 function clGoPage(p){
