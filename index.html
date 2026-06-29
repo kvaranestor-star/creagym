@@ -1519,6 +1519,7 @@ const sb = {
 // ===== AUTH =====
 let passVis=false, curUser=null;
 let allClients=[], filterTxt='', filterSt='', filterGn='';
+let subsByClient={};
 
 function togglePass(){
   passVis=!passVis;
@@ -2311,7 +2312,7 @@ async function syncClientStatuses(){
   try{
     const today=new Date().toISOString().split('T')[0];
     const allSubs=await sb.get('subscriptions','?status=in.(active,frozen,expired)&order=end_date.desc&select=client_id,status,started_at,start_type,end_date,type_name');
-    const subsByClient={};
+    subsByClient={};
     (allSubs||[]).forEach(s=>{ if(!subsByClient[s.client_id]) subsByClient[s.client_id]=[]; subsByClient[s.client_id].push(s); });
 
     for(const c of allClients){
