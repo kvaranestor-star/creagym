@@ -6850,39 +6850,45 @@ async function admSelectClient(id){
   document.getElementById('adm-main').innerHTML=`
     <div class="cl-card2">
       <button onclick="clearAdmClient()" title="Закрити" style="position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;border:1px solid var(--bd2);background:var(--p3);color:var(--m2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2">✕</button>
-      <div class="cl-prof2"><div class="cl-ph2" onclick="admAddPhoto('${c.id}')" style="cursor:pointer;position:relative" title="Змінити фото">${av}<span style="position:absolute;bottom:-3px;right:-3px;width:19px;height:19px;border-radius:50%;background:var(--y);color:#000;font-size:10px;display:flex;align-items:center;justify-content:center;border:2px solid var(--p)">📷</span></div><div style="flex:1"><div class="cl-nm2">${c.last_name} ${c.first_name}</div><div style="font-size:11px;color:var(--m2);margin-top:2px">${c.phone||'—'}</div><div style="font-size:10px;color:var(--m);margin-top:1px">${c.id} · Відвідувань: <b style="color:var(--y)">${branchVisits}</b> у цій філії · ${totalVisits} всього</div></div>${c.photo_url?`<button onclick="admAddPhoto('${c.id}')" style="align-self:flex-start;padding:6px 11px;border-radius:7px;background:var(--p3);border:1px solid var(--bd2);color:var(--m);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">🔄 Переробити фото</button>`:''}</div>
-      ${!c.photo_url?`<div style="margin:8px 0;padding:10px 12px;background:#EF444414;border:1px solid #EF444440;border-radius:8px;display:flex;align-items:center;gap:10px">
-        <span style="font-size:18px">📸</span>
-        <div style="flex:1">
-          <div style="font-size:12px;font-weight:800;color:var(--rd)">Немає фото клієнта!</div>
-          <div style="font-size:10px;color:var(--m2);margin-top:1px">Терміново зробіть фото клієнта</div>
-        </div>
-        <button onclick="admAddPhoto('${c.id}')" style="padding:6px 12px;border-radius:6px;background:var(--rd);border:none;color:#fff;font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">📷 Додати</button>
-      </div>`:''}
-      ${(()=>{
-        const sl=getStreakLabel(c.streak||0);
-        if(!sl) return '';
-        const nextDisc=getStreakDiscount(sl.streak+1);
-        return `<div style="padding:8px 12px;background:linear-gradient(135deg,#1a1a0a,#2a1f00);border:1px solid #F9731640;border-radius:8px;display:flex;align-items:center;gap:10px">
-          <div style="font-size:22px">${sl.emoji}</div>
-          <div style="flex:1">
-            <div style="font-size:12px;font-weight:700;color:var(--y)">Серія x${sl.streak} ${sl.disc?`· Знижка ${sl.disc}%`:''}</div>
-            <div style="font-size:10px;color:var(--m2);margin-top:2px">${nextDisc>sl.disc?`Наступний абонемент: -${nextDisc}%`:'Максимальна знижка досягнута!'}</div>
+      <div style="display:flex;gap:16px;align-items:flex-start">
+        <div style="flex-shrink:0;width:140px">
+          <div onclick="admAddPhoto('${c.id}')" title="Змінити фото" style="position:relative;width:140px;height:140px;border-radius:14px;overflow:hidden;cursor:pointer;background:var(--p3);display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:800;color:var(--y);border:1px solid ${c.photo_url?'var(--bd2)':'#EF444466'}">
+            ${av}
+            <span style="position:absolute;bottom:6px;right:6px;width:26px;height:26px;border-radius:50%;background:var(--y);color:#000;font-size:13px;display:flex;align-items:center;justify-content:center;border:2px solid var(--p)">📷</span>
           </div>
-          ${sl.disc?`<div style="font-size:16px;font-weight:800;color:var(--y)">-${sl.disc}%</div>`:''}
-        </div>`;
-      })()}
-      ${inOtherBranch?`<div style="margin:8px 0;padding:8px 12px;background:#F9731614;border:1px solid #F9731630;border-radius:8px;font-size:11px;color:var(--or);display:flex;align-items:center;gap:8px">
-        <span style="font-size:14px">⚠️</span>
-        <span>Зараз у залі <b>"${inOtherBranch.branchName}"</b>${inOtherBranch.key?` · 🔑 ключ №${inOtherBranch.key}`:''}</span>
-      </div>`:''}
-      ${partnerOfSub?`<div style="margin:8px 0;padding:8px 12px;background:#A855F714;border:1px solid #A855F740;border-radius:8px;font-size:11px;color:#C084FC;display:flex;align-items:center;gap:8px">
-        <span style="font-size:14px">👥</span>
-        <span>2-й учасник парного абонементу <b>"${partnerOfSub.type_name}"</b> (1-й: ${pairOwnerName})${partnerOfSub.end_date?` · діє до ${new Date(partnerOfSub.end_date+'T00:00:00').toLocaleDateString('uk-UA')}`:''}</span>
-      </div>`:''}
-      ${subBlock}
-      ${purchasesHtml}
-      <div class="cl-acts" style="margin-top:8px">
+          <button onclick="admAddPhoto('${c.id}')" style="width:140px;margin-top:7px;padding:7px;border-radius:8px;background:${c.photo_url?'var(--p3)':'var(--rd)'};border:1px solid ${c.photo_url?'var(--bd2)':'transparent'};color:${c.photo_url?'var(--m)':'#fff'};font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">${c.photo_url?'🔄 Переробити фото':'📷 Додати фото'}</button>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="cl-nm2">${c.last_name} ${c.first_name}</div>
+          <div style="font-size:12px;color:var(--m2);margin-top:3px">📱 ${c.phone||'—'}</div>
+          <div style="font-size:10px;color:var(--m);margin-top:3px">🆔 ${c.id}</div>
+          <div style="font-size:10px;color:var(--m);margin-top:3px">🚪 Відвідувань: <b style="color:var(--y)">${branchVisits}</b> у цій філії · ${totalVisits} всього</div>
+          ${!c.photo_url?`<div style="margin-top:8px;padding:7px 10px;background:#EF444414;border:1px solid #EF444440;border-radius:8px;font-size:11px;color:var(--rd);font-weight:700">📸 Немає фото клієнта — терміново зробіть!</div>`:''}
+          ${(()=>{
+            const sl=getStreakLabel(c.streak||0);
+            if(!sl) return '';
+            const nextDisc=getStreakDiscount(sl.streak+1);
+            return `<div style="margin-top:8px;padding:8px 12px;background:linear-gradient(135deg,#1a1a0a,#2a1f00);border:1px solid #F9731640;border-radius:8px;display:flex;align-items:center;gap:10px">
+              <div style="font-size:22px">${sl.emoji}</div>
+              <div style="flex:1">
+                <div style="font-size:12px;font-weight:700;color:var(--y)">Серія x${sl.streak} ${sl.disc?`· Знижка ${sl.disc}%`:''}</div>
+                <div style="font-size:10px;color:var(--m2);margin-top:2px">${nextDisc>sl.disc?`Наступний абонемент: -${nextDisc}%`:'Максимальна знижка досягнута!'}</div>
+              </div>
+              ${sl.disc?`<div style="font-size:16px;font-weight:800;color:var(--y)">-${sl.disc}%</div>`:''}
+            </div>`;
+          })()}
+          ${inOtherBranch?`<div style="margin-top:8px;padding:8px 12px;background:#F9731614;border:1px solid #F9731630;border-radius:8px;font-size:11px;color:var(--or);display:flex;align-items:center;gap:8px">
+            <span style="font-size:14px">⚠️</span>
+            <span>Зараз у залі <b>"${inOtherBranch.branchName}"</b>${inOtherBranch.key?` · 🔑 ключ №${inOtherBranch.key}`:''}</span>
+          </div>`:''}
+          ${partnerOfSub?`<div style="margin-top:8px;padding:8px 12px;background:#A855F714;border:1px solid #A855F740;border-radius:8px;font-size:11px;color:#C084FC;display:flex;align-items:center;gap:8px">
+            <span style="font-size:14px">👥</span>
+            <span>2-й учасник парного абонементу <b>"${partnerOfSub.type_name}"</b> (1-й: ${pairOwnerName})${partnerOfSub.end_date?` · діє до ${new Date(partnerOfSub.end_date+'T00:00:00').toLocaleDateString('uk-UA')}`:''}</span>
+          </div>`:''}
+          <div style="margin-top:8px">${subBlock}</div>
+        </div>
+      </div>
+      <div class="cl-acts" style="margin-top:12px">
         ${isIn
           ?`<button class="ca rd" onclick="admCheckOut('${c.id}')">🔑 Здати ключ №${isIn.key}</button>`
           :inOtherBranch
