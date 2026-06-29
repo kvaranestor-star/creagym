@@ -2397,7 +2397,7 @@ function renderClients(){
       <span style="font-size:11px;color:var(--m2)">${(_clPage-1)*_clPageSize+1}–${Math.min(_clPage*_clPageSize,list.length)} з ${list.length}</span>
     </div>`:'';
 
-  document.getElementById('cl-table-wrap').innerHTML=`<table><thead><tr><th>Клієнт</th><th>Абонемент</th><th>Візити</th><th>Стать</th><th>Статус</th><th></th></tr></thead><tbody>${rows}</tbody></table>${pagBtns}`;
+  document.getElementById('cl-table-wrap').innerHTML=`<div id="cl-table-scroll" style="max-height:calc(100vh - 280px);overflow-y:auto;border-radius:0 0 12px 12px"><table><thead style="position:sticky;top:0;background:var(--p2);z-index:1"><tr><th>Клієнт</th><th>Абонемент</th><th>Візити</th><th>Стать</th><th>Статус</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${pagBtns}`;
 }
 
 function clGoPage(p){
@@ -8148,6 +8148,8 @@ async function admCheckout(m){
   }catch(e){alert('❌ '+e.message)}
 }
 
+let _admPage=1;
+const _admPageSize=30;
 function admRenderClients(){
   const q=admClFilterTxt.toLowerCase();
   const list=admClients.filter(c=>!q||((c.last_name||'')+' '+(c.first_name||'')+' '+(c.phone||'')).toLowerCase().includes(q));
@@ -8162,7 +8164,10 @@ function admRenderClients(){
     pending: {bg:'#F9731614',c:'var(--or)',  l:'Не стартований'},
   };
   if(!list.length){document.getElementById('adm-cl-table').innerHTML='<div class="loading" style="color:var(--m2)">Клієнтів не знайдено</div>';return}
-  const rows=list.map(c=>{
+  const totalPages=Math.ceil(list.length/_admPageSize);
+  if(_admPage>totalPages) _admPage=1;
+  const pageList=list.slice((_admPage-1)*_admPageSize,_admPage*_admPageSize);
+  const rows=pageList.map(c=>{
     const st=stMap2[c.status]||{bg:'var(--p3)',c:'var(--m2)',l:'—'};
     const av=c.photo_url
       ?`<img src="${c.photo_url}" style="width:34px;height:34px;object-fit:cover;border-radius:8px;flex-shrink:0">`
@@ -8174,9 +8179,31 @@ function admRenderClients(){
       <td style="padding:8px 13px"><button style="padding:4px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer" onclick="event.stopPropagation();admOpenSell('${c.id}')">🎫 Абонемент</button></td>
     </tr>`;
   }).join('');
-  document.getElementById('adm-cl-table').innerHTML=`<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--p2)"><th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600">Клієнт</th><th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600">Візити</th><th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600">Статус</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  const pagBtns=totalPages>1?`
+    <div style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 0;flex-wrap:wrap">
+      <button onclick="admGoPage(1)" ${_admPage===1?'disabled':''} style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;cursor:pointer;${_admPage===1?'opacity:.4':''}">«</button>
+      <button onclick="admGoPage(${_admPage-1})" ${_admPage===1?'disabled':''} style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;cursor:pointer;${_admPage===1?'opacity:.4':''}">‹</button>
+      ${Array.from({length:totalPages},(_,i)=>i+1).filter(p=>Math.abs(p-_admPage)<=2||p===1||p===totalPages).map((p,idx,arr)=>{
+        const prev=arr[idx-1];
+        const dots=prev&&p-prev>1?`<span style="color:var(--m2);padding:0 4px">…</span>`:'';
+        return dots+`<button onclick="admGoPage(${p})" style="padding:5px 10px;border-radius:6px;border:1px solid ${p===_admPage?'var(--y)':'var(--bd2)'};background:${p===_admPage?'var(--y)':'var(--p2)'};color:${p===_admPage?'var(--bg)':'var(--m2)'};font-family:var(--f);font-size:11px;cursor:pointer">${p}</button>`;
+      }).join('')}
+      <button onclick="admGoPage(${_admPage+1})" ${_admPage===totalPages?'disabled':''} style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;cursor:pointer;${_admPage===totalPages?'opacity:.4':''}">›</button>
+      <button onclick="admGoPage(${totalPages})" ${_admPage===totalPages?'disabled':''} style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;cursor:pointer;${_admPage===totalPages?'opacity:.4':''}">»</button>
+      <span style="font-size:11px;color:var(--m2)">${(_admPage-1)*_admPageSize+1}–${Math.min(_admPage*_admPageSize,list.length)} з ${list.length}</span>
+    </div>`:'';
+  document.getElementById('adm-cl-table').innerHTML=`<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--p2)"><th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600">Клієнт</th><th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600">Візити</th><th style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:.07em;padding:8px 13px;text-align:left;font-weight:600">Статус</th><th></th></tr></thead><tbody>${rows}</tbody></table>${pagBtns}`;
 }
-function admClFilter(v){admClFilterTxt=v;admRenderClients()}
+function admGoPage(p){
+  const q=admClFilterTxt.toLowerCase();
+  const list=admClients.filter(c=>!q||((c.last_name||'')+' '+(c.first_name||'')+' '+(c.phone||'')).toLowerCase().includes(q));
+  const totalPages=Math.ceil(list.length/_admPageSize);
+  _admPage=Math.max(1,Math.min(p,totalPages));
+  admRenderClients();
+  const t=document.getElementById('adm-cl-table');
+  if(t) t.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function admClFilter(v){admClFilterTxt=v;_admPage=1;admRenderClients()}
 function admGoClient(id){admTab('reg',document.querySelector('.adm-tab'));admSelectClient(id)}
 
 function admOpenCreateCl(){admOpenMo('adm-cl-mo')}
