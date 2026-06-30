@@ -2950,7 +2950,7 @@ async function openDos(id){
       <div class="pur-l">${purHtml}</div>
     </div>
     <div class="das-as">
-      <button class="da-b" onclick="alert('Функція в розробці')">📱 SMS</button>
+      <button class="da-b" onclick="ownerEditClient('${c.id}')">✏️ Редагувати</button>
       <button class="da-b rd" onclick="ownerDeleteClient('${c.id}','${c.last_name} ${c.first_name}')" style="color:var(--rd);border-color:#EF444440">🗑 Видалити</button>
       <button class="da-b" onclick="closeDosD()">Закрити</button>
     </div>`;
@@ -2958,6 +2958,75 @@ async function openDos(id){
 }
 function closeDos(e){if(e.target===document.getElementById('dos-ov'))closeDosD()}
 function closeDosD(){document.getElementById('dos-ov').classList.remove('sh')}
+
+async function ownerEditClient(id){
+  let c=(typeof allClients!=='undefined'?allClients.find(x=>x.id===id):null);
+  if(!c){ try{ const r=await sb.get('clients',`?id=eq.${id}&limit=1`); c=r&&r[0]; }catch(e){} }
+  if(!c){ alert('Клієнта не знайдено'); return; }
+
+  const ov=document.createElement('div');
+  ov.id='edit-cl-ov';
+  ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:16px';
+  const fld='width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--bd2);background:var(--p3);color:var(--m);font-family:var(--f);font-size:13px;box-sizing:border-box';
+  const lbl='font-size:10px;font-weight:700;letter-spacing:.5px;color:var(--m2);text-transform:uppercase;margin:10px 0 4px;display:block';
+  const esc=s=>String(s||'').replace(/"/g,'&quot;');
+  ov.innerHTML=`<div onclick="event.stopPropagation()" style="background:var(--p);border:1px solid var(--bd2);border-radius:16px;padding:20px;width:100%;max-width:420px;max-height:90vh;overflow:auto">
+    <div style="font-size:16px;font-weight:800;margin-bottom:6px">Редагувати клієнта</div>
+    <div style="font-size:11px;color:var(--m2);margin-bottom:8px">${c.id}</div>
+    <div style="display:flex;gap:10px">
+      <div style="flex:1"><label style="${lbl}">Прізвище</label><input id="ec-last" style="${fld}" value="${esc(c.last_name)}"></div>
+      <div style="flex:1"><label style="${lbl}">Ім'я</label><input id="ec-first" style="${fld}" value="${esc(c.first_name)}"></div>
+    </div>
+    <label style="${lbl}">Телефон</label><input id="ec-phone" style="${fld}" value="${esc(c.phone)}" placeholder="+380...">
+    <div style="display:flex;gap:10px">
+      <div style="flex:1"><label style="${lbl}">Стать</label>
+        <select id="ec-gender" style="${fld}">
+          <option value="">—</option>
+          <option value="М" ${c.gender==='М'?'selected':''}>Чоловік</option>
+          <option value="Ж" ${c.gender==='Ж'?'selected':''}>Жінка</option>
+        </select>
+      </div>
+      <div style="flex:1"><label style="${lbl}">Дата народження</label><input id="ec-birth" type="date" style="${fld}" value="${esc(c.birth_date)}"></div>
+    </div>
+    <label style="${lbl}">Місто</label><input id="ec-city" style="${fld}" value="${esc(c.city)}">
+    <label style="${lbl}">Примітка</label><textarea id="ec-note" style="${fld};min-height:54px;resize:vertical">${esc(c.note)}</textarea>
+    <div id="ec-err" style="color:var(--rd);font-size:12px;margin-top:8px;display:none"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button id="ec-cancel" style="flex:1;padding:11px;border-radius:9px;border:1px solid var(--bd2);background:transparent;color:var(--m2);font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer">Скасувати</button>
+      <button id="ec-save" style="flex:2;padding:11px;border-radius:9px;border:none;background:var(--y);color:#000;font-family:var(--f);font-size:13px;font-weight:800;cursor:pointer">💾 Зберегти</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  const close=()=>ov.remove();
+  ov.onclick=close;
+  document.getElementById('ec-cancel').onclick=close;
+
+  document.getElementById('ec-save').onclick=async()=>{
+    const errEl=document.getElementById('ec-err');
+    const last=document.getElementById('ec-last').value.trim();
+    const first=document.getElementById('ec-first').value.trim();
+    let phone=document.getElementById('ec-phone').value.trim();
+    const gender=document.getElementById('ec-gender').value;
+    const birth=document.getElementById('ec-birth').value;
+    const city=document.getElementById('ec-city').value.trim();
+    const note=document.getElementById('ec-note').value.trim();
+    if(!last||!first){ errEl.textContent='Прізвище та ім\'я обов\'язкові'; errEl.style.display='block'; return; }
+    // легка нормалізація телефону
+    if(phone){ let d=phone.replace(/\D/g,''); if(d.startsWith('00'))d=d.slice(2); if(d.startsWith('0')&&d.length===10)d='380'+d.slice(1); if(d.length===9)d='380'+d; phone=d.startsWith('380')?('+'+d):phone; }
+
+    const btn=document.getElementById('ec-save');
+    btn.disabled=true; btn.textContent='Збереження…';
+    try{
+      const patch={last_name:last,first_name:first,phone:phone||null,gender:gender||null,birth_date:birth||null,city:city||null,note:note||null};
+      await sb.patch('clients',`id=eq.${id}`,patch);
+      // оновлюємо кеш
+      if(typeof allClients!=='undefined'){const gc=allClients.find(x=>x.id===id); if(gc)Object.assign(gc,patch);}
+      close();
+      if(typeof renderClients==='function') renderClients();
+      openDos(id); // перевідкриваємо картку зі свіжими даними
+    }catch(err){ errEl.textContent='Помилка: '+err.message; errEl.style.display='block'; btn.disabled=false; btn.textContent='💾 Зберегти'; }
+  };
+}
 
 async function ownerDeleteClient(clientId, clientName){
   // Перевіряємо чи є активні абонементи
