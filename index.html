@@ -146,31 +146,40 @@ Repo: https://github.com/kvaranestor-star/creagym
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CREAGYM CRM</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap');
+@font-face{font-family:'Benzin';src:url('Benzin-ExtraBold.woff2') format('woff2'),url('Benzin-ExtraBold.woff') format('woff'),url('Benzin-ExtraBold.ttf') format('truetype');font-weight:800;font-style:normal;font-display:swap}
 *{box-sizing:border-box;margin:0;padding:0}
+*{scrollbar-width:thin;scrollbar-color:#2a2a30 transparent}
+::-webkit-scrollbar{width:7px;height:7px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#2a2a30;border-radius:10px}
+::-webkit-scrollbar-thumb:hover{background:#3a3a42}
 :root{
-  --bg:#0A0A0A;--p1:#111;--p2:#1A1A1A;--p3:#222;--p4:#2A2A2A;
-  --y:#FFD300;--yd:#FFD30012;--ym:#FFD30028;--yb:#FFD30050;
-  --w:#FFF;--m:#555;--m2:#777;--m3:#999;
-  --bd:#ffffff08;--bd2:#ffffff12;--bd3:#ffffff1e;
-  --gr:#22C55E;--rd:#EF4444;--bl:#3B82F6;--or:#F97316;--pu:#A855F7;
+  --bg:#000;--p1:#0C0C0E;--p2:#141417;--p3:#1C1C20;--p4:#26262C;
+  --y:#FFD300;--y2:#FFE04D;--yd:#FFD30012;--ym:#FFD30020;--yb:#FFD30055;
+  --w:#FFF;--m:#5A5A63;--m2:#84848F;--m3:#A6A6B0;
+  --bd:#ffffff09;--bd2:#ffffff14;--bd3:#ffffff22;
+  --gr:#34D17F;--rd:#F2545B;--bl:#4B8BF5;--or:#FB923C;--pu:#A855F7;
   --f:'Montserrat',sans-serif;
+  --wm:'Benzin','Montserrat',sans-serif;
 }
-html,body{height:100%;background:var(--bg);font-family:var(--f);color:var(--w);overflow:hidden}
+html,body{height:100%;background:#000;font-family:var(--f);color:var(--w);overflow:hidden}
+.cg-mark{color:var(--y)}
+.wordmark{font-family:var(--wm);font-weight:800;letter-spacing:.02em;text-transform:uppercase;line-height:1}
+.wordmark .c1{color:var(--w)}.wordmark .c2{color:var(--y)}
 
 /* AUTH */
-#auth{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
-#auth::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--bd) 1px,transparent 1px),linear-gradient(90deg,var(--bd) 1px,transparent 1px);background-size:48px 48px;pointer-events:none}
-#auth::after{content:'';position:fixed;top:-160px;left:50%;transform:translateX(-50%);width:500px;height:340px;background:radial-gradient(ellipse,#FFD30014 0%,transparent 70%);pointer-events:none}
-.auth-logo{display:flex;flex-direction:column;align-items:center;gap:4px;margin-bottom:32px;position:relative;z-index:1}
-.auth-lb{width:52px;height:52px;background:var(--y);border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:var(--bg);margin-bottom:10px}
+#auth{position:fixed;inset:0;background:#000;z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.auth-logo{display:flex;flex-direction:column;align-items:center;gap:16px;margin-bottom:40px;position:relative;z-index:1}
+.auth-logo .cg-mark{width:52px;height:auto}
+.auth-logo .cg-logo{width:190px;height:auto;display:block}
 .auth-name{font-size:20px;font-weight:800;letter-spacing:.12em}
-.auth-sub{font-size:10px;color:var(--m2);letter-spacing:.2em;text-transform:uppercase;margin-top:2px}
-.auth-card{width:100%;max-width:400px;background:var(--p1);border:1px solid var(--bd2);border-radius:18px;padding:28px 24px;position:relative;z-index:1}
-.auth-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--y);border-radius:18px 18px 0 0}
-.role-tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;background:var(--p2);border-radius:9px;padding:3px;margin-bottom:20px}
-.rtab{border:none;background:transparent;color:var(--m2);font-family:var(--f);font-size:11px;font-weight:600;letter-spacing:.06em;padding:7px;border-radius:7px;cursor:pointer;transition:all .15s;text-transform:uppercase}
-.rtab.on{background:var(--y);color:var(--bg)}
+.auth-sub{font-size:9px;color:var(--m2);letter-spacing:.3em;text-transform:uppercase;margin-top:2px}
+.auth-card{width:100%;max-width:400px;background:#0C0C0E;border:1px solid var(--bd2);border-radius:16px;padding:26px 22px;position:relative;z-index:1}
+.role-tabs{display:flex;background:transparent;border-bottom:1px solid var(--bd2);border-radius:0;padding:0;margin-bottom:22px}
+.rtab{flex:1;border:none;background:transparent;color:var(--m2);font-family:var(--f);font-size:12px;font-weight:700;letter-spacing:.06em;padding:0 0 12px;cursor:pointer;transition:color .18s;text-transform:uppercase;position:relative}
+.rtab.on{background:transparent;color:var(--w)}
+.rtab.on::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:var(--y)}
 .ob{display:inline-flex;align-items:center;gap:5px;background:var(--yd);border:1px solid var(--ym);border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700;color:var(--y);margin-bottom:12px}
 .auth-title{font-size:16px;font-weight:700;margin-bottom:2px}
 .auth-desc{font-size:11px;color:var(--m2);margin-bottom:18px}
@@ -507,12 +516,15 @@ tr:hover td{background:#ffffff03;cursor:pointer}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="cg-logo" viewBox="0 0 368 43"><path d="M0.00147999 21.3157C0.00147999 17.2712 1.1857 13.6274 3.55414 10.3845C5.95901 7.14154 9.22017 4.60914 13.3376 2.78726C17.4915 0.92895 22.0826 -0.000207576 27.111 -0.000207576C31.6292 -0.000207576 35.7102 0.728543 39.354 2.18604C42.9977 3.60711 45.9856 5.62939 48.3176 8.25289C50.6496 10.84 52.1982 13.8825 52.9634 17.3805H38.9714C38.4248 15.923 37.4957 14.6659 36.1839 13.6092C34.9086 12.5161 33.4693 11.6962 31.8661 11.1497C30.2628 10.6031 28.696 10.3298 27.1656 10.3298C25.0158 10.3298 22.9207 10.7671 20.8802 11.6416C18.8761 12.5161 17.2364 13.7914 15.9611 15.4675C14.7222 17.1072 14.1028 19.0566 14.1028 21.3157C14.1028 23.5749 14.7222 25.5425 15.9611 27.2186C17.2 28.8583 18.8032 30.1154 20.7709 30.9899C22.7749 31.8279 24.9065 32.247 27.1656 32.247C29.6798 32.247 31.9936 31.6458 34.107 30.4433C36.2568 29.2409 37.8418 27.5283 38.8621 25.3056H52.9087C52.1071 28.7672 50.5403 31.8097 48.2083 34.4332C45.8763 37.0203 42.9066 39.0244 39.2993 40.4454C35.692 41.8665 31.6292 42.577 27.111 42.577C22.119 42.577 17.5461 41.6479 13.3923 39.7895C9.27482 37.9312 6.01367 35.3806 3.60879 32.1377C1.20392 28.8947 0.00147999 25.2874 0.00147999 21.3157ZM88.8038 41.4292L77.5993 28.3664H69.2369V41.4292H56.338V0.983605H86.8908C90.2795 0.983605 93.2674 1.54839 95.8544 2.67795C98.4779 3.80751 100.5 5.39254 101.921 7.43304C103.379 9.43711 104.108 11.7691 104.108 14.429V14.6477C104.108 18.1092 103.087 20.9696 101.047 23.2287C99.0427 25.4878 96.2553 27 92.6844 27.7652L104.435 41.4292H88.8038ZM91.4273 14.757C91.4273 13.3359 91.1176 12.2975 90.4981 11.6416C89.9151 10.9857 89.1499 10.5849 88.2026 10.4391C87.2552 10.2934 85.8706 10.2205 84.0487 10.2205H82.0811C79.3847 10.2934 75.1033 10.3298 69.2369 10.3298V19.0202H83.9394H84.0487C85.8706 19.0202 87.2552 18.9473 88.2026 18.8015C89.1499 18.6558 89.9151 18.2914 90.4981 17.7084C91.1176 17.089 91.4273 16.1052 91.4273 14.757ZM146.543 25.7429H121.292V31.919L151.134 31.7004V41.4839H107.792V1.03826H151.134L151.189 10.8217H121.292V16.178H146.543V25.7429ZM209.252 41.4839H195.642L191.871 34.5425H168.97L165.199 41.4839H151.589L173.506 1.03826H187.334L209.252 41.4839ZM180.448 13.3906L173.889 25.415H186.952L180.448 13.3906Z" fill="white"/>
+<path d="M258.191 41.4839H249.719L248.681 38.3685C244.09 41.1742 238.624 42.577 232.284 42.577C227.256 42.577 222.683 41.6479 218.565 39.7895C214.448 37.9312 211.187 35.3806 208.782 32.1377C206.413 28.8947 205.229 25.2874 205.229 21.3157C205.229 17.2712 206.432 13.6274 208.837 10.3845C211.241 7.14154 214.503 4.60914 218.62 2.78726C222.737 0.92895 227.292 -0.000207576 232.284 -0.000207576C236.766 -0.000207576 240.829 0.637449 244.472 1.91276C248.116 3.18808 251.122 5.06461 253.491 7.54236C255.859 9.98367 257.39 12.9351 258.082 16.3967L244.035 16.4513C243.306 14.3379 241.849 12.7894 239.663 11.8055C237.513 10.8217 235.072 10.3298 232.339 10.3298C230.08 10.3298 228.021 10.7853 226.163 11.6962C224.304 12.5707 222.829 13.846 221.735 15.5222C220.679 17.1619 220.15 19.093 220.15 21.3157C220.15 23.5749 220.697 25.5425 221.79 27.2186C222.883 28.8583 224.359 30.1154 226.217 30.9899C228.076 31.8279 230.116 32.247 232.339 32.247C234.561 32.247 236.638 31.8279 238.57 30.9899C240.501 30.1518 242.013 28.9312 243.106 27.3279H232.503V20.1133H258.137V24.8684L258.191 41.4839ZM293.284 1.03826H307.221L287.873 24.4858V41.4839H273.389V24.5405L254.095 1.03826H268.033L280.33 16.0687L293.284 1.03826ZM367.268 1.03826V41.4839H353.823V23.2287L344.914 41.4839H332.507L322.997 23.0101V41.4839H309.497V1.03826H324.91L338.683 28.8583L352.238 1.03826H367.268Z" fill="#FFD304"/></symbol></svg>
+
 
 <!-- AUTH -->
 <div id="auth">
   <div class="auth-logo">
-    <div class="auth-lb">CG</div>
-    <div class="auth-name">CREAGYM</div>
+    <div class="cg-mark" style="width:52px"><svg viewBox="0 0 194 148" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto"><path d="M194 0H4.06878C-15.931 74.673 40.3182 148 117.598 148H154.352L178.14 59.2H50.5782L42.6481 88.8H139.271L131.344 118.4H3.7791L27.5633 29.6H186.07L194 0Z" fill="currentColor"/></svg></div>
+    <svg viewBox="0 0 368 43" class="cg-logo"><use href="#cg-logo"/></svg>
     <div class="auth-sub">Система управління залом</div>
   </div>
   <div class="auth-card">
@@ -559,7 +571,7 @@ tr:hover td{background:#ffffff03;cursor:pointer}
   <!-- HEADER -->
   <div style="display:flex;align-items:center;padding:0 16px;height:50px;border-bottom:1px solid var(--bd);background:var(--p1);flex-shrink:0;gap:10px">
     <div style="display:flex;align-items:center;gap:7px;flex:1">
-      <div style="font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--y)">CREAGYM</div>
+      <svg viewBox="0 0 368 43" class="cg-logo" style="width:90px;height:auto"><use href="#cg-logo"/></svg>
       <div style="font-size:9px;color:var(--m);background:var(--p2);border:1px solid var(--bd2);padding:2px 6px;border-radius:5px" id="rbadge">OWNER</div>
       <div id="branch-switcher" style="display:none;align-items:center;gap:6px;margin-left:8px;padding:4px 9px;border-radius:7px;border:1px solid var(--bd2);background:var(--p2);cursor:pointer;transition:all .12s" onclick="openBranchSwitcher(event)">
         <span style="font-size:11px">🏢</span>
@@ -581,8 +593,8 @@ tr:hover td{background:#ffffff03;cursor:pointer}
     <!-- SIDEBAR -->
     <aside class="sb" id="sb">
       <div class="sb-logo">
-        <div class="lb">CG</div>
-        <span class="lt">CREAGYM</span>
+        <div class="lb" style="background:none;border-radius:0"><svg viewBox="0 0 194 148" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:26px;height:auto;color:var(--y)"><path d="M194 0H4.06878C-15.931 74.673 40.3182 148 117.598 148H154.352L178.14 59.2H50.5782L42.6481 88.8H139.271L131.344 118.4H3.7791L27.5633 29.6H186.07L194 0Z" fill="currentColor"/></svg></div>
+        <svg viewBox="0 0 368 43" class="lt cg-logo" style="width:98px;height:auto"><use href="#cg-logo"/></svg>
         <button class="sbt" onclick="toggleSb()">
           <svg viewBox="0 0 12 12" fill="none" width="10" height="10" id="sbi"><path d="M8 2L4 6l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
@@ -1299,6 +1311,13 @@ tr:hover td{background:#ffffff03;cursor:pointer}
           <div style="flex:1">
             <div style="font-size:12px;font-weight:600;color:#C084FC">👥 Парний (спліт)</div>
             <div style="font-size:10px;color:var(--m2);margin-top:2px">Оформляється на двох клієнтів за одну ціну. При продажу обираєте 2-го учасника.</div>
+          </div>
+        </label>
+        <label style="margin-bottom:12px;padding:12px 14px;background:#22C55E14;border:1px solid #22C55E40;border-radius:8px;display:flex;align-items:center;gap:10px;cursor:pointer">
+          <input type="checkbox" id="sub-online" checked style="width:18px;height:18px;cursor:pointer;accent-color:#22C55E">
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600;color:#4ADE80">🌐 Дозволити продаж онлайн</div>
+            <div style="font-size:10px;color:var(--m2);margin-top:2px">Якщо вимкнено — цей абонемент можна купити лише в залі, у порталі клієнта він не показується.</div>
           </div>
         </label>
         <div class="form-group">
@@ -2149,6 +2168,7 @@ function openSubModal(id=null){
   document.getElementById('price-preview').style.display='none';
   const swNet=document.getElementById('sub-network');if(swNet)swNet.checked=false;
   const swPair=document.getElementById('sub-pair');if(swPair)swPair.checked=false;
+  const swOnl=document.getElementById('sub-online');if(swOnl)swOnl.checked=true;
   document.getElementById('srv-list').innerHTML=`<div class="srv-row"><div class="srv-name"><select class="fs fi2-sm" style="width:100%"><option>Тренажерний зал</option><option>Групове тренування</option><option>Персональне тренування</option><option>Масаж</option><option>Басейн</option><option>Сауна</option></select></div><input class="fi2-sm srv-qty" type="number" placeholder="—"><select class="fs fi2-sm srv-unit"><option>Необм.</option><option>1 год.</option><option>Разів</option></select><button class="sub-del-b" onclick="this.parentElement.remove()">✕</button></div>`;
 
   if(id){
@@ -2173,6 +2193,7 @@ function openSubModal(id=null){
       document.getElementById('sub-vis-month').disabled=vMU;
       const swNet2=document.getElementById('sub-network');if(swNet2)swNet2.checked=!!s.is_network;
       const swPair2=document.getElementById('sub-pair');if(swPair2)swPair2.checked=!!s.is_pair;
+      const swOnline=document.getElementById('sub-online');if(swOnline)swOnline.checked=(s.allow_online!==false);
       updatePricePreview();
     }
   }
@@ -2233,6 +2254,7 @@ async function saveSub(){
 
   const isNetwork=document.getElementById('sub-network')?.checked||false;
   const isPair=document.getElementById('sub-pair')?.checked||false;
+  const allowOnline=document.getElementById('sub-online')?document.getElementById('sub-online').checked:true;
 
   const data={
     name,
@@ -2251,6 +2273,7 @@ async function saveSub(){
     is_active:true,
     is_network:isNetwork,
     is_pair:isPair,
+    allow_online:allowOnline,
     // Якщо мережевий — branch_id null, інакше — поточна філія
     branch_id:isNetwork?null:(_currentBranch?.id||null)
   };
@@ -6127,7 +6150,7 @@ function generateAutoOrderPDF(data){
 
 <div id="app-admin">
   <div class="adm-hdr">
-    <div class="adm-logo">CREAGYM</div>
+    <div class="adm-logo"><svg viewBox="0 0 368 43" class="cg-logo" style="width:104px;height:auto"><use href="#cg-logo"/></svg></div>
     <div id="adm-branch-badge" style="display:none;align-items:center;gap:5px;padding:4px 10px;border-radius:7px;background:var(--ym);border:1px solid var(--y)30;flex-shrink:0">
       <span style="font-size:11px">🏢</span>
       <span id="adm-branch-badge-name" style="font-size:11px;font-weight:700;color:var(--y);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</span>
