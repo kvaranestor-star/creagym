@@ -4538,8 +4538,19 @@ async function saveProduct(){
       if(p) Object.assign(p,data);
     } else {
       const result=await sb.post('products',withBranch({...data,is_active:true}));
+      // Виявляємо помилку БД (Supabase повертає об'єкт з code, а не викидає виняток)
+      if(result && !Array.isArray(result) && result.code){
+        alert('❌ Не вдалося додати товар\n\nПомилка ('+result.code+'): '+(result.message||'')+(result.details?'\n'+result.details:'')+(result.hint?'\nПідказка: '+result.hint:''));
+        btn.textContent='Додати товар';btn.disabled=false;
+        return;
+      }
       const newP=Array.isArray(result)?result[0]:result;
-      if(newP?.id) gProducts.push(newP);
+      if(!newP||!newP.id){
+        alert('❌ Товар не збережено (порожня відповідь від бази). Перевірте підключення і спробуйте ще раз.');
+        btn.textContent='Додати товар';btn.disabled=false;
+        return;
+      }
+      gProducts.push(newP);
     }
     closeMoProdD();
     renderAssortment();
