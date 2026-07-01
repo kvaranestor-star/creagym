@@ -371,6 +371,8 @@ tr:hover td{background:#ffffff03;cursor:pointer}
 .s-exp{background:#EF444414;color:var(--rd)}
 .s-tri{background:#F9731614;color:var(--or)}
 .s-new{background:#A855F714;color:#A855F7}
+.s-act{background:#34D17F14;color:var(--gr)}
+.s-end{background:#F59E0B14;color:#F59E0B}
 .ab-b{font-size:10px;color:var(--m2);background:var(--p2);padding:2px 6px;border-radius:6px;white-space:nowrap}
 .act-b{background:var(--p2);border:1px solid var(--bd2);border-radius:6px;padding:3px 9px;font-size:10px;font-weight:600;color:var(--m2);cursor:pointer;font-family:var(--f);transition:all .12s;white-space:nowrap}
 .act-b:hover{border-color:var(--ym);color:var(--y)}
@@ -670,9 +672,10 @@ tr:hover td{background:#ffffff03;cursor:pointer}
             <select class="f-sel" onchange="filterClSt(this.value)">
               <option value="">Всі статуси</option>
               <option value="active">Активні</option>
+              <option value="ending">Завершуються</option>
               <option value="frozen">Заморожені</option>
-              <option value="expired">Прострочені</option>
-              <option value="trial">Пробні</option>
+              <option value="expired">Закінчені</option>
+              <option value="new">Нові</option>
             </select>
             <select class="f-sel" onchange="filterClG(this.value)">
               <option value="">Стать</option>
@@ -1962,7 +1965,7 @@ async function loadStats(){
     const in7 = new Date(today); in7.setDate(today.getDate()+7);
     const expiring = subs.filter(s=>{const d=new Date(s.end_date+'T00:00:00');return d>=today&&d<=in7;});
 
-    document.getElementById('cl-badge').textContent=active;
+    document.getElementById('cl-badge').textContent=clients.length;
     document.getElementById('goods-badge').textContent=lowStock.length;
 
     // KPI — картка доходу з витратами
@@ -2348,7 +2351,7 @@ async function loadClients(){
   document.getElementById('cl-table-wrap').innerHTML='<div class="loading"><div class="spin"></div>Завантаження...</div>';
   try {
     allClients = await sb.get('clients','?select=*&order=created_at.desc');
-    document.getElementById('cl-badge').textContent=allClients.filter(c=>c.status==='active').length;
+    document.getElementById('cl-badge').textContent=allClients.length;
     renderClients();
     // Синхронізуємо статуси з реальними абонементами
     syncClientStatuses();
@@ -2359,8 +2362,9 @@ async function loadClients(){
 
 const stMap={
   active:   {cls:'s-act', l:'Активний'},
+  ending:   {cls:'s-end', l:'Завершується'},
   frozen:   {cls:'s-frz', l:'Заморожений'},
-  expired:  {cls:'s-exp', l:'Прострочений'},
+  expired:  {cls:'s-exp', l:'Закінчений'},
   trial:    {cls:'s-tri', l:'Пробний'},
   inactive: {cls:'s-exp', l:'Неактивний'},
   pending:  {cls:'s-tri', l:'Не стартований'},
@@ -2384,33 +2388,35 @@ async function syncClientStatuses(){
       }
     });
 
+    const ENDING_SOON_DAYS=5; // за скільки днів до кінця вважати «Завершується»
     for(const c of allClients){
       const subs=subsByClient[c.id]||[];
-      const createdAt=c.created_at?new Date(c.created_at):null;
-      const daysSinceCreate=createdAt?Math.floor((new Date()-createdAt)/86400000):999;
-      const isNew=daysSinceCreate<=5;
 
-      let newStatus='inactive';
+      let newStatus='new';
       if(subs.length){
         const activeSub=subs.find(s=>s.status==='active');
         const frozenSub=subs.find(s=>s.status==='frozen');
         if(frozenSub) newStatus='frozen';
         else if(activeSub){
           const isActivated=activeSub.started_at||(activeSub.start_type==='з дати продажу');
-          if(!isActivated) newStatus=isNew?'new':'pending';
-          else if(activeSub.end_date<today) newStatus='expired';
-          else newStatus=isNew?'new':'active';
+          if(!isActivated) newStatus='pending';                    // куплено, ще не активовано
+          else if(activeSub.end_date<today) newStatus='expired';   // вже минув
+          else {
+            const daysLeft=Math.ceil((new Date(activeSub.end_date+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);
+            newStatus=(daysLeft<=ENDING_SOON_DAYS)?'ending':'active'; // скоро кінець / активний
+          }
+        } else {
+          newStatus='expired'; // є абонементи, але жоден не активний → закінчений
         }
       } else {
-        // Немає абонементу
-        newStatus=isNew?'new':'inactive';
+        newStatus='new'; // немає жодного абонемента → щойно зареєстрований
       }
 
       if(c.status!==newStatus) c.status=newStatus;
     }
     renderClients();
-    // Оновлюємо бейдж (лічимо активних + нових з абонементом)
-    const activeCount=allClients.filter(c=>c.status==='active'||c.status==='new').length;
+    // Оновлюємо бейдж — загальна кількість клієнтів
+    const activeCount=allClients.length;
     const badge=document.getElementById('cl-badge');
     if(badge) badge.textContent=activeCount;
   }catch(e){ console.warn('syncClientStatuses:',e); }
