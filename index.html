@@ -2959,8 +2959,12 @@ async function ownerReturnProduct(saleId,amount,itemName,payMethod){
     // Повертаємо товар на склад
     try{
       const firstItem=itemName.split(',')[0].trim().replace(/\s+×\d+$/,'');
+      // Філія продажу — щоб повернути товар саме тієї філії (назви можуть повторюватись між філіями)
+      let saleBranch=null;
+      try{ const sr=await sb.get('sales',`?id=eq.${saleId}&select=branch_id&limit=1`); saleBranch=(sr&&sr[0])?sr[0].branch_id:null; }catch(e){}
       const allProds=allProducts||await sb.get('products','?is_active=eq.true');
-      const prod=allProds.find(p=>p.name===firstItem||(p.emoji+' '+p.name)===firstItem);
+      const matchName=p=>p.name===firstItem||(p.emoji+' '+p.name)===firstItem;
+      const prod=allProds.find(p=>matchName(p)&&(!saleBranch||p.branch_id===saleBranch))||allProds.find(matchName);
       if(prod){
         const newStock=(prod.stock||0)+1;
         await sb.patch('products',`id=eq.${prod.id}`,{stock:newStock});
