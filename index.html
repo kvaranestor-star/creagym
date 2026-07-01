@@ -536,10 +536,10 @@ tr:hover td{background:#ffffff03;cursor:pointer}
     </div>
     <div id="lf">
       <div class="field">
-        <label>Email</label>
+        <label>Телефон або Email</label>
         <div class="iw">
           <svg class="fi" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="10" rx="2" stroke="white" stroke-width="1.2"/><path d="M1 5.5L8 9.5L15 5.5" stroke="white" stroke-width="1.2"/></svg>
-          <input type="email" id="em" placeholder="your@email.com" autocomplete="email">
+          <input type="text" id="em" placeholder="+380... або email" autocomplete="username">
         </div>
       </div>
       <div class="field">
@@ -971,13 +971,12 @@ tr:hover td{background:#ffffff03;cursor:pointer}
                   <label>Роль *</label>
                   <select class="fi2" id="staff-role">
                     <option value="admin">🔧 Адміністратор</option>
-                    <option value="trainer">💪 Тренер</option>
                   </select>
                 </div>
               </div>
               <div class="ff">
-                <label>Email (логін) *</label>
-                <input class="fi2" type="email" id="staff-email" placeholder="ivan@creagym.com" autocomplete="off">
+                <label>Телефон (логін) *</label>
+                <input class="fi2" type="tel" id="staff-email" placeholder="+380671234567" autocomplete="off">
               </div>
               <div class="ff">
                 <label id="staff-pass-label">Пароль *</label>
@@ -985,8 +984,8 @@ tr:hover td{background:#ffffff03;cursor:pointer}
                 <div id="staff-pass-hint" style="font-size:10px;color:var(--m2);margin-top:3px;display:none">Залиште порожнім щоб не змінювати пароль</div>
               </div>
               <div class="ff">
-                <label>Телефон</label>
-                <input class="fi2" type="text" id="staff-phone" placeholder="+380...">
+                <label>Телефон (для зв'язку)</label>
+                <input class="fi2" type="text" id="staff-phone" placeholder="необов'язково">
               </div>
               <div class="ff">
                 <label>Філія *</label>
@@ -1568,8 +1567,21 @@ async function sha256(str){
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
+function normLogin(v){
+  v=(v||'').trim();
+  if(!v) return '';
+  // Якщо схоже на телефон (лише цифри/+/пробіли) — нормалізуємо у +380XXXXXXXXX
+  if(/^[+\d\s()\-]+$/.test(v)){
+    let d=v.replace(/\D/g,'');
+    if(d.startsWith('00')) d=d.slice(2);
+    if(d.startsWith('0')&&d.length===10) d='380'+d.slice(1);
+    if(d.length===9) d='380'+d;
+    if(d.length>=11) return '+'+d;
+  }
+  return v.toLowerCase();
+}
 async function doLogin(){
-  const email=document.getElementById('em').value.trim();
+  const email=normLogin(document.getElementById('em').value);
   const pass=document.getElementById('pw').value;
   const err=document.getElementById('err');
   err.classList.remove('sh');
@@ -5117,9 +5129,9 @@ function closeStaffMoD(){
 
 async function saveStaff(){
   const name=(document.getElementById('staff-name')?.value||'').trim();
-  const email=(document.getElementById('staff-email')?.value||'').trim().toLowerCase();
+  const email=normLogin(document.getElementById('staff-email')?.value||'');
   const pass=(document.getElementById('staff-pass')?.value||'').trim();
-  const phone=(document.getElementById('staff-phone')?.value||'').trim()||null;
+  let phone=(document.getElementById('staff-phone')?.value||'').trim()||null;
   const notes=(document.getElementById('staff-notes')?.value||'').trim()||null;
   const role=document.getElementById('staff-role')?.value||'admin';
   const isActive=document.getElementById('staff-active')?.checked!==false;
@@ -5128,15 +5140,17 @@ async function saveStaff(){
   const selBranches=selectedRadio?[selectedRadio.dataset.branch]:[];
 
   if(!name){alert("Введіть ім'я співробітника");return;}
-  if(!email){alert('Введіть email (логін)');return;}
-  if(!email.includes('@')){alert('Невірний формат email');return;}
+  if(!email){alert('Введіть телефон (логін)');return;}
+  if(!/^\+380\d{9}$/.test(email) && !email.includes('@')){alert('Введіть коректний номер телефону: +380 та 9 цифр');return;}
   if(!_editStaffId&&!pass){alert('Введіть пароль');return;}
   if(pass&&pass.length<6){alert('Пароль має бути мінімум 6 символів');return;}
   if(!selBranches.length){alert('Виберіть хоча б одну філію для доступу');return;}
+  // Якщо контактний телефон не вказано — беремо логін
+  if(!phone && /^\+380\d{9}$/.test(email)) phone=email;
 
-  // Перевірка унікальності email
-  if(_staff.some(u=>u.email.toLowerCase()===email && u.id!==_editStaffId)){
-    alert('Користувач з таким email вже існує');return;
+  // Перевірка унікальності логіна
+  if(_staff.some(u=>(u.email||'').toLowerCase()===email.toLowerCase() && u.id!==_editStaffId)){
+    alert('Користувач з таким номером вже існує');return;
   }
 
   // Initials з імені
