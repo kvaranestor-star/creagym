@@ -1590,6 +1590,7 @@ const sb = {
 let passVis=false, curUser=null;
 let allClients=[], filterTxt='', filterSt='', filterGn='';
 let subsByClient={};
+let _clTypeMap={};
 // Локальна дата YYYY-MM-DD без зсуву в UTC (toISOString конвертує в UTC і ламає день)
 function dateStr(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function todayStr(){return dateStr(new Date());}
@@ -2004,6 +2005,16 @@ async function loadStats(){
     ]);
 
     const active = new Set((subs||[]).map(s=>s.client_id).filter(Boolean)).size;
+    // Всього клієнтів для обраного масштабу:
+    //  • конкретна філія → унікальні клієнти, у кого є будь-який абонемент цієї філії
+    //  • «Загальна» → усі клієнти (включно з тими, хто купив мережевий)
+    let totalClients;
+    if(bid){
+      const branchSubs=await sb.get('subscriptions',`?select=client_id&branch_id=eq.${bid}`)||[];
+      totalClients=new Set(branchSubs.map(s=>s.client_id).filter(Boolean)).size;
+    } else {
+      totalClients=clients.length;
+    }
     // Виключаємо винесення та повернення з доходу
     const incomeSales = sales.filter(x=>x.type!=='outcome'&&x.type!=='return');
     const outcomeSales = sales.filter(x=>x.type==='outcome');
@@ -2066,7 +2077,7 @@ async function loadStats(){
       </div>
       <div class="kc" style="--ac:var(--gr)">
         <div class="ktop"><div class="ki" style="background:#22C55E14"><svg viewBox="0 0 20 20" fill="none" style="color:var(--gr)"><circle cx="8" cy="6" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M2 17c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div><span class="kd up">Активні</span></div>
-        <div class="kv">${active}</div><div class="kl">Клієнтів</div><div class="ks">Всього: ${clients.length}</div>
+        <div class="kv">${active}</div><div class="kl">Клієнтів</div><div class="ks">Всього: ${totalClients}</div>
       </div>
       <div class="kc" style="--ac:var(--or)">
         <div class="ktop"><div class="ki" style="background:#F9731614"><svg viewBox="0 0 20 20" fill="none" style="color:var(--or)"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M3 8h14M7 4V3m6 1V3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div><span class="kd ${expiring.length>0?'dn':'up'}">${expiring.length} скоро</span></div>
@@ -2435,7 +2446,12 @@ async function syncClientStatuses(){
   if(!allClients.length) return;
   try{
     const today=todayStr();
-    const allSubs=await sb.get('subscriptions','?status=in.(active,frozen,expired)&order=end_date.desc&select=client_id,status,started_at,start_type,end_date,type_name,is_pair,partner_client_id');
+    const allSubs=await sb.get('subscriptions','?status=in.(active,frozen,expired)&order=end_date.desc&select=client_id,status,started_at,start_type,end_date,type_name,type_id,is_pair,partner_client_id');
+    // Карта типів → мережевий/локальний + філія (для точного бейджа)
+    try{
+      const types=await sb.get('subscription_types','?select=id,is_network,branch_id')||[];
+      _clTypeMap={}; types.forEach(t=>{_clTypeMap[t.id]={net:!!t.is_network,branch:t.branch_id};});
+    }catch(e){}
     subsByClient={};
     (allSubs||[]).forEach(s=>{
       if(!subsByClient[s.client_id]) subsByClient[s.client_id]=[];
@@ -2484,6 +2500,23 @@ async function syncClientStatuses(){
 let _clPage=1;
 const _clPageSize=30;
 
+function clAbonementCell(c){
+  const s=(subsByClient[c.id]||[]).find(x=>x.status==='active'||x.status==='frozen');
+  if(!s) return '<span class="ab-b">—</span>';
+  const name=s.type_name||'Абонемент';
+  const t=s.type_id?_clTypeMap[s.type_id]:null;
+  let tag='';
+  if(t){
+    if(t.net){
+      tag=`<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;background:#4B8BF51e;color:var(--bl);white-space:nowrap">🌐 Мережевий</span>`;
+    } else {
+      const bn=(_branches||[]).find(b=>b.id===t.branch)?.name;
+      const short=bn?bn.replace(/^м\.\s*Житомир[,.]?\s*/i,'').trim():'Локальний';
+      tag=`<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;background:#ffffff10;color:var(--m3);white-space:nowrap">🏢 ${short||'Локальний'}</span>`;
+    }
+  }
+  return `<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap"><span class="ab-b">${name}</span>${tag}</div>`;
+}
 function renderClients(){
   const list=allClients.filter(c=>{
     const q=filterTxt.toLowerCase();
@@ -2508,7 +2541,7 @@ function renderClients(){
       :`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:7px;background:#FFD30020;color:var(--y);font-size:10px;font-weight:700">${(c.first_name||'?')[0]}${(c.last_name||'?')[0]}</div>`;
     return `<tr onclick="openDos('${c.id}')">
       <td><div class="cf"><div class="av" style="overflow:hidden">${av}</div><div><div class="cn">${c.last_name} ${c.first_name}</div><div class="cp">${c.phone||''}</div></div></div></td>
-      <td><span class="ab-b">${(subsByClient[c.id]||[]).find(s=>s.status==='active'||s.status==='frozen')?.type_name||'—'}</span></td>
+      <td>${clAbonementCell(c)}</td>
       <td style="color:var(--m3)">${c.visits||0}</td>
       <td style="color:var(--m2)">${c.gender||'—'}</td>
       <td><span class="st ${st.cls}">${st.l}</span></td>
