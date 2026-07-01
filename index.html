@@ -1272,11 +1272,11 @@ tr:hover td{background:#ffffff03;cursor:pointer}
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
         <div class="ff">
           <label>Ціна (₴) *</label>
-          <input class="fi2" type="number" id="prod-price" placeholder="0" min="0">
+          <input class="fi2" type="number" id="prod-price" placeholder="0" min="0" step="0.01">
         </div>
         <div class="ff">
           <label>Собівартість (₴)</label>
-          <input class="fi2" type="number" id="prod-cost" placeholder="0" min="0">
+          <input class="fi2" type="number" id="prod-cost" placeholder="0" min="0" step="0.01">
         </div>
         <div class="ff">
           <label>Одиниця виміру</label>
@@ -2298,7 +2298,7 @@ function setSubTab(tab,btn){
 function updatePricePreview(){
   const v=document.getElementById('sub-price').value;
   const pp=document.getElementById('price-preview');
-  if(v){pp.style.display='block';pp.textContent=fmt(parseInt(v))+' ₴';}
+  if(v){pp.style.display='block';pp.textContent=fmt(parseFloat(v))+' ₴';}
   else pp.style.display='none';
 }
 
@@ -2317,7 +2317,7 @@ function toggleVisUnlim(type,cb){
 
 async function saveSub(){
   const name=document.getElementById('sub-name').value.trim();
-  const price=parseInt(document.getElementById('sub-price').value);
+  const price=parseFloat(document.getElementById('sub-price').value);
   const days=parseInt(document.getElementById('sub-dur').value);
   const cls=document.getElementById('sub-class').value;
   if(!name){alert('Введіть назву абонементу');return}
@@ -2803,6 +2803,17 @@ function okManualOp(type){
   document.getElementById('kop-amount').value='';
   document.getElementById('kop-note').value='';
   document.getElementById('kop-category').value='';
+  // Показуємо лише статті, що відповідають типу операції
+  const gIn=document.getElementById('kop-grp-income');
+  const gOut=document.getElementById('kop-grp-outcome');
+  const lbl=document.getElementById('kop-cat-label');
+  if(lbl) lbl.textContent = type==='income' ? 'Стаття внесення' : 'Стаття витрат';
+  if(gIn&&gOut){
+    gIn.style.display = type==='income' ? '' : 'none';
+    gOut.style.display = type==='outcome' ? '' : 'none';
+    gIn.disabled = type!=='income';
+    gOut.disabled = type!=='outcome';
+  }
   document.getElementById('kop-confirm').onclick=okConfirmOp;
   admOpenMo('kasa-op-mo');
 }
@@ -3974,7 +3985,7 @@ async function saveIncomeDoc(){
           const updateData={stock:newStock};
           // Якщо в накладній вказана ціна одиниці — оновлюємо собівартість
           if(it.unit_price&&Number(it.unit_price)>0){
-            updateData.cost=Math.round(Number(it.unit_price));
+            updateData.cost=Math.round(Number(it.unit_price)*100)/100;
           }
           const patchRes=await sb.patch('products',`id=eq.${prod.id}`,updateData);
           if(patchRes&&patchRes.code){
@@ -4467,8 +4478,8 @@ async function saveProduct(){
   const cat=catNew||catSel;
   const supplier_id=document.getElementById('prod-supplier').value||null;
   const name=(document.getElementById('prod-name')?.value||'').trim();
-  const price=parseInt(document.getElementById('prod-price')?.value)||0;
-  const cost=parseInt(document.getElementById('prod-cost')?.value)||0;
+  const price=parseFloat(document.getElementById('prod-price')?.value)||0;
+  const cost=parseFloat(document.getElementById('prod-cost')?.value)||0;
   const stock=parseInt(document.getElementById('prod-stock')?.value)||0;
   const min_stock=parseInt(document.getElementById('prod-min')?.value)||5;
   const desired_max=parseInt(document.getElementById('prod-max')?.value)||0;
@@ -6542,15 +6553,15 @@ function generateAutoOrderPDF(data){
         <input class="fi3" type="text" id="kop-note" placeholder="Наприклад: здача, отримано від менеджера...">
       </div>
       <div class="ff2">
-        <label>Стаття витрат</label>
+        <label id="kop-cat-label">Стаття</label>
         <select class="fi3" id="kop-category">
           <option value="">— Оберіть статтю —</option>
-          <optgroup label="Внесення">
+          <optgroup label="Внесення" id="kop-grp-income">
             <option value="Здача">Здача</option>
             <option value="Поповнення каси">Поповнення каси</option>
             <option value="Інше внесення">Інше внесення</option>
           </optgroup>
-          <optgroup label="Винесення">
+          <optgroup label="Винесення" id="kop-grp-outcome">
             <option value="Оренда">Оренда</option>
             <option value="Зарплата">Зарплата</option>
             <option value="Комунальні">Комунальні послуги</option>
@@ -7558,7 +7569,7 @@ function admOpenSell(id){
     if(!s.is_pair&&clientStreak>=1&&isLoyaltyType(s.id,s.is_network)){
       const disc=getStreakDiscount(nextStreak, s.id);
       if(disc>0){
-        const discPrice=Math.round(s.price*(1-disc/100));
+        const discPrice=Math.round(s.price*(1-disc/100)*100)/100;
         priceHtml=`<div style="text-align:right"><div style="text-decoration:line-through;color:var(--m2);font-size:10px">${(s.price||0).toLocaleString('uk-UA')} ₴</div><div style="color:var(--y);font-weight:700">${discPrice.toLocaleString('uk-UA')} ₴ <span style="font-size:9px;color:var(--or)">-${disc}%</span></div></div>`;
       }
     }
@@ -7673,7 +7684,7 @@ async function admConfirmSell(){
     // Розрахунок знижки
     discountPct=getStreakDiscount(newStreak, s.id);
     if(discountPct>0){
-      finalPrice=Math.round(s.price*(1-discountPct/100));
+      finalPrice=Math.round(s.price*(1-discountPct/100)*100)/100;
     }
   }
 
