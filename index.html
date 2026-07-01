@@ -2515,6 +2515,12 @@ async function syncClientStatuses(){
 }
 
 let _clPage=1;
+let _clSortAb=0; // 0 — без сортування, 1 — А→Я, 2 — Я→А
+function _clSubName(c){
+  const s=(subsByClient[c.id]||[]).find(x=>x.status==='active'||x.status==='frozen');
+  return s?(s.type_name||''):'';
+}
+function clSortAb(){ _clSortAb=(_clSortAb+1)%3; _clPage=1; renderClients(); }
 const _clPageSize=30;
 
 function clAbonementCell(c){
@@ -2542,6 +2548,13 @@ function renderClients(){
       &&(!filterGn||c.gender===filterGn);
   });
   document.getElementById('cl-cnt').textContent=list.length+' клієнт'+(list.length===1?'':'ів');
+  if(_clSortAb){
+    list.sort((a,b)=>{
+      const an=_clSubName(a), bn=_clSubName(b);
+      if(!an&&!bn)return 0; if(!an)return 1; if(!bn)return -1; // без абонемента — в кінець
+      return _clSortAb===1? an.localeCompare(bn,'uk') : bn.localeCompare(an,'uk');
+    });
+  }
   if(!list.length){
     document.getElementById('cl-table-wrap').innerHTML='<div class="loading" style="color:var(--m2)">Клієнтів не знайдено</div>';
     return;
@@ -2581,7 +2594,7 @@ function renderClients(){
       <span style="font-size:11px;color:var(--m2)">${(_clPage-1)*_clPageSize+1}–${Math.min(_clPage*_clPageSize,list.length)} з ${list.length}</span>
     </div>`:'';
 
-  document.getElementById('cl-table-wrap').innerHTML=`<table><thead><tr><th>Клієнт</th><th>Абонемент</th><th>Візити</th><th>Стать</th><th>Статус</th><th></th></tr></thead><tbody>${rows}</tbody></table>${pagBtns}`;
+  document.getElementById('cl-table-wrap').innerHTML=`<table><thead><tr><th>Клієнт</th><th onclick="clSortAb()" style="cursor:pointer;user-select:none;white-space:nowrap">Абонемент${_clSortAb===1?' ▲':_clSortAb===2?' ▼':' ⇅'}</th><th>Візити</th><th>Стать</th><th>Статус</th><th></th></tr></thead><tbody>${rows}</tbody></table>${pagBtns}`;
 }
 
 function exportClients(){
