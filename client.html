@@ -1,135 +1,215 @@
-<!DOCTYPE html>
+=<!DOCTYPE html>
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 194 148'%3E%3Cpath d='M194 0H4.07C-15.93 74.67 40.32 148 117.6 148H154.35L178.14 59.2H50.58L42.65 88.8H139.27L131.34 118.4H3.78L27.56 29.6H186.07L194 0Z' fill='%23FFD300'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>CREAGYM</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
-*{margin:0;padding:0;box-sizing:border-box}
-:root{
-  --bg:#0A0A0A;--p1:#111;--p2:#1A1A1A;--p3:#222;--p4:#2A2A2A;
-  --y:#FFD300;--yd:#FFD30012;--ym:#FFD30028;--yb:#FFD30050;
-  --w:#FFF;--m:#555;--m2:#777;--m3:#999;
-  --bd:#ffffff08;--bd2:#ffffff12;--bd3:#ffffff1e;
-  --gr:#22C55E;--rd:#EF4444;--bl:#3B82F6;--or:#F97316;
-  --f:'Montserrat',sans-serif;
+
+/* Benzin-ExtraBold для вордмарку. Якщо файл шрифту покладеш у репо (Benzin-ExtraBold.woff2) — підхопиться автоматично; інакше красивий фолбек. */
+@font-face{
+  font-family:'Benzin';
+  src:url('Benzin-ExtraBold.woff2') format('woff2'),url('Benzin-ExtraBold.woff') format('woff'),url('Benzin-ExtraBold.ttf') format('truetype');
+  font-weight:800;font-style:normal;font-display:swap;
 }
-html,body{background:var(--bg);font-family:var(--f);color:var(--w);min-height:100vh}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+*{scrollbar-width:thin;scrollbar-color:#2a2a30 transparent}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#2a2a30;border-radius:10px}
+::-webkit-scrollbar-thumb:hover{background:#3a3a42}
+:root{
+  --bg:#000;--p1:#0D0D10;--p2:#141417;--p3:#1C1C20;--p4:#26262C;
+  --y:#FFD300;--y2:#FFE04D;--yd:#FFD30012;--ym:#FFD30022;--yb:#FFD30055;
+  --w:#FFF;--m:#5A5A63;--m2:#84848F;--m3:#A6A6B0;
+  --bd:#ffffff09;--bd2:#ffffff14;--bd3:#ffffff22;
+  --gr:#34D17F;--rd:#F2545B;--bl:#4B8BF5;--or:#FB923C;
+  --f:'Montserrat',sans-serif;
+  --wm:'Benzin','Montserrat',sans-serif;
+  --shadow:0 8px 30px rgba(0,0,0,.45);
+  --glow:0 0 0 1px var(--bd2),0 10px 40px -12px rgba(0,0,0,.7);
+}
+html,body{background:#000;font-family:var(--f);color:var(--w);min-height:100vh;-webkit-font-smoothing:antialiased}
+body{background:#000;background-attachment:fixed}
 .screen{display:none;min-height:100vh;flex-direction:column}
 .screen.active{display:flex}
 
-/* AUTH */
-#scr-auth{background:var(--bg);position:relative}
-#scr-auth::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--bd) 1px,transparent 1px),linear-gradient(90deg,var(--bd) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0}
-#scr-auth::after{content:'';position:fixed;top:-160px;left:50%;transform:translateX(-50%);width:500px;height:340px;background:radial-gradient(ellipse,#FFD30014 0%,transparent 70%);pointer-events:none;z-index:0}
-.auth-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:32px 16px 60px;gap:20px;overflow-y:auto;position:relative;z-index:1}
-.auth-logo{text-align:center}
-.auth-lb{width:56px;height:56px;background:var(--y);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:var(--bg);margin:0 auto 10px}
-.auth-logo h1{font-size:22px;font-weight:900;letter-spacing:.12em;color:var(--w)}
-.auth-logo p{font-size:10px;color:var(--m2);letter-spacing:.2em;text-transform:uppercase;margin-top:3px}
-.auth-form{width:100%;max-width:400px;background:var(--p1);border:1px solid var(--bd2);border-radius:14px;padding:20px 18px;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:10px}
-.auth-form::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--y);border-radius:18px 18px 0 0}
-.auth-form h2{font-size:15px;font-weight:700;margin-bottom:16px}
+/* ===== ЛОГОТИП / ВОРДМАРК ===== */
+.cg-mark{display:inline-block;color:var(--y)}
+.wordmark{font-family:var(--wm);font-weight:800;letter-spacing:.02em;line-height:1;text-transform:uppercase}
+.wordmark .c1{color:var(--w)}
+.wordmark .c2{color:var(--y)}
 
-/* TABS */
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--p2);border-radius:9px;padding:3px;margin-bottom:16px}
-.tab{border:none;background:transparent;color:var(--m2);font-family:var(--f);font-size:11px;font-weight:700;letter-spacing:.06em;padding:8px;border-radius:7px;cursor:pointer;transition:all .15s;text-transform:uppercase}
-.tab.active{background:var(--y);color:var(--bg)}
+/* ===== AUTH ===== */
+#scr-auth{background:#000;position:relative}
+.auth-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:calc(60px + env(safe-area-inset-top)) 22px 48px;gap:48px;overflow-y:auto;position:relative;z-index:1;min-height:100vh}
+.auth-logo{text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px}
+.auth-logo .cg-mark{width:56px;height:auto}
+.auth-logo .wordmark{font-size:28px}
+.auth-logo p{font-size:9px;color:var(--m2);letter-spacing:.4em;text-transform:uppercase;font-weight:600}
+.auth-form{width:100%;max-width:380px;background:transparent;border:none;border-radius:0;padding:0;position:relative;display:flex;flex-direction:column;gap:13px}
+.auth-form h2{font-size:15px;font-weight:700;margin-bottom:6px;letter-spacing:0;text-align:center;color:var(--m3)}
+
+/* TABS — мінімалістичні (підкреслення) */
+.tabs{display:flex;gap:0;background:transparent;border:none;border-bottom:1px solid var(--bd2);border-radius:0;padding:0;margin-bottom:22px}
+.tab{flex:1;border:none;background:transparent;color:var(--m2);font-family:var(--f);font-size:12px;font-weight:700;letter-spacing:.06em;padding:0 0 12px;cursor:pointer;transition:color .18s;text-transform:uppercase;position:relative}
+.tab.active{background:transparent;color:var(--w)}
+.tab.active::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:var(--y)}
 
 /* INPUTS */
-.fi{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--w);font-family:var(--f);font-size:12px;outline:none;transition:border-color .15s}
-.fi:focus{border-color:var(--yb)}
-.fi::placeholder{color:var(--m)}
+.fi{width:100%;padding:15px 16px;border-radius:13px;border:1px solid var(--bd2);background:#0B0B0D;color:var(--w);font-family:var(--f);font-size:14px;font-weight:500;outline:none;transition:border-color .18s,background .18s}
+.fi:focus{border-color:var(--y);background:#0E0E10}
+.fi::placeholder{color:var(--m);font-weight:400}
 select.fi{cursor:pointer}
-.fi-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.ff{display:flex;flex-direction:column;gap:5px}
-.fi-label{font-size:10px;font-weight:700;color:var(--m2);text-transform:uppercase;letter-spacing:.07em}
+.fi-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ff{display:flex;flex-direction:column;gap:7px}
+.fi-label{font-size:11px;font-weight:600;color:var(--m2);letter-spacing:.01em;padding-left:2px;text-transform:none}
+.phone-wrap{position:relative;display:flex;align-items:center}
+.phone-prefix{position:absolute;left:16px;font-size:14px;font-weight:600;color:var(--w);pointer-events:none;z-index:1}
+.phone-inp{padding-left:56px!important;letter-spacing:.02em}
 
 /* BUTTONS */
-.btn{width:100%;padding:12px;border-radius:9px;border:none;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.04em;transition:all .12s}
-.btn-y{background:var(--y);color:var(--bg)}
-.btn-y:hover{background:#FFE033}
-.btn-ghost{background:var(--p2);color:var(--m2);border:1px solid var(--bd2)}
-.btn-link{background:none;border:none;color:var(--y);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.02em}
+.btn{width:100%;padding:13px;border-radius:11px;border:none;font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:opacity .15s,background .15s}
+.btn:active{opacity:.85}
+.btn-y{background:var(--y);color:#000}
+.btn-y:hover{background:var(--y2)}
+.btn-ghost{background:transparent;color:var(--m3);border:1px solid var(--bd2)}
+.btn-ghost:hover{border-color:var(--bd3);color:var(--w)}
+.btn-link{background:none;border:none;color:var(--m3);font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.02em}
+.btn-link:hover{color:var(--y)}
 
 /* ERROR/OK */
-.err{display:none;padding:9px 12px;border-radius:8px;background:#EF444414;border:1px solid #EF444430;color:var(--rd);font-size:11px;font-weight:500}
+.err{display:none;padding:10px 13px;border-radius:11px;background:#F2545B16;border:1px solid #F2545B33;color:var(--rd);font-size:12px;font-weight:600}
 .err.show{display:block}
-.ok{display:none;padding:9px 12px;border-radius:8px;background:#22C55E14;border:1px solid #22C55E30;color:var(--gr);font-size:11px;font-weight:500}
+.ok{display:none;padding:10px 13px;border-radius:11px;background:#34D17F16;border:1px solid #34D17F33;color:var(--gr);font-size:12px;font-weight:600}
 .ok.show{display:block}
 
 /* HEADER */
-.hdr{padding:0 14px;height:48px;display:flex;align-items:center;justify-content:space-between;background:var(--p1);border-bottom:1px solid var(--bd2);position:sticky;top:0;z-index:100;flex-shrink:0}
-.hdr-logo{font-size:15px;font-weight:900;letter-spacing:.12em;color:var(--y)}
-.hdr-back{width:30px;height:30px;border-radius:7px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.hdr{padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between;background:#000;border-bottom:1px solid var(--bd2);position:sticky;top:0;z-index:100;flex-shrink:0}
+.hdr-logo{display:flex;align-items:center;gap:9px;font-family:var(--wm);font-size:18px;font-weight:800;letter-spacing:.02em;color:var(--w);text-transform:uppercase}
+.hdr-logo .cg-mark{width:24px;height:auto}
+.hdr-logo .wordmark{font-size:18px}
+.hdr-back{width:34px;height:34px;border-radius:10px;border:1px solid var(--bd2);background:var(--p2);color:var(--m3);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.hdr-back:active{transform:scale(.94)}
 
 /* MAIN */
-.main-wrap{flex:1;overflow-y:auto;padding:12px 12px 88px}
+.main-wrap{flex:1;overflow-y:auto;padding:16px 14px 96px}
 
 /* CARDS */
-.card{background:var(--p1);border:1px solid var(--bd2);border-radius:12px;padding:12px 14px;margin-bottom:10px}
-.card h3{font-size:9px;font-weight:700;color:var(--m2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+.card{background:#0C0C0E;border:1px solid var(--bd2);border-radius:14px;padding:15px 16px;margin-bottom:12px}
+.card h3{display:flex;align-items:center;gap:12px;font-family:var(--wm);font-size:12px;font-weight:800;color:var(--w);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px}
+.card h3::after{content:'';flex:1;height:1px;background:var(--bd2)}
 
 /* SUB CARD */
-.sub-active{background:linear-gradient(135deg,var(--p1),#1a1200);border:1px solid var(--yb);border-radius:12px;padding:12px 14px;margin-bottom:10px;position:relative;overflow:hidden}
-.sub-active::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--y)}
-.sub-prog-wrap{height:4px;background:var(--p3);border-radius:2px;margin:10px 0}
-.sub-prog{height:100%;border-radius:2px;background:var(--y);transition:width .3s}
+.sub-active{background:#0C0C0E;border:1px solid var(--yb);border-radius:14px;padding:16px 17px;margin-bottom:12px;position:relative}
+.sub-prog-wrap{height:5px;background:#1A1A1E;border-radius:6px;margin:12px 0;overflow:hidden}
+.sub-prog{height:100%;border-radius:6px;background:var(--y);transition:width .5s ease}
 
 /* BADGES */
-.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.04em}
-.badge-gr{background:#22C55E14;color:var(--gr);border:1px solid #22C55E20}
-.badge-rd{background:#EF444414;color:var(--rd);border:1px solid #EF444420}
-.badge-bl{background:#3B82F614;color:var(--bl);border:1px solid #3B82F620}
-.badge-or{background:#F9731614;color:var(--or);border:1px solid #F9731620}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:30px;font-size:10px;font-weight:800;letter-spacing:.04em}
+.badge-gr{background:#34D17F18;color:var(--gr);border:1px solid #34D17F30}
+.badge-rd{background:#F2545B18;color:var(--rd);border:1px solid #F2545B30}
+.badge-bl{background:#4B8BF518;color:var(--bl);border:1px solid #4B8BF530}
+.badge-or{background:#FB923C18;color:var(--or);border:1px solid #FB923C30}
 
 /* SUB ITEMS */
-.sub-item{background:var(--p1);border:1px solid var(--bd2);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s,background .15s}
-.sub-item:active{border-color:var(--y);background:var(--yd)}
+.sub-item{background:#0C0C0E;border:1px solid var(--bd2);border-radius:12px;padding:14px 15px;margin-bottom:10px;cursor:pointer;transition:border-color .18s}
+.sub-item:active{border-color:var(--bd3)}
 
 /* BOTTOM NAV */
-.bnav{position:fixed;bottom:0;left:0;right:0;background:var(--p1);border-top:1px solid var(--bd2);display:flex;padding:6px 0 calc(6px + env(safe-area-inset-bottom))}
-.bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 2px;border:none;background:none;cursor:pointer;color:var(--m2);font-family:var(--f);font-size:9px;font-weight:600;letter-spacing:.04em;transition:color .15s}
+.bnav{position:fixed;bottom:0;left:0;right:0;background:#000;border-top:1px solid var(--bd2);display:flex;padding:8px 8px calc(8px + env(safe-area-inset-bottom));z-index:90}
+.bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 2px;border:none;background:none;cursor:pointer;color:var(--m2);font-family:var(--f);font-size:9px;font-weight:600;letter-spacing:.04em;transition:color .18s;position:relative}
 .bnav-btn.active{color:var(--y)}
-.bnav-icon{font-size:18px;line-height:1}
+.bnav-icon{font-size:19px;line-height:1}
 
 /* HISTORY */
-.hist-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd)}
+.hist-item{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--bd)}
 .hist-item:last-child{border-bottom:none}
 
 /* MODAL */
-.mo{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)}
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px)}
 .mo.open{display:flex}
-.mo-body{background:var(--p1);border:1px solid var(--bd2);border-radius:16px 16px 0 0;width:100%;max-width:480px;padding:18px 16px calc(18px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px;max-height:90vh;overflow-y:auto}
-.mo-body::before{content:'';display:block;width:36px;height:4px;background:var(--bd3);border-radius:2px;margin:0 auto -4px}
+.mo-body{background:linear-gradient(180deg,#15151a,#0E0E11);border:1px solid var(--bd2);border-radius:22px 22px 0 0;width:100%;max-width:480px;padding:20px 18px calc(20px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:13px;max-height:90vh;overflow-y:auto;box-shadow:0 -20px 60px rgba(0,0,0,.6)}
+.mo-body::before{content:'';display:block;width:42px;height:4px;background:var(--bd3);border-radius:3px;margin:0 auto 2px}
 
 /* SPINNER */
-.spin{width:20px;height:20px;border:2px solid var(--bd2);border-top-color:var(--y);border-radius:50%;animation:sp .7s linear infinite;margin:40px auto}
+.spin{width:24px;height:24px;border:2.5px solid var(--bd2);border-top-color:var(--y);border-radius:50%;animation:sp .7s linear infinite;margin:44px auto}
 @keyframes sp{to{transform:rotate(360deg)}}
 
 /* TOAST */
-.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--gr);color:#fff;padding:9px 18px;border-radius:9px;font-size:12px;font-weight:700;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;letter-spacing:.03em}
-.toast.show{opacity:1}
+.toast{position:fixed;top:22px;left:50%;transform:translateX(-50%) translateY(-8px);background:linear-gradient(180deg,#1a1a1f,#121215);border:1px solid var(--bd2);color:#fff;padding:11px 20px;border-radius:13px;font-size:12px;font-weight:700;z-index:999;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;white-space:nowrap;letter-spacing:.02em;box-shadow:var(--shadow)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 /* CODE INPUTS */
-.code-inputs{display:flex;gap:8px;justify-content:center}
-.code-inp{width:50px;height:56px;border-radius:10px;border:1px solid var(--bd2);background:var(--p2);color:var(--w);font-size:24px;font-weight:800;text-align:center;font-family:var(--f);outline:none;transition:border-color .15s}
-.code-inp:focus{border-color:var(--y)}
+.code-inputs{display:flex;gap:10px;justify-content:center}
+.code-inp{width:54px;height:62px;border-radius:14px;border:1px solid var(--bd2);background:#0E0E11;color:var(--w);font-size:26px;font-weight:800;text-align:center;font-family:var(--f);outline:none;transition:border-color .18s,box-shadow .18s}
+.code-inp:focus{border-color:var(--bd3)}
+
+/* SECTION TITLES (home) */
+.sec-title{display:flex;align-items:center;gap:12px;font-family:var(--wm);font-size:12px;font-weight:800;color:var(--w);text-transform:uppercase;letter-spacing:.06em;margin:22px 4px 12px}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--bd2)}
+
+/* Рівні відступи між полями всередині обгорток кроків */
+#reg-step1,#reg-step2,#recover-step1,#recover-step2,#new-pass-block{display:flex;flex-direction:column;gap:13px}
+
+/* ===== CUSTOM DROPDOWN ===== */
+.dd{position:relative;width:100%}
+.dd-trigger{width:100%;padding:15px 16px;border-radius:13px;border:1px solid var(--bd2);background:#0B0B0D;color:var(--w);font-family:var(--f);font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;transition:border-color .18s,background .18s}
+.dd-trigger.placeholder .dd-label{color:var(--m)}
+.dd.open .dd-trigger{border-color:var(--y);background:#0E0E10}
+.dd-trigger .chev{color:var(--m2);font-size:11px;transition:transform .2s;flex-shrink:0}
+.dd.open .dd-trigger .chev{transform:rotate(180deg)}
+.dd-menu{position:absolute;top:calc(100% + 6px);left:0;right:0;background:#0E0E11;border:1px solid var(--bd2);border-radius:13px;padding:6px;z-index:60;max-height:230px;overflow-y:auto;box-shadow:0 18px 44px rgba(0,0,0,.6);display:none;-webkit-overflow-scrolling:touch}
+.dd.open .dd-menu{display:block;animation:ddIn .14s ease}
+@keyframes ddIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.dd-opt{padding:11px 12px;border-radius:9px;font-size:14px;color:var(--m3);cursor:pointer;transition:background .12s,color .12s}
+.dd-opt:hover{background:#ffffff0a;color:var(--w)}
+.dd-opt.sel{background:var(--y);color:#000;font-weight:700}
+.dd-search{width:100%;padding:10px 12px;margin-bottom:6px;border-radius:9px;border:1px solid var(--bd2);background:#070708;color:var(--w);font-family:var(--f);font-size:13px;outline:none}
+.dd-search::placeholder{color:var(--m)}
+.dd-list{display:flex;flex-direction:column;gap:1px}
+.dd-menu{scrollbar-width:thin;scrollbar-color:#3a3a40 transparent}
+.dd-menu::-webkit-scrollbar{width:5px}
+.dd-menu::-webkit-scrollbar-track{background:transparent}
+.dd-menu::-webkit-scrollbar-thumb{background:#33333a;border-radius:10px}
+.dd-menu::-webkit-scrollbar-thumb:hover{background:#44444c}
+
+/* ===== SPLASH ===== */
+.cg-logo{display:block;height:auto}
+.cg-logo-auth{width:200px}
+.cg-logo-hdr{width:104px}
+.cg-logo-splash{width:220px}
+.cg-mark-splash{width:70px;height:auto}
+.cg-mark-auth{width:52px;height:auto}
+.cg-mark-hdr{width:20px;height:auto}
+.hdr-logo{gap:8px}
+#splash{position:fixed;inset:0;z-index:9999;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;animation:splashOut .55s ease forwards 1.6s}
+#splash .cg-mark-splash{animation:logoIn .85s cubic-bezier(.2,.8,.2,1) both}
+#splash .cg-logo-splash{animation:logoIn .85s cubic-bezier(.2,.8,.2,1) both .12s}
+@keyframes logoIn{from{opacity:0;transform:translateY(16px) scale(.92)}to{opacity:1;transform:none}}
+@keyframes splashOut{to{opacity:0;visibility:hidden;pointer-events:none}}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="cg-logo" viewBox="0 0 368 43"><path d="M0.00147999 21.3157C0.00147999 17.2712 1.1857 13.6274 3.55414 10.3845C5.95901 7.14154 9.22017 4.60914 13.3376 2.78726C17.4915 0.92895 22.0826 -0.000207576 27.111 -0.000207576C31.6292 -0.000207576 35.7102 0.728543 39.354 2.18604C42.9977 3.60711 45.9856 5.62939 48.3176 8.25289C50.6496 10.84 52.1982 13.8825 52.9634 17.3805H38.9714C38.4248 15.923 37.4957 14.6659 36.1839 13.6092C34.9086 12.5161 33.4693 11.6962 31.8661 11.1497C30.2628 10.6031 28.696 10.3298 27.1656 10.3298C25.0158 10.3298 22.9207 10.7671 20.8802 11.6416C18.8761 12.5161 17.2364 13.7914 15.9611 15.4675C14.7222 17.1072 14.1028 19.0566 14.1028 21.3157C14.1028 23.5749 14.7222 25.5425 15.9611 27.2186C17.2 28.8583 18.8032 30.1154 20.7709 30.9899C22.7749 31.8279 24.9065 32.247 27.1656 32.247C29.6798 32.247 31.9936 31.6458 34.107 30.4433C36.2568 29.2409 37.8418 27.5283 38.8621 25.3056H52.9087C52.1071 28.7672 50.5403 31.8097 48.2083 34.4332C45.8763 37.0203 42.9066 39.0244 39.2993 40.4454C35.692 41.8665 31.6292 42.577 27.111 42.577C22.119 42.577 17.5461 41.6479 13.3923 39.7895C9.27482 37.9312 6.01367 35.3806 3.60879 32.1377C1.20392 28.8947 0.00147999 25.2874 0.00147999 21.3157ZM88.8038 41.4292L77.5993 28.3664H69.2369V41.4292H56.338V0.983605H86.8908C90.2795 0.983605 93.2674 1.54839 95.8544 2.67795C98.4779 3.80751 100.5 5.39254 101.921 7.43304C103.379 9.43711 104.108 11.7691 104.108 14.429V14.6477C104.108 18.1092 103.087 20.9696 101.047 23.2287C99.0427 25.4878 96.2553 27 92.6844 27.7652L104.435 41.4292H88.8038ZM91.4273 14.757C91.4273 13.3359 91.1176 12.2975 90.4981 11.6416C89.9151 10.9857 89.1499 10.5849 88.2026 10.4391C87.2552 10.2934 85.8706 10.2205 84.0487 10.2205H82.0811C79.3847 10.2934 75.1033 10.3298 69.2369 10.3298V19.0202H83.9394H84.0487C85.8706 19.0202 87.2552 18.9473 88.2026 18.8015C89.1499 18.6558 89.9151 18.2914 90.4981 17.7084C91.1176 17.089 91.4273 16.1052 91.4273 14.757ZM146.543 25.7429H121.292V31.919L151.134 31.7004V41.4839H107.792V1.03826H151.134L151.189 10.8217H121.292V16.178H146.543V25.7429ZM209.252 41.4839H195.642L191.871 34.5425H168.97L165.199 41.4839H151.589L173.506 1.03826H187.334L209.252 41.4839ZM180.448 13.3906L173.889 25.415H186.952L180.448 13.3906Z" fill="white"/>
+<path d="M258.191 41.4839H249.719L248.681 38.3685C244.09 41.1742 238.624 42.577 232.284 42.577C227.256 42.577 222.683 41.6479 218.565 39.7895C214.448 37.9312 211.187 35.3806 208.782 32.1377C206.413 28.8947 205.229 25.2874 205.229 21.3157C205.229 17.2712 206.432 13.6274 208.837 10.3845C211.241 7.14154 214.503 4.60914 218.62 2.78726C222.737 0.92895 227.292 -0.000207576 232.284 -0.000207576C236.766 -0.000207576 240.829 0.637449 244.472 1.91276C248.116 3.18808 251.122 5.06461 253.491 7.54236C255.859 9.98367 257.39 12.9351 258.082 16.3967L244.035 16.4513C243.306 14.3379 241.849 12.7894 239.663 11.8055C237.513 10.8217 235.072 10.3298 232.339 10.3298C230.08 10.3298 228.021 10.7853 226.163 11.6962C224.304 12.5707 222.829 13.846 221.735 15.5222C220.679 17.1619 220.15 19.093 220.15 21.3157C220.15 23.5749 220.697 25.5425 221.79 27.2186C222.883 28.8583 224.359 30.1154 226.217 30.9899C228.076 31.8279 230.116 32.247 232.339 32.247C234.561 32.247 236.638 31.8279 238.57 30.9899C240.501 30.1518 242.013 28.9312 243.106 27.3279H232.503V20.1133H258.137V24.8684L258.191 41.4839ZM293.284 1.03826H307.221L287.873 24.4858V41.4839H273.389V24.5405L254.095 1.03826H268.033L280.33 16.0687L293.284 1.03826ZM367.268 1.03826V41.4839H353.823V23.2287L344.914 41.4839H332.507L322.997 23.0101V41.4839H309.497V1.03826H324.91L338.683 28.8583L352.238 1.03826H367.268Z" fill="#FFD304"/></symbol></svg>
 
+<div id="splash">
+  <svg class="cg-mark cg-mark-splash" viewBox="0 0 194 148" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M194 0H4.06878C-15.931 74.673 40.3182 148 117.598 148H154.352L178.14 59.2H50.5782L42.6481 88.8H139.271L131.344 118.4H3.7791L27.5633 29.6H186.07L194 0Z" fill="currentColor"/></svg>
+  <svg viewBox="0 0 368 43" class="cg-logo cg-logo-splash"><use href="#cg-logo"/></svg>
+</div>
 <div class="toast" id="toast"></div>
 
 <!-- ===== AUTH ===== -->
 <div class="screen active" id="scr-auth">
   <div class="auth-wrap">
     <div class="auth-logo">
-      <div class="auth-lb">CG</div>
-      <h1>CREAGYM</h1>
-      <p>Твій фітнес-клуб</p>
+      <svg class="cg-mark cg-mark-auth" viewBox="0 0 194 148" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M194 0H4.06878C-15.931 74.673 40.3182 148 117.598 148H154.352L178.14 59.2H50.5782L42.6481 88.8H139.271L131.344 118.4H3.7791L27.5633 29.6H186.07L194 0Z" fill="currentColor"/></svg>
+      <svg viewBox="0 0 368 43" class="cg-logo cg-logo-auth"><use href="#cg-logo"/></svg>
     </div>
 
     <!-- ВХІД -->
@@ -140,7 +220,7 @@ select.fi{cursor:pointer}
       </div>
       <div class="err" id="login-err"></div>
       <div class="ff"><div class="fi-label">Номер телефону</div>
-        <input class="fi" id="login-id" type="text" placeholder="+380670000000" autocomplete="username">
+        <div class="phone-wrap"><span class="phone-prefix">+380</span><input class="fi phone-inp" id="login-id" type="tel" inputmode="numeric" maxlength="9" placeholder="67 123 45 67" autocomplete="username"></div>
       </div>
       <div class="ff"><div class="fi-label">Пароль</div>
         <input class="fi" id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password">
@@ -168,22 +248,23 @@ select.fi{cursor:pointer}
         </div>
       </div>
       <div class="ff"><div class="fi-label">Телефон *</div>
-        <input class="fi" id="reg-phone" type="tel" placeholder="+380670000000">
+        <div class="phone-wrap"><span class="phone-prefix">+380</span><input class="fi phone-inp" id="reg-phone" type="tel" inputmode="numeric" maxlength="9" placeholder="67 123 45 67"></div>
       </div>
-      <div class="fi-row">
-        <div class="ff"><div class="fi-label">Стать</div>
-          <select class="fi" id="reg-gender">
-            <option value="">—</option>
-            <option value="М">Чоловік</option>
-            <option value="Ж">Жінка</option>
-          </select>
+      <div class="ff"><div class="fi-label">Стать</div>
+        <div class="dd" id="dd-gender"></div>
+        <input type="hidden" id="reg-gender">
+      </div>
+      <div class="ff"><div class="fi-label">Дата народження</div>
+        <div style="display:grid;grid-template-columns:.8fr 1.6fr 1fr;gap:8px">
+          <input class="fi" id="reg-bd-i" inputmode="numeric" pattern="[0-9]*" placeholder="День" maxlength="2" style="text-align:center">
+          <div class="dd" id="dd-bm"></div>
+          <input class="fi" id="reg-by-i" inputmode="numeric" pattern="[0-9]*" placeholder="Рік" maxlength="4" style="text-align:center">
         </div>
-        <div class="ff"><div class="fi-label">Дата народження</div>
-          <input class="fi" id="reg-birth" type="date">
-        </div>
+        <input type="hidden" id="reg-birth">
       </div>
       <div class="ff"><div class="fi-label">Місто</div>
-        <input class="fi" id="reg-city" placeholder="Житомир">
+        <div class="dd" id="dd-city"></div>
+        <input type="hidden" id="reg-city">
       </div>
       <div class="ff"><div class="fi-label">Пароль *</div>
         <input class="fi" id="reg-pass" type="password" placeholder="мінімум 6 символів">
@@ -212,12 +293,12 @@ select.fi{cursor:pointer}
 
     <!-- ВІДНОВЛЕННЯ ПАРОЛЮ -->
     <div class="auth-form" id="form-recover" style="display:none">
-      <h2>🔐 Відновлення паролю</h2>
+      <h2>Відновлення паролю</h2>
       <div class="err" id="recover-err"></div>
       <div class="ok" id="recover-ok"></div>
       <div id="recover-step1">
         <div class="ff" style="margin-bottom:12px"><div class="fi-label">Номер телефону</div>
-          <input class="fi" id="recover-phone" type="tel" placeholder="+380670000000">
+          <div class="phone-wrap"><span class="phone-prefix">+380</span><input class="fi phone-inp" id="recover-phone" type="tel" inputmode="numeric" maxlength="9" placeholder="67 123 45 67"></div>
         </div>
         <button class="btn btn-y" id="recover-send-btn" onclick="sendRecoverCode()">Надіслати код</button>
       </div>
@@ -249,13 +330,13 @@ select.fi{cursor:pointer}
 
 <!-- ===== ГОЛОВНА ===== -->
 <div class="screen" id="scr-home">
-  <div class="hdr"><div class="hdr-logo">CREAGYM</div><div style="font-size:11px;color:var(--m2);font-weight:600" id="hdr-name"></div></div>
+  <div class="hdr"><div class="hdr-logo"><svg class="cg-mark cg-mark-hdr" viewBox="0 0 194 148" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M194 0H4.06878C-15.931 74.673 40.3182 148 117.598 148H154.352L178.14 59.2H50.5782L42.6481 88.8H139.271L131.344 118.4H3.7791L27.5633 29.6H186.07L194 0Z" fill="currentColor"/></svg><svg viewBox="0 0 368 43" class="cg-logo cg-logo-hdr"><use href="#cg-logo"/></svg></div><div style="font-size:11px;color:var(--m2);font-weight:600" id="hdr-name"></div></div>
   <div class="main-wrap">
-    <div style="padding:2px 0 12px"><h2 id="home-hi" style="font-size:20px;font-weight:700"></h2></div>
-    <div id="home-quote" style="display:none;margin:-4px 0 14px;padding:13px 15px;border-radius:14px;background:linear-gradient(135deg,var(--ym),transparent);border:1px solid var(--bd2);border-left:3px solid var(--y)">
-      <div style="font-size:9px;font-weight:800;letter-spacing:1px;color:var(--y);text-transform:uppercase;margin-bottom:4px">💪 Фраза дня</div>
-      <div id="home-quote-text" style="font-size:14px;font-weight:600;line-height:1.4;color:var(--m)"></div>
-      <div id="home-quote-author" style="font-size:11px;color:var(--m2);font-weight:700;margin-top:5px;text-align:right;display:none"></div>
+    <div style="padding:4px 0 14px"><h2 id="home-hi" style="font-family:var(--wm);font-size:25px;font-weight:800;letter-spacing:.01em;text-transform:uppercase"></h2></div>
+    <div id="home-quote" style="display:none;margin:-2px 0 16px;padding:14px 16px;border-radius:14px;background:#0C0C0E;border:1px solid var(--bd2);border-left:2px solid var(--y)">
+      <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--m2);text-transform:uppercase;margin-bottom:6px">Фраза дня</div>
+      <div id="home-quote-text" style="font-size:14px;font-weight:500;line-height:1.45;color:var(--m3)"></div>
+      <div id="home-quote-author" style="font-size:11px;color:var(--m2);font-weight:600;margin-top:6px;text-align:right;display:none"></div>
     </div>
     <div id="home-sub"></div>
     <div class="card">
@@ -376,14 +457,14 @@ function setTab(tab){
   if(tab==='login') document.getElementById('form-login').style.display='flex';
   else if(tab==='register'){
     document.getElementById('form-register').style.display='flex';
-    document.getElementById('reg-step1').style.display='block';
+    document.getElementById('reg-step1').style.display='flex';
     document.getElementById('reg-step2').style.display='none';
     if(_regTimerInterval) clearInterval(_regTimerInterval);
     hideErr('reg-err');
   }
   else if(tab==='recover'){
     document.getElementById('form-recover').style.display='flex';
-    document.getElementById('recover-step1').style.display='block';
+    document.getElementById('recover-step1').style.display='flex';
     document.getElementById('recover-step2').style.display='none';
     hideErr('recover-err');
     document.getElementById('recover-ok').classList.remove('show');
@@ -414,11 +495,10 @@ function normalizePhone(raw){
 // ===== LOGIN =====
 async function doLogin(){
   hideErr('login-err');
-  const rawId=document.getElementById('login-id').value.trim();
-  const np=normalizePhone(rawId);
-  const ident=np.ok?np.phone:rawId; // для входу не блокуємо, просто нормалізуємо якщо можемо
+  const digits=document.getElementById('login-id').value.replace(/\D/g,'');
+  const ident='+380'+digits;
   const pass=document.getElementById('login-pass').value;
-  if(!rawId||!pass){showErr('login-err','Заповніть всі поля');return;}
+  if(!digits||!pass){showErr('login-err','Заповніть всі поля');return;}
   const hash=await sha256(pass);
   const r=await get('clients',`?phone=eq.${encodeURIComponent(ident)}&password_hash=eq.${encodeURIComponent(hash)}&select=*`);
   if(!r||!r.length){
@@ -444,17 +524,16 @@ async function doRegister(){
   hideErr('reg-err');
   const last=document.getElementById('reg-last').value.trim();
   const first=document.getElementById('reg-first').value.trim();
-  const phoneRaw=document.getElementById('reg-phone').value.trim();
+  const phoneDigits=document.getElementById('reg-phone').value.replace(/\D/g,'');
   const gender=document.getElementById('reg-gender').value;
   const birth=document.getElementById('reg-birth').value;
   const city=document.getElementById('reg-city').value.trim();
   const pass=document.getElementById('reg-pass').value;
   const pass2=document.getElementById('reg-pass2').value;
 
-  if(!last||!first||!phoneRaw||!pass){showErr('reg-err',"Заповніть обов'язкові поля: прізвище, ім'я, телефон, пароль");return;}
-  const np=normalizePhone(phoneRaw);
-  if(!np.ok){showErr('reg-err',np.error);return;}
-  const phone=np.phone;
+  if(!last||!first||!phoneDigits||!pass){showErr('reg-err',"Заповніть обов'язкові поля: прізвище, ім'я, телефон, пароль");return;}
+  if(phoneDigits.length!==9){showErr('reg-err','Введіть номер: 9 цифр після +380');return;}
+  const phone='+380'+phoneDigits;
   if(pass.length<6){showErr('reg-err','Пароль мінімум 6 символів');return;}
   if(pass!==pass2){showErr('reg-err','Паролі не співпадають');return;}
 
@@ -486,7 +565,7 @@ async function doRegister(){
 
     document.getElementById('reg-phone-disp').textContent=phone;
     document.getElementById('reg-step1').style.display='none';
-    document.getElementById('reg-step2').style.display='block';
+    document.getElementById('reg-step2').style.display='flex';
     ['rc1','rc2','rc3','rc4'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('rc1')?.focus();
     startRegTimer(10*60);
@@ -523,7 +602,7 @@ async function resendRegCode(){
 function regBackToForm(){
   if(_regTimerInterval) clearInterval(_regTimerInterval);
   document.getElementById('reg-step2').style.display='none';
-  document.getElementById('reg-step1').style.display='block';
+  document.getElementById('reg-step1').style.display='flex';
   hideErr('reg-err');
 }
 
@@ -597,11 +676,9 @@ async function sendRecoverCode(){
   if(_recoverSending) return; // захист від повторних кліків (інакше летить купа SMS)
   hideErr('recover-err');
   document.getElementById('recover-ok').classList.remove('show');
-  const phoneRaw=document.getElementById('recover-phone').value.trim();
-  if(!phoneRaw){showErr('recover-err','Введіть номер телефону');return;}
-  const np=normalizePhone(phoneRaw);
-  if(!np.ok){showErr('recover-err',np.error);return;}
-  const phone=np.phone;
+  const phoneDigits=document.getElementById('recover-phone').value.replace(/\D/g,'');
+  if(phoneDigits.length!==9){showErr('recover-err','Введіть номер: 9 цифр після +380');return;}
+  const phone='+380'+phoneDigits;
 
   _recoverSending=true;
   const btn=document.getElementById('recover-send-btn');
@@ -636,7 +713,7 @@ async function sendRecoverCode(){
     showOk('recover-ok','SMS відправлено! Перевірте телефон.');
 
     document.getElementById('recover-step1').style.display='none';
-    document.getElementById('recover-step2').style.display='block';
+    document.getElementById('recover-step2').style.display='flex';
     startRecoverTimer(10*60);
   } finally {
     _recoverSending=false;
@@ -679,7 +756,7 @@ async function resendCode(){
   document.getElementById('recover-confirm-btn').textContent='Підтвердити код';
   hideErr('recover-err');
   document.getElementById('recover-ok').classList.remove('show');
-  document.getElementById('recover-step1').style.display='block';
+  document.getElementById('recover-step1').style.display='flex';
   document.getElementById('recover-step2').style.display='none';
   if(_recoverTimerInterval) clearInterval(_recoverTimerInterval);
 }
@@ -788,7 +865,7 @@ async function loadHome(){
   if(!(await validateSession())) return;
   showDailyQuote();
   document.getElementById('hdr-name').textContent=curClient.first_name||'';
-  document.getElementById('home-hi').textContent=`Привіт, ${curClient.first_name}! 👋`;
+  document.getElementById('home-hi').textContent=`Привіт, ${curClient.first_name}`;
 
   const subs=await get('subscriptions',`?client_id=eq.${curClient.id}&status=in.(active,frozen)&order=end_date.desc&limit=1`)||[];
   const sub=subs[0];
@@ -1217,6 +1294,65 @@ async function init(){
     showScreen('scr-home');
   }
 }
+// ===== КАСТОМНІ ДРОПДАУНИ =====
+function cgDropdown(mountId,hiddenId,opts,placeholder,cfg){
+  cfg=cfg||{};
+  const mount=document.getElementById(mountId), hidden=hiddenId?document.getElementById(hiddenId):null;
+  if(!mount) return null;
+  mount.innerHTML='';
+  const dd=document.createElement('div'); dd.className='dd';
+  const trig=document.createElement('div'); trig.className='dd-trigger placeholder';
+  trig.innerHTML=`<span class="dd-label">${placeholder}</span><span class="chev">▼</span>`;
+  const menu=document.createElement('div'); menu.className='dd-menu';
+  let search=null;
+  if(cfg.searchable){
+    search=document.createElement('input'); search.className='dd-search'; search.placeholder='Пошук…'; search.type='text';
+    search.oninput=()=>{const q=search.value.trim().toLowerCase();menu.querySelectorAll('.dd-opt').forEach(x=>{x.style.display=x.textContent.toLowerCase().includes(q)?'':'none';});};
+    search.onclick=e=>e.stopPropagation();
+    menu.appendChild(search);
+  }
+  const list=document.createElement('div'); list.className='dd-list';
+  opts.forEach(o=>{
+    const it=document.createElement('div'); it.className='dd-opt'; it.textContent=o.l; it.dataset.v=o.v;
+    it.onclick=(e)=>{e.stopPropagation();pick(o);dd.classList.remove('open');};
+    list.appendChild(it);
+  });
+  menu.appendChild(list);
+  dd.appendChild(trig); dd.appendChild(menu); mount.appendChild(dd);
+  function pick(o){
+    if(hidden) hidden.value=o.v;
+    trig.querySelector('.dd-label').textContent=o.l;
+    trig.classList.toggle('placeholder',o.v==='');
+    list.querySelectorAll('.dd-opt').forEach(x=>x.classList.toggle('sel',x.dataset.v===o.v));
+    if(cfg.onChange) cfg.onChange(o.v);
+  }
+  trig.onclick=(e)=>{e.stopPropagation();const wasOpen=dd.classList.contains('open');document.querySelectorAll('.dd.open').forEach(x=>x.classList.remove('open'));if(!wasOpen){dd.classList.add('open');if(search){search.value='';menu.querySelectorAll('.dd-opt').forEach(x=>x.style.display='');setTimeout(()=>search.focus(),50);}}};
+  if(hidden){const cur=opts.find(o=>o.v===hidden.value); if(cur&&cur.v!=='') pick(cur);}
+  return dd;
+}
+document.addEventListener('click',()=>document.querySelectorAll('.dd.open').forEach(x=>x.classList.remove('open')));
+
+// Телефони: лише цифри, максимум 9 (код країни +380 фіксований і незмінний)
+['login-id','reg-phone','recover-phone'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',()=>{el.value=el.value.replace(/\D/g,'').slice(0,9);});});
+
+// Міста України (можна шукати)
+const CG_CITIES=["Київ", "Харків", "Одеса", "Дніпро", "Донецьк", "Запоріжжя", "Львів", "Кривий Ріг", "Миколаїв", "Маріуполь", "Луганськ", "Вінниця", "Макіївка", "Сімферополь", "Херсон", "Полтава", "Чернігів", "Черкаси", "Хмельницький", "Чернівці", "Житомир", "Суми", "Рівне", "Івано-Франківськ", "Камʼянське", "Кропивницький", "Тернопіль", "Кременчук", "Луцьк", "Біла Церква", "Краматорськ", "Мелітополь", "Керч", "Нікополь", "Бердянськ", "Словʼянськ", "Ужгород", "Алчевськ", "Павлоград", "Сєвєродонецьк", "Євпаторія", "Лисичанськ", "Камʼянець-Подільський", "Бровари", "Дрогобич", "Конотоп", "Умань", "Бердичів", "Мукачево", "Ялта", "Єнакієве", "Бахмут", "Ізмаїл", "Коломия", "Енергодар", "Новомосковськ", "Олександрія", "Червоноград", "Ніжин", "Шостка", "Сміла", "Феодосія", "Костянтинівка", "Покровськ", "Лозова", "Володимир", "Стрий", "Ковель", "Лубни", "Прилуки", "Чорноморськ", "Калуш", "Авдіївка", "Дружківка", "Торецьк", "Шепетівка", "Ірпінь", "Дубно", "Городок", "Коростень", "Борислав", "Самбір", "Звягель", "Малин", "Коростишів", "Овруч", "Радомишль", "Андрушівка", "Баранівка", "Фастів", "Васильків", "Обухів", "Бориспіль", "Вишгород", "Боярка", "Буча", "Жмеринка", "Могилів-Подільський", "Хмільник", "Гайсин", "Козятин", "Бар", "Ладижин", "Тульчин", "Переяслав", "Канів", "Золотоноша", "Городище", "Чигирин", "Камʼянка", "Корсунь-Шевченківський", "Інше"];
+cgDropdown('dd-gender','reg-gender',[{v:'М',l:'Чоловік'},{v:'Ж',l:'Жінка'}],'Оберіть');
+cgDropdown('dd-city','reg-city',[...new Set(CG_CITIES)].sort((a,b)=>a==='Інше'?1:b==='Інше'?-1:a.localeCompare(b,'uk')).map(c=>({v:c,l:c})),'Оберіть місто',{searchable:true});
+
+// Дата народження — день/рік вводяться, місяць обирається
+const _bd={d:'',m:'',y:''};
+function _syncBirth(){const o=document.getElementById('reg-birth');if(!o)return;
+  const dOk=_bd.d&&+_bd.d>=1&&+_bd.d<=31, yOk=_bd.y&&_bd.y.length===4&&+_bd.y>=1940&&+_bd.y<=new Date().getFullYear();
+  o.value=(dOk&&_bd.m&&yOk)?`${_bd.y}-${_bd.m}-${String(+_bd.d).padStart(2,'0')}`:'';}
+const _months=[['01','Січень'],['02','Лютий'],['03','Березень'],['04','Квітень'],['05','Травень'],['06','Червень'],['07','Липень'],['08','Серпень'],['09','Вересень'],['10','Жовтень'],['11','Листопад'],['12','Грудень']].map(([v,l])=>({v,l}));
+cgDropdown('dd-bm',null,_months,'Місяць',{onChange:v=>{_bd.m=v;_syncBirth();}});
+(function(){
+  const di=document.getElementById('reg-bd-i'), yi=document.getElementById('reg-by-i');
+  if(di) di.oninput=()=>{let v=di.value.replace(/\D/g,'').slice(0,2); if(v.length===2&&+v>31)v='31'; if(v==='00')v='01'; di.value=v; _bd.d=v; _syncBirth(); if(v.length===2)document.getElementById('reg-by-i')?.focus();};
+  if(yi) yi.oninput=()=>{let v=yi.value.replace(/\D/g,'').slice(0,4); yi.value=v; _bd.y=v; _syncBirth();};
+})();
+
 init();
 </script>
 </body>
