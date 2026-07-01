@@ -2365,7 +2365,9 @@ async function saveSub(){
 
   try {
     let result;
+    let oldT=null;
     if(editSubId){
+      try{ oldT=(await sb.get('subscription_types',`?id=eq.${editSubId}&select=name,price,days`))?.[0]||null; }catch(e){}
       result=await sb.patch('subscription_types',`id=eq.${editSubId}`,data);
     } else {
       result=await sb.post('subscription_types',data);
@@ -2379,7 +2381,22 @@ async function saveSub(){
       }
       return;
     }
-    alert(editSubId?'✅ Абонемент оновлено!':'✅ Абонемент "'+name+'" створено!');
+
+    // Синхронізація з уже купленими абонементами.
+    // Активним клієнтам оновлюємо ЛИШЕ назву (безпечно).
+    // Ціна й тривалість застосовуються тільки до МАЙБУТНІХ продажів —
+    // поточний абонемент клієнта лишається таким, за який він купив.
+    let propagateMsg='';
+    if(editSubId){
+      try{
+        if(!oldT || oldT.name!==name){
+          const r=await sb.patch('subscriptions',`type_id=eq.${editSubId}&status=in.(active,frozen)`,{type_name:name});
+          const cnt=Array.isArray(r)?r.length:0;
+          if(oldT && oldT.name!==name) propagateMsg=`\n\n🔄 Назву оновлено активним клієнтам${cnt?` (${cnt})`:''}. Ціна й строк — тільки для нових продажів.`;
+        }
+      }catch(e){ console.warn('propagate name:',e); }
+    }
+    alert((editSubId?'✅ Абонемент оновлено!':'✅ Абонемент "'+name+'" створено!')+propagateMsg);
     closeMoD('mo-sub');
     await loadSubs();
   } catch(e){
