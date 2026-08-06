@@ -649,6 +649,7 @@ tr:hover td{background:#ffffff03;cursor:pointer}
         <div class="ni" data-tip="Персонал" onclick="gp('staff',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><path d="M3 16c0-2.5 2-4 4-4h6c2 0 4 1.5 4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="10" cy="7" r="3.5" stroke="currentColor" stroke-width="1.4"/></svg></div><span class="nl">Персонал</span></div>
         <div class="ni" data-tip="Філії" onclick="gp('branches',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><path d="M3 17h14M5 17V8l5-4 5 4v9M8 17v-5h4v5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span class="nl">Філії</span></div>
         <div class="ni" data-tip="Налаштування" onclick="gp('cfg',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M10 2v2m0 12v2M2 10h2m12 0h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div><span class="nl">Налаштування</span></div>
+        <div class="ni" data-tip="Сайт" onclick="gp('site',this)"><div class="nic"><svg viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M2 8h16" stroke="currentColor" stroke-width="1.4"/><circle cx="4.5" cy="6" r=".8" fill="currentColor"/><path d="M5 13l3-3 2 2 3-3 2 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span class="nl">Сайт</span></div>
       </div>
       <div class="sb-bot"><div class="uc"><div class="ua" id="sb-av">ВЛ</div><div class="ui-i"><div class="un" id="sb-nm">Власник</div><div class="ur" id="sb-role">Owner</div></div></div></div>
     </aside>
@@ -1213,6 +1214,14 @@ tr:hover td{background:#ffffff03;cursor:pointer}
 
           </div>
         </div>
+        <div class="sec" id="sec-site">
+          <div style="max-width:1000px">
+            <div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;padding:16px 18px;margin-bottom:16px">
+              <div style="font-size:13px;color:var(--m3);font-weight:500;line-height:1.6">Ці фото показуються на публічному сайті клубу. Після зміни онови сайт у браузері (Ctrl+Shift+R). Найкраще — якісні широкі/квадратні знімки твоїх залів.</div>
+            </div>
+            <div id="site-slots" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1540,6 +1549,11 @@ tr:hover td{background:#ffffff03;cursor:pointer}
           <div id="ph-ph"><div style="font-size:26px">📷</div><div class="ph-up-t">Натисніть або перетягніть фото</div><div class="ph-up-r">Обов'язково — без фото реєстрація неможлива</div></div>
           <img id="ph-prev" class="ph-prev" style="display:none">
         </div>
+        <video id="reg-cam-video" autoplay playsinline muted style="display:none;width:100%;border-radius:10px;background:#000;aspect-ratio:1/1;object-fit:cover;margin-top:8px"></video>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button type="button" id="reg-cam-start" onclick="regCamStart()" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">📷 Камера</button>
+          <button type="button" id="reg-cam-shot" onclick="regCamShot()" style="display:none;flex:1;padding:9px;border-radius:8px;border:1px solid var(--y);background:var(--y);color:#000;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">✅ Зробити фото</button>
+        </div>
       </div>
       <div class="ff"><label>Коментар</label><input class="fi2" type="text" id="f-note" placeholder="Алергії, особливості..."></div>
       <div class="rn"><span>*</span> Обов'язкові поля. Без фото клієнт не може бути зареєстрований.</div>
@@ -1862,8 +1876,85 @@ function toggleSb(){
 }
 
 // ===== PAGES =====
-const PC={stats:{t:'Статистика',s:'Огляд ключових показників',a:'Оновити'},clients:{t:'Клієнти',s:'База клієнтів залу',a:'Новий клієнт'},subs:{t:'Абонементи',s:'Типи та класи абонементів',a:'Новий абонемент'},goods:{t:'Товари',s:'Склад та залишки',a:''},fin:{t:'Каса',s:'Операції з касою і транзакції',a:''},mkt:{t:'Маркетинг',s:'Розсилки та акції',a:''},staff:{t:'Персонал',s:'Команда та доступи',a:''},branches:{t:'Філії',s:'Управління філіями мережі',a:''},cfg:{t:'Налаштування',s:'Інтеграції та конфігурація',a:''}};
+const PC={stats:{t:'Статистика',s:'Огляд ключових показників',a:'Оновити'},clients:{t:'Клієнти',s:'База клієнтів залу',a:'Новий клієнт'},subs:{t:'Абонементи',s:'Типи та класи абонементів',a:'Новий абонемент'},goods:{t:'Товари',s:'Склад та залишки',a:''},fin:{t:'Каса',s:'Операції з касою і транзакції',a:''},mkt:{t:'Маркетинг',s:'Розсилки та акції',a:''},staff:{t:'Персонал',s:'Команда та доступи',a:''},branches:{t:'Філії',s:'Управління філіями мережі',a:''},cfg:{t:'Налаштування',s:'Інтеграції та конфігурація',a:''},site:{t:'Сайт',s:'Фото публічного лендингу',a:''}};
 let curPage='stats';
+// ===== КЕРУВАННЯ ФОТО САЙТУ =====
+const SITE_SLOTS=[
+  {key:'hero',label:'Головне фото (hero)',w:1600},
+  {key:'gal1',label:'Галерея 1 (велике)',w:1300},
+  {key:'gal2',label:'Галерея 2',w:1000},
+  {key:'gal3',label:'Галерея 3',w:1000},
+  {key:'gal4',label:'Галерея 4',w:1000},
+  {key:'loc1',label:'Локація · Бандери',w:1000},
+  {key:'loc2',label:'Локація · Новосінна',w:1000},
+  {key:'loc3',label:'Локація · Клосовського',w:1000},
+  {key:'box',label:'Секція боксу',w:1300},
+  {key:'cta',label:'Банер «Готовий почати»',w:1600},
+];
+let _siteVals={};
+async function loadSiteSettings(){
+  try{ const rows=await sb.get('site_settings','?select=key,value')||[]; _siteVals={}; rows.forEach(r=>_siteVals[r.key]=r.value); }
+  catch(e){ _siteVals={}; }
+  renderSiteSlots();
+}
+function renderSiteSlots(){
+  const box=document.getElementById('site-slots'); if(!box)return;
+  box.innerHTML=SITE_SLOTS.map(s=>{
+    const v=_siteVals[s.key];
+    const bg=v?`background-image:url("${v.replace(/"/g,'%22')}")`:'';
+    const isUrl=v&&/^https?:/i.test(v);
+    return `<div style="background:var(--p1);border:1px solid var(--bd2);border-radius:14px;overflow:hidden">
+      <div style="height:128px;background:#0a0a0c;background-size:cover;background-position:center;${bg};display:flex;align-items:center;justify-content:center;color:var(--m2);font-size:12px">${v?'':'нема фото'}</div>
+      <div style="padding:12px 13px">
+        <div style="font-size:12px;font-weight:700;color:var(--w);margin-bottom:10px">${s.label}</div>
+        <label style="display:block;text-align:center;font-size:12px;font-weight:700;padding:9px;border-radius:8px;border:1px solid var(--bd2);color:var(--w);cursor:pointer;background:var(--p2)">📷 Завантажити фото
+          <input type="file" accept="image/*" style="display:none" onchange="siteUpload('${s.key}',${s.w},this)">
+        </label>
+        <input type="text" placeholder="або встав URL" value="${isUrl?v.replace(/"/g,'&quot;'):''}" onchange="siteSetUrl('${s.key}',this.value)" style="width:100%;margin-top:8px;padding:8px 10px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--w);font-family:var(--f);font-size:11px">
+      </div>
+    </div>`;
+  }).join('');
+}
+async function _siteSave(key,val){
+  const ex=await sb.get('site_settings',`?key=eq.${key}&select=key`);
+  if(ex&&ex.length) return await sb.patch('site_settings',`key=eq.${key}`,{value:val});
+  return await sb.post('site_settings',{key,value:val});
+}
+function siteUpload(key,maxW,inp){
+  if(!inp.files||!inp.files[0])return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const img=new Image();
+    img.onload=async()=>{
+      const scale=Math.min(1,maxW/img.width);
+      const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
+      const c=document.createElement('canvas');c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      const data=c.toDataURL('image/jpeg',0.72);
+      try{
+        const res=await _siteSave(key,data);
+        if(res&&!Array.isArray(res)&&res.code){alert('❌ Не збережено ('+res.code+'): '+res.message+'\n\nМожливо, ще не створено таблицю site_settings (запусти site_settings.sql).');return;}
+        _siteVals[key]=data; renderSiteSlots();
+        alert('✅ Фото збережено. Онови сайт (Ctrl+Shift+R), щоб побачити.');
+      }catch(err){alert('❌ Помилка: '+(err.message||err));}
+    };
+    img.onerror=()=>alert('❌ Не вдалося прочитати зображення');
+    img.src=e.target.result;
+  };
+  r.readAsDataURL(inp.files[0]);
+}
+async function siteSetUrl(key,url){
+  url=(url||'').trim();
+  if(!url){return;}
+  if(!/^https?:\/\//i.test(url)){alert('URL має починатися з http:// або https://');return;}
+  try{
+    const res=await _siteSave(key,url);
+    if(res&&!Array.isArray(res)&&res.code){alert('❌ Не збережено ('+res.code+'): '+res.message);return;}
+    _siteVals[key]=url; renderSiteSlots();
+    alert('✅ Збережено. Онови сайт (Ctrl+Shift+R).');
+  }catch(err){alert('❌ Помилка: '+(err.message||err));}
+}
+
 // ===== МОБІЛЬНИЙ РЕЖИМ =====
 function openMobDrawer(){document.body.classList.add('mob-open');}
 function closeMobDrawer(){document.body.classList.remove('mob-open');}
@@ -1908,6 +1999,7 @@ function gp(id,el){
   if(id==='branches') loadBranches();
   if(id==='staff') loadStaff();
   if(id==='mkt') loadMkt();
+  if(id==='site') loadSiteSettings();
   if(id==='cfg'){loadAutoCloseSettings();loadAcqSettings();loadSmsSettings();}
   if(id==='cfg'){
     // Завантажуємо збережені налаштування
@@ -3278,9 +3370,43 @@ function closeMoD(id){
   const pp=document.getElementById('ph-prev');if(pp)pp.style.display='none';
   const php=document.getElementById('ph-ph');if(php)php.style.display='block';
   _clientPhotoData=''; // Очищаємо фото при закритті форми
+  if(typeof regCamStop==='function') regCamStop(); // Вимикаємо камеру, якщо була увімкнена
 }
 
 let _clientPhotoData = ''; // Зберігаємо base64 глобально
+let _regCamStream=null;
+async function regCamStart(){
+  try{
+    _regCamStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'user'},width:{ideal:720},height:{ideal:720}},audio:false});
+    const v=document.getElementById('reg-cam-video');
+    v.srcObject=_regCamStream; v.style.display='block';
+    document.getElementById('reg-cam-start').style.display='none';
+    document.getElementById('reg-cam-shot').style.display='block';
+  }catch(err){
+    alert('❌ Камера недоступна: '+(err.message||err.name)+'\nДозволь доступ до камери або скористайся завантаженням файлу.');
+  }
+}
+function regCamStop(){
+  if(_regCamStream){ try{_regCamStream.getTracks().forEach(t=>t.stop());}catch(e){} _regCamStream=null; }
+  const v=document.getElementById('reg-cam-video'); if(v){ v.style.display='none'; v.srcObject=null; }
+  const s=document.getElementById('reg-cam-shot'); if(s) s.style.display='none';
+  const b=document.getElementById('reg-cam-start'); if(b) b.style.display='block';
+}
+function regCamShot(){
+  const v=document.getElementById('reg-cam-video');
+  if(!v||!v.videoWidth){ alert('Камера ще завантажується, зачекай мить.'); return; }
+  // Квадратний кроп по центру
+  const side=Math.min(v.videoWidth,v.videoHeight);
+  const sx=(v.videoWidth-side)/2, sy=(v.videoHeight-side)/2;
+  const out=Math.min(side,400);
+  const c=document.createElement('canvas'); c.width=c.height=out;
+  c.getContext('2d').drawImage(v,sx,sy,side,side,0,0,out,out);
+  const data=c.toDataURL('image/jpeg',0.7);
+  _clientPhotoData=data;
+  const prev=document.getElementById('ph-prev'); if(prev){ prev.src=data; prev.style.display='block'; }
+  const ph=document.getElementById('ph-ph'); if(ph) ph.style.display='none';
+  regCamStop();
+}
 
 function prevPhoto(inp){
   if(!inp.files||!inp.files[0])return;
@@ -6565,6 +6691,11 @@ function generateAutoOrderPDF(data){
       <div class="fr2b"><div class="ff2"><label>Дата народження</label><input class="fi3" type="date" id="adm-bday"></div><div class="ff2"></div></div>
       <div class="ff2"><label>Фото * (обов'язково)</label>
         <div class="ph-up2" id="adm-ph-zone"><input type="file" accept="image/*" onchange="admPrevPhoto(this)"><div id="adm-ph-ph"><div style="font-size:22px">📷</div><div style="font-size:11px;color:var(--m2);margin-top:4px">Натисніть або перетягніть фото</div><div style="font-size:10px;color:var(--rd);margin-top:2px;font-weight:600">Без фото реєстрація неможлива</div></div><img id="adm-ph-prev" style="display:none;width:70px;height:70px;border-radius:9px;object-fit:cover;margin:0 auto"></div>
+        <video id="adm-reg-cam-video" autoplay playsinline muted style="display:none;width:100%;border-radius:10px;background:#000;aspect-ratio:1/1;object-fit:cover;margin-top:8px"></video>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button type="button" id="adm-reg-cam-start" onclick="admRegCamStart()" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">📷 Камера</button>
+          <button type="button" id="adm-reg-cam-shot" onclick="admRegCamShot()" style="display:none;flex:1;padding:9px;border-radius:8px;border:1px solid var(--y);background:var(--y);color:#000;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">✅ Зробити фото</button>
+        </div>
       </div>
       <div class="fa2"><button class="fb2 se" onclick="admCloseMoD('adm-cl-mo')">Скасувати</button><button class="fb2 pr" onclick="admCreateClient()">Зберегти клієнта</button></div>
     </div>
@@ -8737,6 +8868,36 @@ function admGoClient(id){admTab('reg',document.querySelector('.adm-tab'));admSel
 
 function admOpenCreateCl(){admOpenMo('adm-cl-mo')}
 let _admPhotoData = '';
+let _admRegCamStream=null;
+async function admRegCamStart(){
+  try{
+    _admRegCamStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'user'},width:{ideal:720},height:{ideal:720}},audio:false});
+    const v=document.getElementById('adm-reg-cam-video');
+    v.srcObject=_admRegCamStream; v.style.display='block';
+    document.getElementById('adm-reg-cam-start').style.display='none';
+    document.getElementById('adm-reg-cam-shot').style.display='block';
+  }catch(err){
+    alert('❌ Камера недоступна: '+(err.message||err.name)+'\nДозволь доступ до камери або скористайся завантаженням файлу.');
+  }
+}
+function admRegCamStop(){
+  if(_admRegCamStream){ try{_admRegCamStream.getTracks().forEach(t=>t.stop());}catch(e){} _admRegCamStream=null; }
+  const v=document.getElementById('adm-reg-cam-video'); if(v){ v.style.display='none'; v.srcObject=null; }
+  const s=document.getElementById('adm-reg-cam-shot'); if(s) s.style.display='none';
+  const b=document.getElementById('adm-reg-cam-start'); if(b) b.style.display='block';
+}
+function admRegCamShot(){
+  const v=document.getElementById('adm-reg-cam-video');
+  if(!v||!v.videoWidth){ alert('Камера ще завантажується, зачекай мить.'); return; }
+  const side=Math.min(v.videoWidth,v.videoHeight);
+  const sx=(v.videoWidth-side)/2, sy=(v.videoHeight-side)/2;
+  const c=document.createElement('canvas'); c.width=c.height=150;
+  c.getContext('2d').drawImage(v,sx,sy,side,side,0,0,150,150);
+  _admPhotoData=c.toDataURL('image/jpeg',0.65);
+  const prev=document.getElementById('adm-ph-prev'); if(prev){ prev.src=_admPhotoData; prev.style.display='block'; }
+  const ph=document.getElementById('adm-ph-ph'); if(ph) ph.style.display='none';
+  admRegCamStop();
+}
 
 function admPrevPhoto(inp){
   if(!inp.files||!inp.files[0])return;
@@ -8793,6 +8954,7 @@ function admCloseMoD(id){
   document.getElementById(id).classList.remove('sh');
   if(id==='adm-cl-mo'){
     _admPhotoData='';
+    if(typeof admRegCamStop==='function') admRegCamStop();
     const prev=document.getElementById('adm-ph-prev');
     if(prev){prev.style.display='none';prev.src='';}
     const ph=document.getElementById('adm-ph-ph');
