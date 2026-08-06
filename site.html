@@ -5,200 +5,185 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CREAGYM — мережа фітнес-клубів у Житомирі</title>
 <meta name="description" content="Три зали, одна мережа. Мережевий абонемент CREAGYM — доступ до всіх клубів у Житомирі. Тренажерні зали, бокс, персональні тренери.">
+<!--
+  ФОТО: зараз стоять тимчасові знімки Unsplash (безкоштовні). Щоб поставити СВОЇ фото залу —
+  заміни URL у блоці :root (--img-hero, --img-1..3, --img-box, --img-net, --img-cta) на свої,
+  напр. url('img/hero.jpg'). Клади фото в папку img/. Розміри: hero 1920×1080, картки 900×1200.
+-->
 <style>
-@font-face{
-  font-family:'Benzin';
-  src:url('Benzin-ExtraBold.woff2') format('woff2');
-  font-weight:800;font-display:swap;
-}
-:root{
-  --bg:#000;
-  --p1:#0a0a0c;
-  --p2:#121214;
-  --card:#0d0d0f;
-  --y:#FFD300;
-  --yd:#1f1a04;
-  --w:#f4f4f5;
-  --m:#5A5A63;
-  --m2:#84848F;
-  --m3:#A6A6B0;
-  --bd:#ffffff0d;
-  --bd2:#ffffff17;
-  --bd3:#ffffff2b;
-  --wm:'Benzin','Montserrat',sans-serif;
-  --f:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-}
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+@font-face{font-family:'Benzin';src:url('Benzin-ExtraBold.woff2') format('woff2');font-weight:800;font-display:swap}
+:root{
+  --bg:#000;--p1:#08080a;--card:#0c0c0e;
+  --y:#FFD300;--w:#f4f4f5;
+  --m:#5A5A63;--m2:#83838d;--m3:#adadb6;
+  --bd:#ffffff0d;--bd2:#ffffff17;--bd3:#ffffff2e;
+  --wm:'Benzin','Montserrat',sans-serif;
+  --f:'Montserrat',-apple-system,BlinkMacSystemFont,sans-serif;
+  --img-hero:url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1920&q=80');
+  --img-1:url('https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=900&q=80');
+  --img-2:url('https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=900&q=80');
+  --img-3:url('https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=900&q=80');
+  --img-box:url('https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=1400&q=80');
+  --img-net:url('https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=1400&q=80');
+  --img-cta:url('https://images.unsplash.com/photo-1517963879433-6ad2b056d712?auto=format&fit=crop&w=1920&q=80');
+}
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{
-  background:var(--bg);color:var(--w);font-family:var(--f);
-  -webkit-font-smoothing:antialiased;overflow-x:hidden;line-height:1.5;
-}
+body{background:var(--bg);color:var(--w);font-family:var(--f);-webkit-font-smoothing:antialiased;overflow-x:hidden;line-height:1.5}
 a{color:inherit;text-decoration:none}
 ::selection{background:var(--y);color:#000}
-.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+.wrap{max-width:1200px;margin:0 auto;padding:0 26px}
+img{display:block;max-width:100%}
+body::after{content:'';position:fixed;inset:0;z-index:999;pointer-events:none;opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 
-/* ---------- HEADER ---------- */
-header{
-  position:fixed;top:0;left:0;right:0;z-index:100;
-  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-  background:rgba(0,0,0,.55);border-bottom:1px solid transparent;
-  transition:border-color .3s,background .3s;
-}
-header.scrolled{border-bottom-color:var(--bd);background:rgba(0,0,0,.8)}
-.nav{display:flex;align-items:center;justify-content:space-between;height:66px}
+header{position:fixed;top:0;left:0;right:0;z-index:100;transition:.3s;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);background:rgba(0,0,0,.35);border-bottom:1px solid transparent}
+header.scrolled{background:rgba(0,0,0,.82);border-bottom-color:var(--bd)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:70px}
 .brand{display:flex;align-items:center;gap:11px}
-.gmark{width:26px;height:auto;color:var(--y);flex-shrink:0}
-.wordmark{font-family:var(--wm);font-weight:800;font-size:20px;letter-spacing:.06em}
+.gmark{width:27px;height:auto;color:var(--y);flex-shrink:0}
+.wordmark{font-family:var(--wm);font-weight:800;font-size:21px;letter-spacing:.05em}
 .wordmark .g{color:var(--y)}
-.nav-links{display:flex;align-items:center;gap:34px}
-.nav-links a.nl{font-size:13px;font-weight:600;color:var(--m3);letter-spacing:.03em;transition:color .2s}
-.nav-links a.nl:hover{color:var(--w)}
+.nav-links{display:flex;align-items:center;gap:36px}
+.nav-links a.nl{font-size:13px;font-weight:600;color:var(--m3);letter-spacing:.02em;transition:.2s;position:relative}
+.nav-links a.nl::after{content:'';position:absolute;left:0;bottom:-6px;width:0;height:1.5px;background:var(--y);transition:.25s}
+.nav-links a.nl:hover{color:var(--w)}.nav-links a.nl:hover::after{width:100%}
 .nav-cta{display:flex;align-items:center;gap:10px}
-.btn{
-  font-family:var(--f);font-weight:700;font-size:13px;letter-spacing:.02em;
-  padding:10px 20px;border-radius:9px;cursor:pointer;border:1px solid transparent;
-  transition:all .18s;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;
-}
+.btn{font-family:var(--f);font-weight:700;font-size:13px;letter-spacing:.02em;padding:11px 21px;border-radius:10px;cursor:pointer;border:1px solid transparent;transition:.18s;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
 .btn-ghost{background:transparent;border-color:var(--bd2);color:var(--w)}
-.btn-ghost:hover{border-color:var(--bd3);background:#ffffff08}
-.btn-y{background:var(--y);color:#000}
-.btn-y:hover{filter:brightness(1.08);transform:translateY(-1px)}
-.burger{display:none;width:40px;height:40px;border:1px solid var(--bd2);border-radius:9px;
-  background:var(--p2);color:var(--w);cursor:pointer;align-items:center;justify-content:center;font-size:17px}
+.btn-ghost:hover{border-color:var(--bd3);background:#ffffff0a}
+.btn-y{background:var(--y);color:#000;box-shadow:0 4px 24px -6px #ffd30055}
+.btn-y:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 8px 30px -6px #ffd30077}
+.btn-lg{padding:16px 32px;font-size:14px;border-radius:12px}
+.burger{display:none;width:42px;height:42px;border:1px solid var(--bd2);border-radius:10px;background:#141416;color:var(--w);cursor:pointer;font-size:18px}
 
-/* ---------- HERO ---------- */
-.hero{position:relative;padding:150px 0 100px;overflow:hidden}
-.hero-gmark{
-  position:absolute;right:-70px;top:50%;transform:translateY(-50%);
-  width:min(52vw,640px);height:auto;color:var(--y);opacity:.06;pointer-events:none;z-index:0;
-}
-.hero .wrap{position:relative;z-index:1}
-.eyebrow{
-  display:inline-flex;align-items:center;gap:9px;font-size:12px;font-weight:700;
-  letter-spacing:.16em;text-transform:uppercase;color:var(--y);margin-bottom:26px;
-}
-.eyebrow::before{content:'';width:26px;height:1px;background:var(--y)}
-.hero h1{
-  font-family:var(--wm);font-weight:800;text-transform:uppercase;
-  font-size:clamp(42px,8vw,88px);line-height:.98;letter-spacing:-.01em;
-  margin-bottom:26px;
-}
-.hero h1 .line2{color:var(--y);display:block}
-.hero p.lead{font-size:clamp(16px,2vw,19px);color:var(--m3);max-width:520px;margin-bottom:38px;font-weight:500}
-.hero-cta{display:flex;gap:13px;flex-wrap:wrap;margin-bottom:56px}
-.btn-lg{padding:15px 30px;font-size:14px;border-radius:11px}
-.trust{display:flex;gap:40px;flex-wrap:wrap;border-top:1px solid var(--bd);padding-top:30px;max-width:560px}
-.trust .ti{}
-.trust .tn{font-family:var(--wm);font-weight:800;font-size:30px;color:var(--w);line-height:1}
-.trust .tl{font-size:12px;color:var(--m2);margin-top:7px;letter-spacing:.04em;text-transform:uppercase;font-weight:600}
+.hero{position:relative;min-height:100svh;display:flex;align-items:center;overflow:hidden}
+.hero-bg{position:absolute;inset:0;z-index:0;background:var(--img-hero) center/cover no-repeat;transform:scale(1.08);animation:zoom 20s ease-out forwards}
+@keyframes zoom{to{transform:scale(1)}}
+.hero-ov{position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,#000 8%,#000000cc 42%,#00000055 100%),linear-gradient(0deg,#000 2%,transparent 40%,transparent 70%,#000000aa 100%)}
+.hero-gmark{position:absolute;right:-40px;bottom:-30px;width:min(40vw,460px);color:var(--y);opacity:.08;z-index:1;pointer-events:none}
+.hero .wrap{position:relative;z-index:2;width:100%}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--y);margin-bottom:28px}
+.eyebrow::before{content:'';width:30px;height:1px;background:var(--y)}
+.hero h1{font-family:var(--wm);font-weight:800;text-transform:uppercase;font-size:clamp(48px,9vw,108px);line-height:.94;letter-spacing:-.015em;margin-bottom:28px}
+.hero h1 .l2{color:var(--y);display:block}
+.hero .lead{font-size:clamp(16px,1.8vw,20px);color:var(--m3);max-width:540px;margin-bottom:40px;font-weight:500}
+.hero-cta{display:flex;gap:14px;flex-wrap:wrap}
+.scroll-cue{position:absolute;bottom:34px;left:50%;transform:translateX(-50%);z-index:2;color:var(--m2);font-size:11px;letter-spacing:.2em;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:10px}
+.scroll-cue .ln{width:1px;height:38px;background:linear-gradient(var(--y),transparent);animation:cue 1.8s ease-in-out infinite}
+@keyframes cue{0%,100%{opacity:.3;transform:scaleY(.6)}50%{opacity:1;transform:scaleY(1)}}
 
-/* ---------- SECTIONS ---------- */
-section.blk{padding:96px 0}
-.sec-head{margin-bottom:52px;max-width:640px}
-.sec-eyebrow{font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--m2);margin-bottom:16px;display:flex;align-items:center;gap:10px}
-.sec-eyebrow::before{content:'';width:22px;height:1px;background:var(--bd3)}
-.sec-title{font-family:var(--wm);font-weight:800;text-transform:uppercase;font-size:clamp(28px,4.4vw,46px);line-height:1.02;letter-spacing:-.005em}
+.marq{border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);padding:22px 0;overflow:hidden;background:var(--p1)}
+.marq-t{display:flex;white-space:nowrap;animation:scroll 26s linear infinite;width:max-content}
+.marq-t span{font-family:var(--wm);font-weight:800;text-transform:uppercase;font-size:26px;letter-spacing:.02em;color:transparent;-webkit-text-stroke:1px var(--m);padding:0 30px;display:inline-flex;align-items:center;gap:30px}
+.marq-t span::after{content:'●';color:var(--y);-webkit-text-stroke:0;font-size:9px}
+.marq-t span.on{color:var(--w);-webkit-text-stroke:0}
+@keyframes scroll{to{transform:translateX(-50%)}}
+
+section.blk{padding:110px 0;position:relative}
+.sec-head{margin-bottom:56px;max-width:660px}
+.sec-eyebrow{font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--m2);margin-bottom:18px;display:flex;align-items:center;gap:11px}
+.sec-eyebrow::before{content:'';width:24px;height:1px;background:var(--bd3)}
+.sec-title{font-family:var(--wm);font-weight:800;text-transform:uppercase;font-size:clamp(30px,4.8vw,54px);line-height:1;letter-spacing:-.01em}
 .sec-title .y{color:var(--y)}
-.sec-sub{color:var(--m3);font-size:16px;margin-top:16px;font-weight:500}
+.sec-sub{color:var(--m3);font-size:16px;margin-top:18px;font-weight:500;max-width:560px}
 
-/* ---------- LOCATIONS ---------- */
 .loc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.loc{
-  background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:28px 26px;
-  position:relative;overflow:hidden;transition:border-color .25s,transform .25s;
-}
-.loc:hover{border-color:var(--bd3);transform:translateY(-3px)}
+.loc{position:relative;height:440px;border-radius:18px;overflow:hidden;border:1px solid var(--bd);display:flex;flex-direction:column;justify-content:flex-end;isolation:isolate;transition:border-color .3s}
+.loc:hover{border-color:var(--bd3)}
+.loc-img{position:absolute;inset:0;z-index:-2;background-size:cover;background-position:center;transition:transform .7s cubic-bezier(.22,1,.36,1)}
+.loc:hover .loc-img{transform:scale(1.07)}
+.loc::before{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(0deg,#000 4%,#000000aa 34%,transparent 72%)}
+.loc:nth-child(1) .loc-img{background-image:var(--img-1)}
+.loc:nth-child(2) .loc-img{background-image:var(--img-2)}
+.loc:nth-child(3) .loc-img{background-image:var(--img-3)}
+.loc-body{padding:28px}
 .loc-idx{font-family:var(--wm);font-weight:800;font-size:13px;color:var(--y);letter-spacing:.1em}
-.loc h3{font-family:var(--wm);font-weight:800;text-transform:uppercase;font-size:22px;margin:16px 0 6px;letter-spacing:.01em}
+.loc h3{font-family:var(--wm);font-weight:800;text-transform:uppercase;font-size:25px;margin:12px 0 6px;letter-spacing:.01em}
 .loc .addr{color:var(--m3);font-size:15px;font-weight:500}
-.loc .tag{display:inline-block;margin-top:18px;font-size:11px;font-weight:700;letter-spacing:.04em;
-  text-transform:uppercase;color:var(--m2);border:1px solid var(--bd2);border-radius:20px;padding:5px 13px}
-.loc .tag.box{color:var(--y);border-color:#ffd30040;background:#ffd3000d}
+.loc-tags{margin-top:18px;display:flex;gap:8px;flex-wrap:wrap}
+.loc-tags .tag{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--m3);border:1px solid var(--bd2);border-radius:20px;padding:6px 13px;background:#00000066;backdrop-filter:blur(6px)}
+.loc-tags .tag.box{color:var(--y);border-color:#ffd30055;background:#ffd30015}
 
-/* ---------- ABONEMENTS ---------- */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:stretch}
+.split.rev .split-txt{order:2}
+.split-media{position:relative;border-radius:20px;overflow:hidden;min-height:440px;border:1px solid var(--bd)}
+.split-media .m-img{position:absolute;inset:0;background-size:cover;background-position:center;transition:transform .8s cubic-bezier(.22,1,.36,1)}
+.split-media:hover .m-img{transform:scale(1.06)}
+.split-media::after{content:'';position:absolute;inset:0;background:linear-gradient(120deg,#00000066,transparent 60%)}
+.split-txt{display:flex;flex-direction:column;justify-content:center;padding:20px 10px}
+.split-txt .st-t{font-family:var(--wm);font-weight:800;text-transform:uppercase;font-size:clamp(28px,3.6vw,42px);line-height:1.03;margin-bottom:22px;letter-spacing:-.005em}
+.split-txt .st-t .y{color:var(--y)}
+.split-txt p{color:var(--m3);font-size:16px;font-weight:500;margin-bottom:16px;max-width:480px}
+.chips{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.chips .c{font-size:12px;font-weight:700;color:var(--w);border:1px solid var(--bd2);border-radius:22px;padding:8px 15px}
+.chips .c b{color:var(--y)}
+
 .ab-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}
-.ab{
-  background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:26px 22px;
-  display:flex;flex-direction:column;transition:border-color .25s,transform .25s;
-}
-.ab:hover{border-color:var(--bd3);transform:translateY(-3px)}
-.ab.feat{border-color:#ffd30055;background:linear-gradient(180deg,#ffd3000f,transparent 60%)}
-.ab-badge{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--y);margin-bottom:14px;min-height:13px}
-.ab h4{font-family:var(--wm);font-weight:800;text-transform:uppercase;font-size:19px;letter-spacing:.01em}
-.ab .desc{color:var(--m2);font-size:13px;margin-top:9px;font-weight:500;flex:1;min-height:38px}
-.ab .price{font-family:var(--wm);font-weight:800;font-size:34px;margin-top:22px;line-height:1}
-.ab .price small{font-family:var(--f);font-size:14px;color:var(--m2);font-weight:600;margin-left:3px}
-.ab .price .cur{color:var(--y)}
-.ab-note{text-align:center;color:var(--m2);font-size:14px;margin-top:26px;font-weight:500}
-.ab-note a{color:var(--y);font-weight:600;border-bottom:1px solid #ffd30040}
+.ab{background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:28px 24px;display:flex;flex-direction:column;transition:.28s}
+.ab:hover{border-color:var(--bd3);transform:translateY(-4px)}
+.ab.feat{border-color:#ffd30055;background:linear-gradient(180deg,#ffd3000f,transparent 55%)}
+.ab-badge{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--y);margin-bottom:16px;min-height:13px}
+.ab h4{font-family:var(--wm);font-weight:800;text-transform:uppercase;font-size:20px;letter-spacing:.01em}
+.ab .desc{color:var(--m2);font-size:13px;margin-top:10px;font-weight:500;flex:1;min-height:40px}
+.ab .price{font-family:var(--wm);font-weight:800;font-size:36px;margin-top:24px;line-height:1}
+.ab .price small{font-family:var(--f);font-size:14px;color:var(--m2);font-weight:600}
+.ab .abtn{margin-top:22px;text-align:center;font-size:13px;font-weight:700;padding:12px;border-radius:10px;border:1px solid var(--bd2);color:var(--w);transition:.2s}
+.ab .abtn:hover{background:#ffffff0a;border-color:var(--bd3)}
+.ab.feat .abtn{background:var(--y);color:#000;border-color:var(--y)}
+.ab.feat .abtn:hover{filter:brightness(1.08)}
+.ab-note{text-align:center;color:var(--m2);font-size:14px;margin-top:28px;font-weight:500}
+.ab-note a{color:var(--y);font-weight:600;border-bottom:1px solid #ffd30044}
 
-/* ---------- FEATURES strip ---------- */
-.feat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);padding:44px 0}
-.feat-i .fn{font-family:var(--wm);font-weight:800;font-size:15px;text-transform:uppercase;letter-spacing:.02em;color:var(--y);margin-bottom:9px}
-.feat-i .fd{color:var(--m3);font-size:14px;font-weight:500;line-height:1.55}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);padding:52px 0}
+.stat .sn{font-family:var(--wm);font-weight:800;font-size:clamp(34px,4vw,48px);color:var(--y);line-height:1}
+.stat .sl{color:var(--m3);font-size:14px;margin-top:10px;font-weight:500}
 
-/* ---------- CTA BAND ---------- */
-.cta-band{position:relative;overflow:hidden;border:1px solid var(--bd2);border-radius:24px;
-  padding:70px 40px;text-align:center;background:radial-gradient(120% 140% at 50% 0%,#ffd3000f,transparent 55%)}
-.cta-band h2{font-family:var(--wm);font-weight:800;text-transform:uppercase;font-size:clamp(28px,5vw,52px);line-height:1;letter-spacing:-.01em}
+.cta-band{position:relative;overflow:hidden;border-radius:26px;padding:90px 40px;text-align:center;border:1px solid var(--bd2)}
+.cta-band .cb-img{position:absolute;inset:0;z-index:0;background:var(--img-cta) center/cover;transform:scale(1.05)}
+.cta-band::before{content:'';position:absolute;inset:0;z-index:1;background:linear-gradient(0deg,#000000ee,#000000bb)}
+.cta-band>*{position:relative;z-index:2}
+.cta-band h2{font-family:var(--wm);font-weight:800;text-transform:uppercase;font-size:clamp(30px,5.2vw,58px);line-height:1;letter-spacing:-.01em}
 .cta-band h2 .y{color:var(--y)}
-.cta-band p{color:var(--m3);font-size:17px;margin:20px auto 34px;max-width:460px;font-weight:500}
+.cta-band p{color:var(--m3);font-size:17px;margin:22px auto 36px;max-width:470px;font-weight:500}
 
-/* ---------- FOOTER ---------- */
-footer{border-top:1px solid var(--bd);padding:60px 0 40px;margin-top:20px}
-.foot-grid{display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap;margin-bottom:44px}
-.foot-brand{max-width:300px}
-.foot-brand p{color:var(--m2);font-size:14px;margin-top:16px;font-weight:500;line-height:1.6}
+footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
+.foot-grid{display:flex;justify-content:space-between;gap:44px;flex-wrap:wrap;margin-bottom:46px}
+.foot-brand{max-width:300px}.foot-brand p{color:var(--m2);font-size:14px;margin-top:16px;font-weight:500;line-height:1.6}
 .foot-col h5{font-family:var(--wm);font-weight:800;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--m2);margin-bottom:16px}
-.foot-col a,.foot-col span{display:block;color:var(--m3);font-size:14px;margin-bottom:11px;font-weight:500;transition:color .2s}
+.foot-col a,.foot-col span{display:block;color:var(--m3);font-size:14px;margin-bottom:11px;font-weight:500;transition:.2s}
 .foot-col a:hover{color:var(--w)}
-.foot-bot{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;
-  border-top:1px solid var(--bd);padding-top:26px;color:var(--m);font-size:13px;font-weight:500}
-.foot-bot a{color:var(--m2)}
-.foot-bot a:hover{color:var(--y)}
+.foot-bot{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;border-top:1px solid var(--bd);padding-top:26px;color:var(--m);font-size:13px;font-weight:500}
+.foot-bot a{color:var(--m2)}.foot-bot a:hover{color:var(--y)}
 
-/* ---------- REVEAL ---------- */
-.rv{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1)}
+.rv{opacity:0;transform:translateY(28px);transition:opacity .8s cubic-bezier(.22,1,.36,1),transform .8s cubic-bezier(.22,1,.36,1)}
 .rv.in{opacity:1;transform:none}
 
-/* ---------- RESPONSIVE ---------- */
-@media(max-width:900px){
-  .loc-grid{grid-template-columns:1fr 1fr}
-  .ab-grid{grid-template-columns:1fr 1fr}
-  .feat-row{grid-template-columns:1fr 1fr;gap:28px}
+@media(max-width:940px){
+  .loc-grid{grid-template-columns:1fr 1fr}.ab-grid{grid-template-columns:1fr 1fr}
+  .split{grid-template-columns:1fr}.split.rev .split-txt{order:0}.split-media{min-height:320px}
+  .stats{grid-template-columns:1fr 1fr;gap:34px}
 }
 @media(max-width:640px){
   .wrap{padding:0 18px}
-  .nav-links{
-    position:fixed;top:66px;left:0;right:0;background:rgba(0,0,0,.96);backdrop-filter:blur(14px);
-    flex-direction:column;align-items:stretch;gap:0;padding:8px 18px 20px;
-    border-bottom:1px solid var(--bd);transform:translateY(-130%);transition:transform .3s;z-index:90;
-  }
+  .nav-links{position:fixed;top:70px;left:0;right:0;background:rgba(0,0,0,.97);backdrop-filter:blur(16px);flex-direction:column;align-items:stretch;gap:0;padding:8px 18px 22px;border-bottom:1px solid var(--bd);transform:translateY(-135%);transition:.3s;z-index:90}
   .nav-links.open{transform:none}
-  .nav-links a.nl{padding:15px 4px;border-bottom:1px solid var(--bd);font-size:15px}
-  .nav-links .m-cta{display:flex;gap:10px;margin-top:16px}
-  .nav-links .m-cta .btn{flex:1;justify-content:center}
-  .nav-cta .btn-ghost{display:none}
-  .burger{display:flex}
-  .hero{padding:120px 0 70px}
+  .nav-links a.nl{padding:16px 4px;border-bottom:1px solid var(--bd);font-size:15px}
+  .nav-links .m-cta{display:flex;gap:10px;margin-top:16px}.nav-links .m-cta .btn{flex:1;justify-content:center}
+  .nav-cta .btn-ghost{display:none}.burger{display:flex;align-items:center;justify-content:center}
+  section.blk{padding:72px 0}
+  .loc-grid,.ab-grid{grid-template-columns:1fr}.loc{height:380px}
   .hero-cta .btn{flex:1;justify-content:center}
-  .trust{gap:28px}
-  section.blk{padding:64px 0}
-  .loc-grid,.ab-grid,.feat-row{grid-template-columns:1fr}
-  .cta-band{padding:50px 24px}
+  .cta-band{padding:60px 22px}
 }
 @media(prefers-reduced-motion:reduce){
-  *{transition:none!important;animation:none!important}
-  .rv{opacity:1;transform:none}
-  html{scroll-behavior:auto}
+  *{animation:none!important;transition:none!important}.rv{opacity:1;transform:none}html{scroll-behavior:auto}.hero-bg{transform:none}
 }
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
 <header id="hdr">
   <div class="wrap nav">
     <a href="#top" class="brand">
@@ -207,13 +192,10 @@ footer{border-top:1px solid var(--bd);padding:60px 0 40px;margin-top:20px}
     </a>
     <nav class="nav-links" id="navlinks">
       <a class="nl" href="#locations">Локації</a>
+      <a class="nl" href="#network">Мережа</a>
       <a class="nl" href="#abonements">Абонементи</a>
-      <a class="nl" href="#about">Про клуб</a>
       <a class="nl" href="#contacts">Контакти</a>
-      <div class="m-cta">
-        <a class="btn btn-ghost" href="client.html">Увійти</a>
-        <a class="btn btn-y" href="client.html">Реєстрація</a>
-      </div>
+      <div class="m-cta"><a class="btn btn-ghost" href="client.html">Увійти</a><a class="btn btn-y" href="client.html">Реєстрація</a></div>
     </nav>
     <div class="nav-cta">
       <a class="btn btn-ghost" href="client.html">Увійти</a>
@@ -223,119 +205,118 @@ footer{border-top:1px solid var(--bd);padding:60px 0 40px;margin-top:20px}
   </div>
 </header>
 
-<!-- HERO -->
 <div id="top"></div>
 <section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-ov"></div>
   <svg class="hero-gmark" viewBox="0 0 194 148" fill="none"><path d="M194 0H4.06878C-15.931 74.673 40.3182 148 117.598 148H154.352L178.14 59.2H50.5782L42.6481 88.8H139.271L131.344 118.4H3.7791L27.5633 29.6H186.07L194 0Z" fill="currentColor"/></svg>
   <div class="wrap">
     <div class="eyebrow rv">Мережа фітнес-клубів · Житомир</div>
-    <h1 class="rv">Три зали.<span class="line2">Одна мережа.</span></h1>
+    <h1 class="rv">Три зали.<span class="l2">Одна мережа.</span></h1>
     <p class="lead rv">Один мережевий абонемент — доступ до всіх клубів CREAGYM у місті. Тренуйся там, де зручно сьогодні.</p>
     <div class="hero-cta rv">
       <a class="btn btn-y btn-lg" href="client.html">Стати клієнтом →</a>
-      <a class="btn btn-ghost btn-lg" href="#abonements">Дивитися абонементи</a>
-    </div>
-    <div class="trust rv">
-      <div class="ti"><div class="tn">3</div><div class="tl">Локації в місті</div></div>
-      <div class="ti"><div class="tn">1</div><div class="tl">Мережевий доступ</div></div>
-      <div class="ti"><div class="tn">Бокс</div><div class="tl">Секція на Клосовського</div></div>
+      <a class="btn btn-ghost btn-lg" href="#abonements">Абонементи</a>
     </div>
   </div>
+  <div class="scroll-cue"><span>Гортай</span><span class="ln"></span></div>
 </section>
 
-<!-- LOCATIONS -->
+<div class="marq"><div class="marq-t" id="marq">
+  <span>Сила</span><span class="on">Форма</span><span>Дисципліна</span><span class="on">Бокс</span><span>Мережа</span><span class="on">Житомир</span>
+  <span>Сила</span><span class="on">Форма</span><span>Дисципліна</span><span class="on">Бокс</span><span>Мережа</span><span class="on">Житомир</span>
+</div></div>
+
 <section class="blk" id="locations">
   <div class="wrap">
     <div class="sec-head rv">
       <div class="sec-eyebrow">Локації</div>
       <div class="sec-title">Обери свій <span class="y">зал</span></div>
-      <div class="sec-sub">Три клуби в Житомирі. З мережевим абонементом — усі три відкриті для тебе.</div>
+      <div class="sec-sub">Три клуби в Житомирі. З мережевим абонементом усі три відкриті для тебе.</div>
     </div>
     <div class="loc-grid">
-      <div class="loc rv">
-        <div class="loc-idx">01</div>
-        <h3>Степана Бандери</h3>
-        <div class="addr">вул. Степана Бандери, 3</div>
-        <span class="tag">Тренажерний зал</span>
-      </div>
-      <div class="loc rv">
-        <div class="loc-idx">02</div>
-        <h3>Новосінна</h3>
-        <div class="addr">вул. Новосінна, 34</div>
-        <span class="tag">Тренажерний зал</span>
-      </div>
-      <div class="loc rv">
-        <div class="loc-idx">03</div>
-        <h3>Клосовського</h3>
-        <div class="addr">вул. Клосовського, 10</div>
-        <span class="tag">Зал</span> <span class="tag box">Бокс</span>
-      </div>
+      <div class="loc rv"><div class="loc-img"></div><div class="loc-body">
+        <div class="loc-idx">01</div><h3>Степана Бандери</h3><div class="addr">вул. Степана Бандери, 3</div>
+        <div class="loc-tags"><span class="tag">Тренажерний зал</span></div></div></div>
+      <div class="loc rv"><div class="loc-img"></div><div class="loc-body">
+        <div class="loc-idx">02</div><h3>Новосінна</h3><div class="addr">вул. Новосінна, 34</div>
+        <div class="loc-tags"><span class="tag">Тренажерний зал</span></div></div></div>
+      <div class="loc rv"><div class="loc-img"></div><div class="loc-body">
+        <div class="loc-idx">03</div><h3>Клосовського</h3><div class="addr">вул. Клосовського, 10</div>
+        <div class="loc-tags"><span class="tag">Зал</span><span class="tag box">Бокс</span></div></div></div>
     </div>
   </div>
 </section>
 
-<!-- ABONEMENTS -->
-<section class="blk" id="abonements">
+<section class="blk" id="network">
+  <div class="wrap">
+    <div class="split">
+      <div class="split-txt rv">
+        <div class="st-t">Один абонемент — <span class="y">усі зали</span></div>
+        <p>Мережевий абонемент CREAGYM працює в кожному з трьох клубів. Ранок на Бандері, вечір на Клосовського — без доплат і обмежень.</p>
+        <div class="chips">
+          <span class="c"><b>3</b> локації</span>
+          <span class="c"><b>1</b> абонемент</span>
+          <span class="c">Без прив'язки до залу</span>
+        </div>
+      </div>
+      <div class="split-media rv"><div class="m-img" style="background-image:var(--img-net)"></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="blk" style="padding-top:0">
+  <div class="wrap">
+    <div class="split rev">
+      <div class="split-txt rv">
+        <div class="st-t">Секція <span class="y">боксу</span></div>
+        <p>На Клосовського працює повноцінна боксова секція — від дітей до дорослих. Тренування з поставленою технікою під наглядом тренера.</p>
+        <div class="chips">
+          <span class="c">Дитяча <b>7–11</b></span>
+          <span class="c">Підліткова <b>12–17</b></span>
+          <span class="c">Доросла <b>18+</b></span>
+        </div>
+      </div>
+      <div class="split-media rv"><div class="m-img" style="background-image:var(--img-box)"></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="blk" id="abonements" style="padding-top:0">
   <div class="wrap">
     <div class="sec-head rv">
       <div class="sec-eyebrow">Абонементи</div>
       <div class="sec-title">Обери <span class="y">формат</span></div>
-      <div class="sec-sub">Мережевий — усі зали. Локальний — один обраний клуб. Оформлення й оплата — у кабінеті.</div>
+      <div class="sec-sub">Мережевий — усі зали. Локальний — один клуб. Оформлення й оплата — у кабінеті за хвилину.</div>
     </div>
     <div class="ab-grid">
-      <div class="ab feat rv">
-        <div class="ab-badge">Популярний</div>
-        <h4>Мережевий</h4>
-        <div class="desc">Доступ до всіх трьох залів CREAGYM</div>
-        <div class="price">1200<small> ₴/міс</small></div>
-      </div>
-      <div class="ab rv">
-        <div class="ab-badge"></div>
-        <h4>Локальний</h4>
-        <div class="desc">Один обраний зал</div>
-        <div class="price">900<small> ₴/міс</small></div>
-      </div>
-      <div class="ab rv">
-        <div class="ab-badge"></div>
-        <h4>Ранковий</h4>
-        <div class="desc">Тренування у першій половині дня</div>
-        <div class="price">650<small> ₴/міс</small></div>
-      </div>
-      <div class="ab rv">
-        <div class="ab-badge"></div>
-        <h4>Парний</h4>
-        <div class="desc">Один абонемент на двох</div>
-        <div class="price">від 1200<small> ₴</small></div>
-      </div>
+      <div class="ab feat rv"><div class="ab-badge">Популярний</div><h4>Мережевий</h4><div class="desc">Доступ до всіх трьох залів</div><div class="price">1200<small> ₴/міс</small></div><a class="abtn" href="client.html">Оформити</a></div>
+      <div class="ab rv"><div class="ab-badge"></div><h4>Локальний</h4><div class="desc">Один обраний зал</div><div class="price">900<small> ₴/міс</small></div><a class="abtn" href="client.html">Оформити</a></div>
+      <div class="ab rv"><div class="ab-badge"></div><h4>Ранковий</h4><div class="desc">У першій половині дня</div><div class="price">650<small> ₴/міс</small></div><a class="abtn" href="client.html">Оформити</a></div>
+      <div class="ab rv"><div class="ab-badge"></div><h4>Парний</h4><div class="desc">Один абонемент на двох</div><div class="price">від 1200<small> ₴</small></div><a class="abtn" href="client.html">Оформити</a></div>
     </div>
     <div class="ab-note rv">Учбовий, тренерський та боксові абонементи — <a href="client.html">дивись у кабінеті</a></div>
   </div>
 </section>
 
-<!-- ABOUT / FEATURES -->
-<section class="blk" id="about">
-  <div class="wrap">
-    <div class="feat-row">
-      <div class="feat-i rv"><div class="fn">Мережевий доступ</div><div class="fd">Тренуйся в будь-якому з трьох залів за одним абонементом.</div></div>
-      <div class="feat-i rv"><div class="fn">Секція боксу</div><div class="fd">Дитяча, підліткова та доросла групи на Клосовського.</div></div>
-      <div class="feat-i rv"><div class="fn">Персональні тренери</div><div class="fd">Стартові й базові тренерські програми під твою мету.</div></div>
-      <div class="feat-i rv"><div class="fn">Онлайн-кабінет</div><div class="fd">Купуй, заморожуй і керуй абонементом просто з телефона.</div></div>
-    </div>
-  </div>
+<section class="blk" style="padding-top:0">
+  <div class="wrap"><div class="stats">
+    <div class="stat rv"><div class="sn">3</div><div class="sl">Клуби в Житомирі</div></div>
+    <div class="stat rv"><div class="sn">1</div><div class="sl">Мережевий доступ</div></div>
+    <div class="stat rv"><div class="sn">3</div><div class="sl">Боксові групи</div></div>
+    <div class="stat rv"><div class="sn">24/7</div><div class="sl">Онлайн-кабінет</div></div>
+  </div></div>
 </section>
 
-<!-- CTA BAND -->
-<section class="blk">
-  <div class="wrap">
-    <div class="cta-band rv">
-      <h2>Готовий <span class="y">почати?</span></h2>
-      <p>Зареєструйся за хвилину — і обери абонемент прямо в кабінеті.</p>
-      <a class="btn btn-y btn-lg" href="client.html">Створити акаунт →</a>
-    </div>
-  </div>
+<section class="blk" style="padding-top:0">
+  <div class="wrap"><div class="cta-band rv">
+    <div class="cb-img"></div>
+    <h2>Готовий <span class="y">почати?</span></h2>
+    <p>Зареєструйся за хвилину — і обери абонемент прямо в кабінеті.</p>
+    <a class="btn btn-y btn-lg" href="client.html">Створити акаунт →</a>
+  </div></div>
 </section>
 
-<!-- FOOTER -->
 <footer id="contacts">
   <div class="wrap">
     <div class="foot-grid">
@@ -346,44 +327,23 @@ footer{border-top:1px solid var(--bd);padding:60px 0 40px;margin-top:20px}
         </a>
         <p>Мережа фітнес-клубів у Житомирі. Три зали, бокс, персональні тренери.</p>
       </div>
-      <div class="foot-col">
-        <h5>Локації</h5>
-        <span>Степана Бандери, 3</span>
-        <span>Новосінна, 34</span>
-        <span>Клосовського, 10</span>
-      </div>
-      <div class="foot-col">
-        <h5>Клуб</h5>
-        <a href="#abonements">Абонементи</a>
-        <a href="#about">Про клуб</a>
-        <a href="client.html">Кабінет клієнта</a>
-      </div>
-      <div class="foot-col">
-        <h5>Акаунт</h5>
-        <a href="client.html">Увійти</a>
-        <a href="client.html">Реєстрація</a>
-      </div>
+      <div class="foot-col"><h5>Локації</h5><span>Степана Бандери, 3</span><span>Новосінна, 34</span><span>Клосовського, 10</span></div>
+      <div class="foot-col"><h5>Клуб</h5><a href="#abonements">Абонементи</a><a href="#network">Мережа</a><a href="client.html">Кабінет</a></div>
+      <div class="foot-col"><h5>Акаунт</h5><a href="client.html">Увійти</a><a href="client.html">Реєстрація</a></div>
     </div>
-    <div class="foot-bot">
-      <span>© <span id="yr"></span> CREAGYM. Усі права захищені.</span>
-      <a href="client.html">Особистий кабінет →</a>
-    </div>
+    <div class="foot-bot"><span>© <span id="yr"></span> CREAGYM. Усі права захищені.</span><a href="client.html">Особистий кабінет →</a></div>
   </div>
 </footer>
 
 <script>
-// рік
 document.getElementById('yr').textContent=new Date().getFullYear();
-// шапка при скролі
 const hdr=document.getElementById('hdr');
 addEventListener('scroll',()=>hdr.classList.toggle('scrolled',scrollY>10),{passive:true});
-// мобільне меню
 const burger=document.getElementById('burger'),nav=document.getElementById('navlinks');
 burger.addEventListener('click',()=>nav.classList.toggle('open'));
 nav.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>nav.classList.remove('open')));
-// поява при скролі
-const io=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}})},{threshold:.12});
-document.querySelectorAll('.rv').forEach((el,i)=>{el.style.transitionDelay=(Math.min(i%4,3)*70)+'ms';io.observe(el);});
+const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
+document.querySelectorAll('.rv').forEach((el,i)=>{el.style.transitionDelay=(Math.min(i%3,2)*80)+'ms';io.observe(el)});
 </script>
 </body>
 </html>
