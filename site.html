@@ -96,6 +96,7 @@ section.blk{padding:110px 0;position:relative}
 .loc-grid.carousel::-webkit-scrollbar{display:none}
 .loc-grid.carousel .loc{flex:0 0 calc(33.333% - 11px);scroll-snap-align:start}
 .loc-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:10;width:46px;height:46px;border-radius:50%;border:1px solid var(--bd3);background:rgba(0,0,0,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:var(--w);font-size:24px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.2s;padding-bottom:3px}
+.loc-holder{position:relative}
 .loc-nav:hover{background:var(--y);color:#000;border-color:var(--y)}
 .loc-nav-prev{left:-8px}
 .loc-nav-next{right:-8px}
@@ -412,12 +413,15 @@ function initLocCarousel(grid){
   grid.addEventListener('pointermove',e=>{if(!down)return;grid.scrollLeft=ss-(e.clientX-sx);});
   const end=()=>{if(down){down=false;grid.classList.remove('drag');reset();}};
   grid.addEventListener('pointerup',end);grid.addEventListener('pointercancel',end);grid.addEventListener('pointerleave',end);
-  // Стрілки ‹ ›
-  const wrap=grid.parentElement;
-  if(wrap&&!wrap.querySelector('.loc-nav')){
-    wrap.style.position='relative';
+  // Стрілки ‹ › — центруємо відносно контейнера карток (не всього блоку)
+  let holder=grid.parentElement;
+  if(!holder||!holder.classList.contains('loc-holder')){
+    holder=document.createElement('div'); holder.className='loc-holder';
+    grid.parentNode.insertBefore(holder,grid); holder.appendChild(grid);
+  }
+  if(!holder.querySelector('.loc-nav')){
     const mk=(dir,txt)=>{const b=document.createElement('button');b.type='button';b.className='loc-nav loc-nav-'+dir;b.textContent=txt;b.addEventListener('click',()=>{go(dir==='prev'?i-1:i+1);reset();});return b;};
-    wrap.appendChild(mk('prev','‹')); wrap.appendChild(mk('next','›'));
+    holder.appendChild(mk('prev','‹')); holder.appendChild(mk('next','›'));
   }
 }
 const _hdrs={apikey:SB_KEY,Authorization:'Bearer '+SB_KEY};
