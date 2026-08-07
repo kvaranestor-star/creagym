@@ -360,7 +360,11 @@ const SITE_KEYS={hero:'--img-hero',loc1:'--img-1',loc2:'--img-2',loc3:'--img-3',
     if(map.ig_embed && map.ig_embed.trim()){
       const feed=document.getElementById('ig-feed');
       if(feed){
-        feed.innerHTML=map.ig_embed;
+        // Віджет показує фото, але не клікабельний; поверх — прозорий шар-посилання на Instagram
+        feed.innerHTML=`<div style="position:relative;border-radius:16px;overflow:hidden">
+          <div style="pointer-events:none">${map.ig_embed}</div>
+          <a href="${profile}" target="_blank" rel="noopener" aria-label="Instagram" style="position:absolute;inset:0;z-index:5;display:block;cursor:pointer"></a>
+        </div>`;
         feed.querySelectorAll('script').forEach(old=>{
           const s=document.createElement('script');
           [...old.attributes].forEach(a=>s.setAttribute(a.name,a.value));
