@@ -458,7 +458,19 @@ function initLocCarousel(grid){
   }
 }
 function geoSlug(s){return 'geo_'+String(s).toLowerCase().replace(/[^0-9a-zа-яіїєґ]+/gi,'_').replace(/^_+|_+$/g,'').slice(0,120);}
-async function geocode(q){try{const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q),{headers:{'Accept':'application/json'}});const j=await r.json();if(j&&j[0])return[parseFloat(j[0].lat),parseFloat(j[0].lon)];}catch(e){}return null;}
+function cleanAddr(s){return String(s||'').replace(/м\.?\s*житомир\.?/gi,'').replace(/вул\.?|вулиця/gi,'').replace(/[.,]+/g,' ').replace(/\s+/g,' ').trim();}
+function nearZt(c){return c&&!isNaN(c[0])&&c[0]>50.1&&c[0]<50.5&&c[1]>28.35&&c[1]<28.9;}
+async function gPhoton(q){try{const r=await fetch('https://photon.komoot.io/api/?limit=1&q='+encodeURIComponent(q));const j=await r.json();if(j&&j.features&&j.features[0]){const c=j.features[0].geometry.coordinates;return[c[1],c[0]];}}catch(e){}return null;}
+async function gNom(q){try{const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q));const j=await r.json();if(j&&j[0])return[parseFloat(j[0].lat),parseFloat(j[0].lon)];}catch(e){}return null;}
+const FALLBACK_COORDS={'бандери':[50.2622745,28.6605996],'новосінна':[50.2667861,28.6451113],'новосинна':[50.2667861,28.6451113],'клосовс':[50.276037,28.6347973],'сірка':[50.3082938,28.6702619],'сирка':[50.3082938,28.6702619]};
+function fallbackFor(raw){const s=String(raw||'').toLowerCase();for(const k in FALLBACK_COORDS){if(s.includes(k))return FALLBACK_COORDS[k];}return null;}
+async function geocode(raw){
+  const street=cleanAddr(raw);
+  let c=await gPhoton(street+' Житомир'); if(nearZt(c))return c;
+  c=await gNom(street+', Житомир, Україна'); if(nearZt(c))return c;
+  c=await gPhoton(street+' Zhytomyr Ukraine'); if(nearZt(c))return c;
+  return fallbackFor(raw); // запасні координати, якщо геосервіс не влучив
+}
 async function cacheGeo(key,lat,lng){try{await fetch(SB_URL+'/rest/v1/site_settings',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},body:JSON.stringify({key,value:lat+','+lng})});}catch(e){}}
 const PIN_SVG='<svg viewBox="0 0 194 148" fill="none"><path d="M194 0H4.06878C-15.931 74.673 40.3182 148 117.598 148H154.352L178.14 59.2H50.5782L42.6481 88.8H139.271L131.344 118.4H3.7791L27.5633 29.6H186.07L194 0Z" fill="currentColor"/></svg>';
 async function initMap(branches,settings){
@@ -472,7 +484,7 @@ async function initMap(branches,settings){
     const key=geoSlug(addr);
     let c=null;
     if(settings&&settings[key]){const p=String(settings[key]).split(',');c=[parseFloat(p[0]),parseFloat(p[1])];}
-    if(!c||isNaN(c[0])){ c=await geocode(addr+', Житомир, Україна'); if(c) cacheGeo(key,c[0],c[1]); }
+    if(!c||isNaN(c[0])){ c=await geocode(addr); if(c) cacheGeo(key,c[0],c[1]); }
     if(c&&!isNaN(c[0])){ L.marker(c,{icon}).addTo(lmap).bindPopup('<b>'+escHtml(b.name)+'</b>'+(b.address?'<br>'+escHtml(b.address):'')); pts.push(c); }
   }
   if(pts.length===1) lmap.setView(pts[0],15);
