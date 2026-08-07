@@ -1086,6 +1086,14 @@ tr:hover td{background:#ffffff03;cursor:pointer}
                 <label>Примітки</label>
                 <textarea class="fi2" id="branch-notes" rows="2" placeholder="Додаткова інформація..." style="resize:vertical"></textarea>
               </div>
+              <div class="ff">
+                <label>Графік роботи <span style="color:var(--m2);font-weight:400">(показується у картці залу на сайті)</span></label>
+                <textarea class="fi2" id="branch-schedule" rows="3" placeholder="Пн–Пт 8:00–22:00&#10;Сб–Нд 9:00–20:00" style="resize:vertical"></textarea>
+              </div>
+              <div class="ff">
+                <label>Посилання Google Maps <span style="color:var(--m2);font-weight:400">(для кнопки «Прокласти маршрут»)</span></label>
+                <input class="fi2" type="text" id="branch-maps" placeholder="https://maps.google.com/...">
+              </div>
             </div>
             <div class="mo-ft">
               <button class="f-b se" onclick="closeBranchMoD()">Скасувати</button>
@@ -1228,9 +1236,6 @@ tr:hover td{background:#ffffff03;cursor:pointer}
               <div style="font-size:11px;color:var(--m2);margin-top:8px">Встав посилання на профіль — кнопка «Перейти в Instagram» і пости на сайті вестимуть на нього.</div>
             </div>
             <div id="site-slots" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px"></div>
-            <div style="margin-top:24px;margin-bottom:12px;font-size:13px;font-weight:700;color:var(--w)">🕐 Графік і маршрут по залах</div>
-            <div style="font-size:11px;color:var(--m2);margin-bottom:12px">Графік показується у картці залу на карті. Посилання Google Maps — для кнопки «Прокласти маршрут». Якщо посилання нема — маршрут будується автоматично по координатах.</div>
-            <div id="site-branches" style="display:grid;gap:12px"></div>
           </div>
         </div>
       </div>
@@ -1910,35 +1915,6 @@ async function loadSiteSettings(){
   catch(e){ _siteVals={}; }
   const ig=document.getElementById('site-ig'); if(ig) ig.value=_siteVals.instagram||'';
   renderSiteSlots();
-  loadSiteBranches();
-}
-function _escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-async function loadSiteBranches(){
-  const box=document.getElementById('site-branches'); if(!box)return;
-  let brs=[];
-  try{ brs=await sb.get('branches','?select=id,name&order=created_at.asc')||[]; }catch(e){}
-  if(!brs.length){ box.innerHTML='<div style="font-size:12px;color:var(--m2)">Немає філій.</div>'; return; }
-  box.innerHTML=brs.map(b=>{
-    const sched=_siteVals['sched_'+b.id]||'';
-    const maps=_siteVals['maps_'+b.id]||'';
-    return `<div style="background:var(--p1);border:1px solid var(--bd2);border-radius:12px;padding:14px 15px">
-      <div style="font-size:13px;font-weight:700;color:var(--w);margin-bottom:10px">${_escAttr(b.name)}</div>
-      <textarea id="sched_${b.id}" rows="3" placeholder="Графік, напр.:\nПн–Пт 8:00–22:00\nСб–Нд 9:00–20:00" style="width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--w);font-family:var(--f);font-size:12px;resize:vertical">${_escAttr(sched)}</textarea>
-      <input id="maps_${b.id}" type="text" placeholder="Посилання Google Maps (для маршруту)" value="${_escAttr(maps)}" style="width:100%;margin-top:8px;padding:9px 11px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--w);font-family:var(--f);font-size:12px">
-      <button onclick="siteSaveBranch('${b.id}')" style="margin-top:10px;padding:9px 18px;border-radius:8px;border:none;background:var(--y);color:#000;font-family:var(--f);font-weight:700;font-size:12px;cursor:pointer">Зберегти</button>
-    </div>`;
-  }).join('');
-}
-async function siteSaveBranch(id){
-  const sched=(document.getElementById('sched_'+id).value||'').trim();
-  const maps=(document.getElementById('maps_'+id).value||'').trim();
-  if(maps && !/^https?:\/\//i.test(maps)){ alert('Посилання Google Maps має починатися з https://'); return; }
-  try{
-    let r=await _siteSave('sched_'+id,sched); if(r&&!Array.isArray(r)&&r.code){alert('❌ '+r.message);return;}
-    r=await _siteSave('maps_'+id,maps); if(r&&!Array.isArray(r)&&r.code){alert('❌ '+r.message);return;}
-    _siteVals['sched_'+id]=sched; _siteVals['maps_'+id]=maps;
-    alert('✅ Збережено. Онови сайт (Ctrl+Shift+R).');
-  }catch(e){alert('❌ '+(e.message||e));}
 }
 async function siteSaveIg(){
   const url=(document.getElementById('site-ig').value||'').trim();
@@ -4803,7 +4779,7 @@ function openBranchModal(){
   _editBranchId=null;
   document.getElementById('mo-branch-title').textContent='Нова філія';
   document.getElementById('branch-save-btn').textContent='Створити';
-  ['branch-name','branch-address','branch-phone','branch-email','branch-notes'].forEach(id=>{
+  ['branch-name','branch-address','branch-phone','branch-email','branch-notes','branch-schedule','branch-maps'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
   document.getElementById('mo-branch').classList.add('sh');
@@ -4820,6 +4796,8 @@ function editBranch(id){
   document.getElementById('branch-phone').value=b.phone||'';
   document.getElementById('branch-email').value=b.email||'';
   document.getElementById('branch-notes').value=b.notes||'';
+  document.getElementById('branch-schedule').value=b.schedule||'';
+  document.getElementById('branch-maps').value=b.maps_url||'';
   document.getElementById('mo-branch').classList.add('sh');
 }
 
@@ -4837,12 +4815,16 @@ async function saveBranch(){
     alert('Філія з такою назвою вже існує');
     return;
   }
+  const mapsUrl=(document.getElementById('branch-maps')?.value||'').trim();
+  if(mapsUrl && !/^https?:\/\//i.test(mapsUrl)){alert('Посилання Google Maps має починатися з https://');return;}
   const data={
     name,
     address:(document.getElementById('branch-address')?.value||'').trim()||null,
     phone:(document.getElementById('branch-phone')?.value||'').trim()||null,
     email:(document.getElementById('branch-email')?.value||'').trim()||null,
-    notes:(document.getElementById('branch-notes')?.value||'').trim()||null
+    notes:(document.getElementById('branch-notes')?.value||'').trim()||null,
+    schedule:(document.getElementById('branch-schedule')?.value||'').trim()||null,
+    maps_url:mapsUrl||null
   };
   const btn=document.getElementById('branch-save-btn');
   btn.textContent='Збереження...';btn.disabled=true;
