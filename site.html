@@ -16,17 +16,18 @@
   --bd:#ffffff0d;--bd2:#ffffff17;--bd3:#ffffff2e;
   --wm:'Benzin','Montserrat',sans-serif;
   --f:'Montserrat',-apple-system,BlinkMacSystemFont,sans-serif;
-  --img-hero:url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1920&q=80');
-  --img-1:url('https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=900&q=80');
-  --img-2:url('https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=900&q=80');
-  --img-3:url('https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=900&q=80');
-  --img-cta:url('https://images.unsplash.com/photo-1517963879433-6ad2b056d712?auto=format&fit=crop&w=1920&q=80');
-  --img-gal1:url('https://images.unsplash.com/photo-1534258936925-c58bed479fcb?auto=format&fit=crop&w=1000&q=80');
-  --img-gal2:url('https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=800&q=80');
-  --img-gal3:url('https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?auto=format&fit=crop&w=800&q=80');
-  --img-gal4:url('https://images.unsplash.com/photo-1554284126-aa88f22d8b74?auto=format&fit=crop&w=800&q=80');
-  --img-gal5:url('https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=800&q=80');
-  --img-gal6:url('https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=800&q=80');
+  --ph:linear-gradient(135deg,#141416,#0a0a0c);
+  --img-hero:var(--ph);
+  --img-1:var(--ph);
+  --img-2:var(--ph);
+  --img-3:var(--ph);
+  --img-cta:var(--ph);
+  --img-gal1:var(--ph);
+  --img-gal2:var(--ph);
+  --img-gal3:var(--ph);
+  --img-gal4:var(--ph);
+  --img-gal5:var(--ph);
+  --img-gal6:var(--ph);
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -136,10 +137,15 @@ section.blk{padding:110px 0;position:relative}
 .chips .c b{color:var(--y)}
 
 .ab-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}
-.ab{background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:28px 24px;display:flex;flex-direction:column;transition:.28s}
-.ab:hover{border-color:var(--bd3);transform:translateY(-4px)}
-.ab.feat{border-color:#ffd30055;background:linear-gradient(180deg,#ffd3000f,transparent 55%)}
+@property --ang{syntax:'<angle>';initial-value:0deg;inherits:false}
+.ab{position:relative;background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:28px 24px;display:flex;flex-direction:column;transition:border-color .28s,transform .28s,box-shadow .28s,background .28s}
+.ab:hover{border-color:var(--y);transform:translateY(-4px);background:linear-gradient(180deg,#ffd30016,var(--card) 60%);box-shadow:0 0 0 1px var(--y),0 14px 46px -14px #ffd30055}
+.ab.feat{border-color:transparent;background:linear-gradient(180deg,#ffd3000f,transparent 60%),var(--card);box-shadow:0 0 44px -14px #ffd30033}
+.ab.feat::before{content:'';position:absolute;inset:0;border-radius:18px;padding:1.6px;background:conic-gradient(from var(--ang),#ffd30026 0deg,#ffd30026 200deg,#ffd300 300deg,#ffd30026 360deg);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:featSpin 4.5s linear infinite;pointer-events:none}
+@keyframes featSpin{to{--ang:360deg}}
+.ab.feat:hover{border-color:transparent;transform:translateY(-4px);box-shadow:0 16px 52px -12px #ffd30066}
 .ab-badge{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--y);margin-bottom:16px;min-height:13px}
+.ab.feat .ab-badge{text-shadow:0 0 14px #ffd30099}
 .ab h4{font-family:var(--wm);font-weight:800;text-transform:uppercase;font-size:20px;letter-spacing:.01em}
 .ab .desc{color:var(--m2);font-size:13px;margin-top:10px;font-weight:500;flex:1;min-height:40px}
 .ab .price{font-family:var(--wm);font-weight:800;font-size:36px;margin-top:24px;line-height:1}
@@ -151,7 +157,7 @@ section.blk{padding:110px 0;position:relative}
 .ab-note{text-align:center;color:var(--m2);font-size:14px;margin-top:28px;font-weight:500}
 .ab-note a{color:var(--y);font-weight:600;border-bottom:1px solid #ffd30044}
 
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);padding:52px 0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);padding:52px 0;justify-items:center;text-align:center}
 .stat{text-align:center}
 .stat .sn{font-family:var(--wm);font-weight:800;font-size:clamp(34px,4vw,48px);color:var(--y);line-height:1}
 .stat .sl{color:var(--m3);font-size:14px;margin-top:10px;font-weight:500}
@@ -229,7 +235,7 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
   <svg class="hero-gmark" viewBox="0 0 194 148" fill="none"><path d="M194 0H4.06878C-15.931 74.673 40.3182 148 117.598 148H154.352L178.14 59.2H50.5782L42.6481 88.8H139.271L131.344 118.4H3.7791L27.5633 29.6H186.07L194 0Z" fill="currentColor"/></svg>
   <div class="wrap">
     <div class="eyebrow rv">Created to Win</div>
-    <h1 class="rv">Три зали.<span class="l2">Одна мережа.</span></h1>
+    <h1 class="rv"><span id="hero-count">3</span> <span id="hero-zal">зали</span>.<span class="l2">Одна мережа.</span></h1>
     <p class="lead rv">Один мережевий абонемент — доступ до всіх клубів CREAGYM у Житомирі. Тренуйся там, де зручно сьогодні.</p>
     <div class="hero-cta rv">
       <a class="btn btn-y btn-lg" href="client.html">Стати клієнтом →</a>
@@ -249,9 +255,9 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
     <div class="sec-head rv">
       <div class="sec-eyebrow">Локації</div>
       <div class="sec-title">Обери свій <span class="y">зал</span></div>
-      <div class="sec-sub">Три клуби в Житомирі. З мережевим абонементом усі три відкриті для тебе.</div>
+      <div class="sec-sub">Обери зручний клуб у Житомирі. З мережевим абонементом усі вони відкриті для тебе.</div>
     </div>
-    <div class="loc-grid">
+    <div class="loc-grid" id="loc-grid">
       <div class="loc rv"><div class="loc-img"></div><div class="loc-body">
         <div class="loc-idx">01</div><h3>Степана Бандери</h3><div class="addr">вул. Степана Бандери, 3</div>
         <div class="loc-tags"><span class="tag">Тренажерний зал</span></div></div></div>
@@ -310,7 +316,7 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
 
 <section class="blk" style="padding-top:0">
   <div class="wrap"><div class="stats">
-    <div class="stat rv"><div class="sn" data-to="3">0</div><div class="sl">Активних зали</div></div>
+    <div class="stat rv"><div class="sn" data-to="3" id="stat-gyms">0</div><div class="sl">Активних <span id="stat-gyms-w">залів</span></div></div>
     <div class="stat rv"><div class="sn" data-to="800" data-suffix="+">0</div><div class="sl">Клієнтів нам довіряють</div></div>
     <div class="stat rv"><div class="sn" data-to="1" data-prefix="№">№0</div><div class="sl">Мережа в Житомирі</div></div>
   </div></div>
@@ -334,7 +340,7 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
           <span class="wordmark">CREA<span class="g">GYM</span></span>
         </a>
         <div class="foot-motto">Created to Win</div>
-        <p>Мережа фітнес-клубів у Житомирі. Три зали, персональні тренери.</p>
+        <p>Мережа фітнес-клубів у Житомирі. Тренажерні зали, персональні тренери.</p>
       </div>
       <div class="foot-col"><h5>Локації</h5><span>Степана Бандери, 3</span><span>Новосінна, 34</span><span>Клосовського, 10</span></div>
       <div class="foot-col"><h5>Клуб</h5><a href="#abonements">Абонементи</a><a href="#gallery">Галерея</a><a href="client.html">Кабінет</a></div>
@@ -347,25 +353,53 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
 <script>
 const SB_URL='https://rkknbltiylsvmycbbyde.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJra25ibHRpeWxzdm15Y2JieWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNzkyMTksImV4cCI6MjA5Mjc1NTIxOX0.SrXSluAh8TMcXoCqVZLk_mylTSwzBu8tJDuUSudD-mA';
-// Тягнемо фото сайту з site_settings (керуються з панелі власника)
-const SITE_KEYS={hero:'--img-hero',loc1:'--img-1',loc2:'--img-2',loc3:'--img-3',cta:'--img-cta',gal1:'--img-gal1',gal2:'--img-gal2',gal3:'--img-gal3',gal4:'--img-gal4',gal5:'--img-gal5',gal6:'--img-gal6'};
-(async function loadSitePhotos(){
+// Налаштування сайту з site_settings (керуються з панелі власника)
+const SITE_KEYS={hero:'--img-hero',loc1:'--img-1',loc2:'--img-2',loc3:'--img-3',cta:'--img-cta'};
+function escHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function zalWord(n){const a=n%10,b=n%100; if(a===1&&b!==11)return'зал'; if(a>=2&&a<=4&&(b<12||b>14))return'зали'; return'залів';}
+function applyCounts(n){
+  if(!n||n<1)return;
+  const hc=document.getElementById('hero-count'); if(hc) hc.textContent=n;
+  const hz=document.getElementById('hero-zal'); if(hz) hz.textContent=zalWord(n);
+  const sg=document.getElementById('stat-gyms'); if(sg) sg.setAttribute('data-to',n);
+  const sw=document.getElementById('stat-gyms-w'); if(sw) sw.textContent=zalWord(n);
+}
+function renderLocations(branches,map){
+  const grid=document.getElementById('loc-grid'); if(!grid||!branches.length)return;
+  grid.innerHTML=branches.map((b,i)=>{
+    const img=map['loc'+(i+1)];
+    const bg=img?`background-image:url('${String(img).replace(/'/g,"%27")}')`:'background:var(--ph)';
+    const addr=b.address?`<div class="addr">${escHtml(b.address)}</div>`:'';
+    return `<div class="loc in"><div class="loc-img" style="${bg}"></div><div class="loc-body">
+      <div class="loc-idx">${String(i+1).padStart(2,'0')}</div><h3>${escHtml(b.name)}</h3>${addr}
+      <div class="loc-tags"><span class="tag">Тренажерний зал</span></div></div></div>`;
+  }).join('');
+}
+const _hdrs={apikey:SB_KEY,Authorization:'Bearer '+SB_KEY};
+(async function init(){
+  let map={};
   try{
-    const r=await fetch(`${SB_URL}/rest/v1/site_settings?select=key,value`,{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
-    if(!r.ok)return; const rows=await r.json(); const root=document.documentElement.style;
-    const map={}; rows.forEach(x=>map[x.key]=x.value);
-    rows.forEach(x=>{const v=SITE_KEYS[x.key]; if(v&&x.value) root.setProperty(v,`url('${x.value}')`);});
-    const profile=map.instagram||'https://instagram.com';
-    const btn=document.getElementById('ig-btn'); if(btn) btn.href=profile;
-    document.querySelectorAll('.post.ig-link').forEach(a=>{
-      const n=a.getAttribute('data-n');
-      a.href=(map['gal'+n+'_link'])||profile;
-    });
-    if(map.instagram){
-      const h=map.instagram.replace(/\/+$/,'').split('/').pop(); const hh=document.getElementById('ig-handle');
-      if(h&&hh) hh.textContent='@'+h.replace(/^@/,'');
-    }
+    const r=await fetch(`${SB_URL}/rest/v1/site_settings?select=key,value`,{headers:_hdrs});
+    if(r.ok){(await r.json()).forEach(x=>map[x.key]=x.value);}
   }catch(e){}
+  const root=document.documentElement.style;
+  Object.keys(SITE_KEYS).forEach(k=>{ if(map[k]) root.setProperty(SITE_KEYS[k],`url('${map[k]}')`); });
+  // Пости: є зображення → показуємо, нема → ховаємо плитку
+  document.querySelectorAll('.post.ig-link').forEach(a=>{
+    const n=a.getAttribute('data-n'); const img=map['gal'+n];
+    if(img){ const p=a.querySelector('.pimg'); if(p) p.style.backgroundImage=`url('${img}')`; a.style.display=''; }
+    else { a.style.display='none'; }
+  });
+  // Instagram: посилання, @нік, аватар
+  const profile=map.instagram||'https://instagram.com';
+  const btn=document.getElementById('ig-btn'); if(btn) btn.href=profile;
+  document.querySelectorAll('.post.ig-link').forEach(a=>{ a.href=(map['gal'+a.getAttribute('data-n')+'_link'])||profile; });
+  if(map.instagram){ const h=map.instagram.replace(/\/+$/,'').split('/').pop(); const hh=document.getElementById('ig-handle'); if(h&&hh) hh.textContent='@'+h.replace(/^@/,''); }
+  if(map.ig_avatar){ const av=document.querySelector('.ig-ava'); if(av){ av.style.background=`#000 center/cover no-repeat`; av.style.backgroundImage=`url('${map.ig_avatar}')`; av.innerHTML=''; } }
+  // Зали з бази → картки + лічильники
+  let branches=[];
+  try{ const rb=await fetch(`${SB_URL}/rest/v1/branches?select=name,address&order=created_at.asc`,{headers:_hdrs}); if(rb.ok) branches=(await rb.json()).filter(b=>b&&b.name); }catch(e){}
+  if(branches.length){ renderLocations(branches,map); applyCounts(branches.length); }
 })();
 
 document.getElementById('yr').textContent=new Date().getFullYear();
