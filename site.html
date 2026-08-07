@@ -277,13 +277,15 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
       </div>
       <a class="btn btn-y btn-lg" id="ig-btn" href="https://instagram.com" target="_blank" rel="noopener">Перейти в Instagram →</a>
     </div>
-    <div class="posts-grid">
-      <a class="post rv ig-link" href="https://instagram.com" target="_blank" rel="noopener"><div class="pimg" style="background-image:var(--img-gal1)"></div><span class="pov"></span></a>
-      <a class="post rv ig-link" href="https://instagram.com" target="_blank" rel="noopener"><div class="pimg" style="background-image:var(--img-gal2)"></div><span class="pov"></span></a>
-      <a class="post rv ig-link" href="https://instagram.com" target="_blank" rel="noopener"><div class="pimg" style="background-image:var(--img-gal3)"></div><span class="pov"></span></a>
-      <a class="post rv ig-link" href="https://instagram.com" target="_blank" rel="noopener"><div class="pimg" style="background-image:var(--img-gal4)"></div><span class="pov"></span></a>
-      <a class="post rv ig-link" href="https://instagram.com" target="_blank" rel="noopener"><div class="pimg" style="background-image:var(--img-gal5)"></div><span class="pov"></span></a>
-      <a class="post rv ig-link" href="https://instagram.com" target="_blank" rel="noopener"><div class="pimg" style="background-image:var(--img-gal6)"></div><span class="pov"></span></a>
+    <div id="ig-feed">
+      <div class="posts-grid">
+      <a class="post rv ig-link" data-n="1" href="https://instagram.com" target="_blank" rel="noopener"><div class="pimg" style="background-image:var(--img-gal1)"></div><span class="pov"></span></a>
+      <a class="post rv ig-link" data-n="2" href="https://instagram.com" target="_blank" rel="noopener"><div class="pimg" style="background-image:var(--img-gal2)"></div><span class="pov"></span></a>
+      <a class="post rv ig-link" data-n="3" href="https://instagram.com" target="_blank" rel="noopener"><div class="pimg" style="background-image:var(--img-gal3)"></div><span class="pov"></span></a>
+      <a class="post rv ig-link" data-n="4" href="https://instagram.com" target="_blank" rel="noopener"><div class="pimg" style="background-image:var(--img-gal4)"></div><span class="pov"></span></a>
+      <a class="post rv ig-link" data-n="5" href="https://instagram.com" target="_blank" rel="noopener"><div class="pimg" style="background-image:var(--img-gal5)"></div><span class="pov"></span></a>
+      <a class="post rv ig-link" data-n="6" href="https://instagram.com" target="_blank" rel="noopener"><div class="pimg" style="background-image:var(--img-gal6)"></div><span class="pov"></span></a>
+      </div>
     </div>
   </div>
 </section>
@@ -351,13 +353,16 @@ const SITE_KEYS={hero:'--img-hero',loc1:'--img-1',loc2:'--img-2',loc3:'--img-3',
   try{
     const r=await fetch(`${SB_URL}/rest/v1/site_settings?select=key,value`,{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
     if(!r.ok)return; const rows=await r.json(); const root=document.documentElement.style;
+    const map={}; rows.forEach(x=>map[x.key]=x.value);
     rows.forEach(x=>{const v=SITE_KEYS[x.key]; if(v&&x.value) root.setProperty(v,`url('${x.value}')`);});
-    const ig=rows.find(x=>x.key==='instagram');
-    if(ig&&ig.value){
-      const url=ig.value;
-      const btn=document.getElementById('ig-btn'); if(btn) btn.href=url;
-      document.querySelectorAll('.ig-link').forEach(a=>a.href=url);
-      const h=url.replace(/\/+$/,'').split('/').pop(); const hh=document.getElementById('ig-handle');
+    const profile=map.instagram||'https://instagram.com';
+    const btn=document.getElementById('ig-btn'); if(btn) btn.href=profile;
+    document.querySelectorAll('.post.ig-link').forEach(a=>{
+      const n=a.getAttribute('data-n');
+      a.href=(map['gal'+n+'_link'])||profile;
+    });
+    if(map.instagram){
+      const h=map.instagram.replace(/\/+$/,'').split('/').pop(); const hh=document.getElementById('ig-handle');
       if(h&&hh) hh.textContent='@'+h.replace(/^@/,'');
     }
   }catch(e){}
