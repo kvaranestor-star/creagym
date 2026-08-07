@@ -408,6 +408,15 @@ const SB_URL='https://rkknbltiylsvmycbbyde.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJra25ibHRpeWxzdm15Y2JieWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNzkyMTksImV4cCI6MjA5Mjc1NTIxOX0.SrXSluAh8TMcXoCqVZLk_mylTSwzBu8tJDuUSudD-mA';
 // Налаштування сайту з site_settings (керуються з панелі власника)
 const SITE_KEYS={hero:'--img-hero',loc1:'--img-1',loc2:'--img-2',loc3:'--img-3',cta:'--img-cta'};
+function fmtSchedule(json){
+  let arr; try{arr=JSON.parse(json);}catch(e){return '';}
+  if(!Array.isArray(arr)||arr.length!==7) return '';
+  const DAYS=['Пн','Вт','Ср','Чт','Пт','Сб','Нд'];
+  const lab=d=>d.off?'Вихідний':((d.o||'')+'–'+(d.c||''));
+  const lines=[]; let i=0;
+  while(i<7){ let j=i; const cur=lab(arr[i]); while(j+1<7&&lab(arr[j+1])===cur)j++; const rng=i===j?DAYS[i]:(DAYS[i]+'–'+DAYS[j]); lines.push('<span style="color:var(--m2)">'+rng+'</span>&nbsp;&nbsp;'+escHtml(cur)); i=j+1; }
+  return lines.join('<br>');
+}
 function escHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function zalWord(n){const a=n%10,b=n%100; if(a===1&&b!==11)return'зал'; if(a>=2&&a<=4&&(b<12||b>14))return'зали'; return'залів';}
 function applyCounts(n){
@@ -498,8 +507,9 @@ async function initMap(branches,settings){
     if(c&&!isNaN(c[0])){
       const sched=b.schedule||'';
       const maps=b.maps_url||'';
+      const schedFmt=fmtSchedule(sched);
       const dir=maps||('https://www.google.com/maps/dir/?api=1&destination='+c[0]+','+c[1]);
-      const schedHtml=sched?('<div class="pop-sched">'+escHtml(sched).replace(/\n/g,'<br>')+'</div>'):'';
+      const schedHtml=schedFmt?('<div class="pop-sched">'+schedFmt+'</div>'):'';
       const html='<div class="pop-card"><div class="pop-name">'+escHtml(b.name)+'</div>'
         +(b.address?'<div class="pop-addr">'+escHtml(b.address)+'</div>':'')
         +schedHtml
