@@ -491,7 +491,7 @@ setInterval(()=>{
   if(active.id==='scr-home') loadHome();
   else if(active.id==='scr-visits') loadVisits();
   else if(active.id==='scr-profile') loadProfile();
-}, 15000);
+}, 8000);
 
 // Нормалізація телефону: дописує + ; вимагає код країни 380
 function normalizePhone(raw){
@@ -1196,7 +1196,7 @@ async function loadProfile(){
 async function validateSession(){
   if(!curClient) return false;
   try{
-    const chk=await get('clients',`?id=eq.${encodeURIComponent(curClient.id)}&select=id`);
+    const chk=await get('clients',`?id=eq.${encodeURIComponent(curClient.id)}&limit=1`);
     if(!chk||!chk.length){
       localStorage.removeItem('cg_client');
       localStorage.removeItem('cg_pending');
@@ -1205,6 +1205,9 @@ async function validateSession(){
       showScreen('scr-auth');
       return false;
     }
+    // Підтягуємо свіжі дані клієнта з БД (щоб оновлювалось саме, без перезаходу)
+    curClient={...curClient, ...chk[0]};
+    localStorage.setItem('cg_client',JSON.stringify(curClient));
   }catch(e){ /* немає мережі — лишаємо як є */ }
   return true;
 }
