@@ -496,8 +496,8 @@ async function initMap(branches,settings){
     if(!c||isNaN(c[0])) c=fallbackFor(addr);                 // миттєво для наявних залів
     if(!c||isNaN(c[0])){ c=await geocode(addr); if(c) cacheGeo(key,c[0],c[1]); }  // геокод для нових
     if(c&&!isNaN(c[0])){
-      const sched=(settings&&settings['sched_'+b.id])||'';
-      const maps=(settings&&settings['maps_'+b.id])||'';
+      const sched=b.schedule||'';
+      const maps=b.maps_url||'';
       const dir=maps||('https://www.google.com/maps/dir/?api=1&destination='+c[0]+','+c[1]);
       const schedHtml=sched?('<div class="pop-sched">'+escHtml(sched).replace(/\n/g,'<br>')+'</div>'):'';
       const html='<div class="pop-card"><div class="pop-name">'+escHtml(b.name)+'</div>'
@@ -537,7 +537,7 @@ const _hdrs={apikey:SB_KEY,Authorization:'Bearer '+SB_KEY};
   if(map.ig_avatar){ const av=document.querySelector('.ig-ava'); if(av){ av.style.background=`#000 center/cover no-repeat`; av.style.backgroundImage=`url('${map.ig_avatar}')`; av.innerHTML=''; } }
   // Зали з бази → картки + лічильники
   let branches=[];
-  try{ const rb=await fetch(`${SB_URL}/rest/v1/branches?select=id,name,address&order=created_at.asc`,{headers:_hdrs}); if(rb.ok) branches=(await rb.json()).filter(b=>b&&b.name); }catch(e){}
+  try{ const rb=await fetch(`${SB_URL}/rest/v1/branches?select=id,name,address,schedule,maps_url&order=created_at.asc`,{headers:_hdrs}); if(rb.ok) branches=(await rb.json()).filter(b=>b&&b.name); }catch(e){}
   if(branches.length){ renderLocations(branches,map); applyCounts(branches.length); }
   initMap(branches.length?branches:[
     {name:'Степана Бандери, 3',address:'вул. Степана Бандери, 3'},
