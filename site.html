@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CREAGYM — Created to Win · Житомир</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <meta name="description" content="CREAGYM — created to win. Мережа фітнес-клубів у Житомирі: три зали, персональні тренери.">
 <!-- Фото керуються з панелі власника (розділ «Сайт»). Значення тягнуться з Supabase (site_settings). -->
 <style>
@@ -97,6 +98,25 @@ section.blk{padding:110px 0;position:relative}
 .loc-grid.carousel .loc{flex:0 0 calc(33.333% - 11px);scroll-snap-align:start}
 .loc-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:10;width:46px;height:46px;border-radius:50%;border:1px solid var(--bd3);background:rgba(0,0,0,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:var(--w);font-size:24px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.2s;padding-bottom:3px}
 .loc-holder{position:relative}
+/* КАРТА */
+.loc-map{height:480px;border-radius:20px;overflow:hidden;border:1px solid var(--bd2);background:#000;position:relative}
+.loc-map .leaflet-container{height:100%;width:100%;background:#000;font-family:var(--f)}
+/* Монохромні тайли під чорний стиль сайту; акценти (піни) лишаються жовтими поверх */
+.loc-map .leaflet-tile-pane{filter:grayscale(1) contrast(.92) brightness(.72)}
+.loc-map .leaflet-tile-pane .leaflet-tile{mix-blend-mode:luminosity}
+.loc-map::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:398;box-shadow:inset 0 0 90px 20px #000;border-radius:20px}
+.loc-map .leaflet-control-attribution{background:rgba(0,0,0,.5);color:var(--m2);font-size:10px}
+.loc-map .leaflet-control-attribution a{color:var(--m2)}
+.cg-pin{width:42px;height:42px;position:relative}
+.cg-pin .pin-body{width:42px;height:42px;border-radius:50% 50% 50% 0;background:var(--y);transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px #000a;border:2px solid #000}
+.cg-pin .pin-body svg{transform:rotate(45deg);width:20px;height:auto;color:#000}
+.leaflet-popup-content-wrapper{background:#141416;color:var(--w);border-radius:12px;border:1px solid var(--bd2)}
+.leaflet-popup-content{font-family:var(--f);font-size:13px;font-weight:500}
+.leaflet-popup-content b{font-family:var(--wm);font-weight:800;text-transform:uppercase;font-size:14px}
+.leaflet-popup-tip{background:#141416}
+.leaflet-container a.leaflet-popup-close-button{color:var(--m2)}
+.leaflet-bar a{background:#141416;color:var(--w);border-color:var(--bd2)}
+.leaflet-bar a:hover{background:#1d1d20}
 .loc-nav:hover{background:var(--y);color:#000;border-color:var(--y)}
 .loc-nav-prev{left:-56px}
 .loc-nav-next{right:-56px}
@@ -284,6 +304,17 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
   </div>
 </section>
 
+<!-- КАРТА -->
+<section class="blk" id="map-sec" style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="sec-eyebrow">На карті</div>
+      <div class="sec-title">Ми <span class="y">поруч</span></div>
+    </div>
+    <div id="map" class="loc-map rv"></div>
+  </div>
+</section>
+
 <!-- ГАЛЕРЕЯ (замість розділу «Мережа») -->
 <section class="blk" id="gallery">
   <div class="wrap">
@@ -363,6 +394,7 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
   </div>
 </footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 const SB_URL='https://rkknbltiylsvmycbbyde.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJra25ibHRpeWxzdm15Y2JieWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNzkyMTksImV4cCI6MjA5Mjc1NTIxOX0.SrXSluAh8TMcXoCqVZLk_mylTSwzBu8tJDuUSudD-mA';
@@ -425,6 +457,28 @@ function initLocCarousel(grid){
     holder.appendChild(mk('prev','‹')); holder.appendChild(mk('next','›'));
   }
 }
+function geoSlug(s){return 'geo_'+String(s).toLowerCase().replace(/[^0-9a-zа-яіїєґ]+/gi,'_').replace(/^_+|_+$/g,'').slice(0,120);}
+async function geocode(q){try{const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q),{headers:{'Accept':'application/json'}});const j=await r.json();if(j&&j[0])return[parseFloat(j[0].lat),parseFloat(j[0].lon)];}catch(e){}return null;}
+async function cacheGeo(key,lat,lng){try{await fetch(SB_URL+'/rest/v1/site_settings',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},body:JSON.stringify({key,value:lat+','+lng})});}catch(e){}}
+const PIN_SVG='<svg viewBox="0 0 194 148" fill="none"><path d="M194 0H4.06878C-15.931 74.673 40.3182 148 117.598 148H154.352L178.14 59.2H50.5782L42.6481 88.8H139.271L131.344 118.4H3.7791L27.5633 29.6H186.07L194 0Z" fill="currentColor"/></svg>';
+async function initMap(branches,settings){
+  if(typeof L==='undefined'||!document.getElementById('map'))return;
+  const lmap=L.map('map',{scrollWheelZoom:false,zoomControl:true}).setView([50.2665,28.652],13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap &copy; CARTO',maxZoom:19}).addTo(lmap);
+  const icon=L.divIcon({className:'cg-pin-wrap',html:'<div class="cg-pin"><div class="pin-body">'+PIN_SVG+'</div></div>',iconSize:[42,42],iconAnchor:[21,42],popupAnchor:[0,-40]});
+  const pts=[];
+  for(const b of branches){
+    const addr=(b.address||b.name||'').trim(); if(!addr) continue;
+    const key=geoSlug(addr);
+    let c=null;
+    if(settings&&settings[key]){const p=String(settings[key]).split(',');c=[parseFloat(p[0]),parseFloat(p[1])];}
+    if(!c||isNaN(c[0])){ c=await geocode(addr+', Житомир, Україна'); if(c) cacheGeo(key,c[0],c[1]); }
+    if(c&&!isNaN(c[0])){ L.marker(c,{icon}).addTo(lmap).bindPopup('<b>'+escHtml(b.name)+'</b>'+(b.address?'<br>'+escHtml(b.address):'')); pts.push(c); }
+  }
+  if(pts.length===1) lmap.setView(pts[0],15);
+  else if(pts.length>1) lmap.fitBounds(pts,{padding:[60,60],maxZoom:14});
+  setTimeout(()=>lmap.invalidateSize(),300);
+}
 const _hdrs={apikey:SB_KEY,Authorization:'Bearer '+SB_KEY};
 (async function init(){
   let map={};
@@ -450,6 +504,11 @@ const _hdrs={apikey:SB_KEY,Authorization:'Bearer '+SB_KEY};
   let branches=[];
   try{ const rb=await fetch(`${SB_URL}/rest/v1/branches?select=name,address&order=created_at.asc`,{headers:_hdrs}); if(rb.ok) branches=(await rb.json()).filter(b=>b&&b.name); }catch(e){}
   if(branches.length){ renderLocations(branches,map); applyCounts(branches.length); }
+  initMap(branches.length?branches:[
+    {name:'Степана Бандери, 3',address:'вул. Степана Бандери, 3'},
+    {name:'Новосінна, 34',address:'вул. Новосінна, 34'},
+    {name:'Клосовського, 10',address:'вул. Клосовського, 10'}
+  ],map);
 })();
 
 document.getElementById('yr').textContent=new Date().getFullYear();
