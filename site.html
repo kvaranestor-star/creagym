@@ -278,23 +278,6 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
   </div>
 </section>
 
-<section class="blk" style="padding-top:0">
-  <div class="wrap">
-    <div class="split rev">
-      <div class="split-txt rv">
-        <div class="st-t">Секція <span class="y">боксу</span></div>
-        <p>На Клосовського працює повноцінна боксова секція — від дітей до дорослих. Тренування з поставленою технікою під наглядом тренера.</p>
-        <div class="chips">
-          <span class="c">Дитяча <b>7–11</b></span>
-          <span class="c">Підліткова <b>12–17</b></span>
-          <span class="c">Доросла <b>18+</b></span>
-        </div>
-      </div>
-      <div class="split-media rv"><div class="m-img" style="background-image:var(--img-box)"></div></div>
-    </div>
-  </div>
-</section>
-
 <section class="blk" id="abonements" style="padding-top:0">
   <div class="wrap">
     <div class="sec-head rv">
@@ -353,7 +336,7 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
 const SB_URL='https://rkknbltiylsvmycbbyde.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJra25ibHRpeWxzdm15Y2JieWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNzkyMTksImV4cCI6MjA5Mjc1NTIxOX0.SrXSluAh8TMcXoCqVZLk_mylTSwzBu8tJDuUSudD-mA';
 // Тягнемо фото сайту з site_settings (керуються з панелі власника)
-const SITE_KEYS={hero:'--img-hero',loc1:'--img-1',loc2:'--img-2',loc3:'--img-3',box:'--img-box',cta:'--img-cta',gal1:'--img-gal1',gal2:'--img-gal2',gal3:'--img-gal3',gal4:'--img-gal4'};
+const SITE_KEYS={hero:'--img-hero',loc1:'--img-1',loc2:'--img-2',loc3:'--img-3',cta:'--img-cta',gal1:'--img-gal1',gal2:'--img-gal2',gal3:'--img-gal3',gal4:'--img-gal4'};
 (async function loadSitePhotos(){
   try{
     const r=await fetch(`${SB_URL}/rest/v1/site_settings?select=key,value`,{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
