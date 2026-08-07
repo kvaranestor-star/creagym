@@ -120,6 +120,13 @@ section.blk{padding:110px 0;position:relative}
 .post:hover .pov{background:#00000055}
 .post .pov::after{content:'';width:34px;height:34px;opacity:0;transition:opacity .25s;background:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Crect x='2' y='2' width='20' height='20' rx='6' stroke='white' stroke-width='1.7'/%3E%3Ccircle cx='12' cy='12' r='4.2' stroke='white' stroke-width='1.7'/%3E%3Ccircle cx='17.3' cy='6.7' r='1.2' fill='white'/%3E%3C/svg%3E")}
 .post:hover .pov::after{opacity:1}
+/* ховаємо службові бейджі/водяні знаки віджета стрічки */
+#ig-feed a[href*="elfsight.com"],
+#ig-feed a[href*="sociablekit"],
+#ig-feed [class*="watermark" i],
+#ig-feed [class*="Watermark"],
+#ig-feed [class*="-toolbar"],
+#ig-feed [class*="promo" i]{display:none!important;pointer-events:none!important}
 
 .split{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:stretch}
 .split.rev .split-txt{order:2}
