@@ -127,6 +127,9 @@ section.blk{padding:110px 0;position:relative}
 #ig-feed [class*="Watermark"],
 #ig-feed [class*="-toolbar"],
 #ig-feed [class*="promo" i]{display:none!important;pointer-events:none!important}
+/* глобально ховаємо брендинг/бейджі віджета (додаються поза блоком) */
+a[href*="elfsight.com"],a[href*="sociablekit"],a[href*="embedsocial"],
+[class*="eapps-widget-toolbar"],[aria-label*="Elfsight" i]{display:none!important}
 
 .split{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:stretch}
 .split.rev .split-txt{order:2}
@@ -352,6 +355,22 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
 </footer>
 
 <script>
+function startPromoCleaner(){
+  const RX=/Free Instagram Feed Widget|Powered by Elfsight|Made with Elfsight|Get this widget/i;
+  function clean(){
+    document.querySelectorAll('a[href*="elfsight.com"],a[href*="sociablekit"],a[href*="embedsocial"]').forEach(el=>el.style.setProperty('display','none','important'));
+    document.querySelectorAll('body *').forEach(el=>{
+      if(el.children.length>2) return;
+      const t=(el.textContent||'').trim();
+      if(t && t.length<48 && RX.test(t)){
+        let n=el; for(let i=0;i<3&&n&&n!==document.body;i++){ if(n.children.length<=3) n.style.setProperty('display','none','important'); n=n.parentElement; }
+      }
+    });
+  }
+  clean();
+  const iv=setInterval(clean,600);
+  setTimeout(()=>clearInterval(iv),9000);
+}
 const SB_URL='https://rkknbltiylsvmycbbyde.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJra25ibHRpeWxzdm15Y2JieWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNzkyMTksImV4cCI6MjA5Mjc1NTIxOX0.SrXSluAh8TMcXoCqVZLk_mylTSwzBu8tJDuUSudD-mA';
 // Тягнемо фото сайту з site_settings (керуються з панелі власника)
@@ -378,6 +397,7 @@ const SITE_KEYS={hero:'--img-hero',loc1:'--img-1',loc2:'--img-2',loc3:'--img-3',
           s.textContent=old.textContent||'';
           old.replaceWith(s);
         });
+        startPromoCleaner();
       }
     }
     const btn=document.getElementById('ig-btn'); if(btn) btn.href=profile;
