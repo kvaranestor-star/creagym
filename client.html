@@ -482,6 +482,16 @@ function showScreen(id){
   if(id==='scr-visits') loadVisits();
   if(id==='scr-profile') loadProfile();
 }
+// Автооновлення активного екрана кабінету (щоб значення мінялись самі, без перезаходу)
+setInterval(()=>{
+  if(!curClient) return;
+  const active=document.querySelector('.screen.active'); if(!active) return;
+  const ae=document.activeElement;
+  if(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return; // не чіпаємо під час вводу
+  if(active.id==='scr-home') loadHome();
+  else if(active.id==='scr-visits') loadVisits();
+  else if(active.id==='scr-profile') loadProfile();
+}, 15000);
 
 // Нормалізація телефону: дописує + ; вимагає код країни 380
 function normalizePhone(raw){
