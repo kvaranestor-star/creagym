@@ -152,6 +152,7 @@ section.blk{padding:110px 0;position:relative}
 .ab-note a{color:var(--y);font-weight:600;border-bottom:1px solid #ffd30044}
 
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);padding:52px 0}
+.stat{text-align:center}
 .stat .sn{font-family:var(--wm);font-weight:800;font-size:clamp(34px,4vw,48px);color:var(--y);line-height:1}
 .stat .sl{color:var(--m3);font-size:14px;margin-top:10px;font-weight:500}
 
@@ -309,9 +310,9 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
 
 <section class="blk" style="padding-top:0">
   <div class="wrap"><div class="stats">
-    <div class="stat rv"><div class="sn">3</div><div class="sl">Активних зали</div></div>
-    <div class="stat rv"><div class="sn">800+</div><div class="sl">Клієнтів нам довіряють</div></div>
-    <div class="stat rv"><div class="sn">№1</div><div class="sl">Мережа в Житомирі</div></div>
+    <div class="stat rv"><div class="sn" data-to="3">0</div><div class="sl">Активних зали</div></div>
+    <div class="stat rv"><div class="sn" data-to="800" data-suffix="+">0</div><div class="sl">Клієнтів нам довіряють</div></div>
+    <div class="stat rv"><div class="sn" data-to="1" data-prefix="№">№0</div><div class="sl">Мережа в Житомирі</div></div>
   </div></div>
 </section>
 
@@ -375,6 +376,25 @@ burger.addEventListener('click',()=>nav.classList.toggle('open'));
 nav.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>nav.classList.remove('open')));
 const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
 document.querySelectorAll('.rv').forEach((el,i)=>{el.style.transitionDelay=(Math.min(i%3,2)*80)+'ms';io.observe(el)});
+
+// Набір цифр у блоці статистики при прокручуванні до нього
+(function statsCounter(){
+  const stats=document.querySelector('.stats'); if(!stats) return;
+  const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const set=(el,val)=>{const pre=el.getAttribute('data-prefix')||'';const suf=el.getAttribute('data-suffix')||'';el.textContent=pre+val+suf;};
+  const run=()=>stats.querySelectorAll('.sn[data-to]').forEach(el=>{
+    const to=parseInt(el.getAttribute('data-to'),10)||0;
+    if(reduce){set(el,to);return;}
+    const dur=1300,start=performance.now();
+    (function tick(now){
+      const p=Math.min(1,(now-start)/dur), e=1-Math.pow(1-p,3);
+      set(el,Math.round(to*e));
+      if(p<1) requestAnimationFrame(tick);
+    })(start);
+  });
+  const io2=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){run();io2.unobserve(stats);}})},{threshold:.4});
+  io2.observe(stats);
+})();
 </script>
 </body>
 </html>
