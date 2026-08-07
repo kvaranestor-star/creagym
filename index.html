@@ -1226,14 +1226,6 @@ tr:hover td{background:#ffffff03;cursor:pointer}
                 <button onclick="siteSaveIg()" style="padding:9px 18px;border-radius:8px;border:none;background:var(--y);color:#000;font-family:var(--f);font-weight:700;font-size:12px;cursor:pointer">Зберегти</button>
               </div>
               <div style="font-size:11px;color:var(--m2);margin-top:8px">Встав посилання на профіль — кнопка «Перейти в Instagram» і пости на сайті вестимуть на нього.</div>
-              <div style="height:1px;background:var(--bd);margin:14px 0"></div>
-              <div style="font-size:12px;font-weight:700;color:var(--w);margin-bottom:9px">🔴 Справжня стрічка Instagram (embed-код)</div>
-              <textarea id="site-embed" rows="3" placeholder="Встав сюди embed-код віджета (SociableKIT / Elfsight / EmbedSocial)" style="width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--w);font-family:var(--f);font-size:11px;resize:vertical"></textarea>
-              <div style="display:flex;gap:8px;margin-top:8px">
-                <button onclick="siteSaveEmbed()" style="padding:9px 16px;border-radius:8px;border:none;background:var(--y);color:#000;font-family:var(--f);font-weight:700;font-size:12px;cursor:pointer">Зберегти стрічку</button>
-                <button onclick="siteClearEmbed()" style="padding:9px 16px;border-radius:8px;border:1px solid var(--bd2);background:var(--p2);color:var(--m3);font-family:var(--f);font-weight:700;font-size:12px;cursor:pointer">Прибрати</button>
-              </div>
-              <div style="font-size:11px;color:var(--m2);margin-top:8px;line-height:1.6">Щоб на сайті показувались <b>справжні фото з твого Instagram</b> (автооновлення): зайди на <b>sociablekit.com</b> або <b>elfsight.com</b> → Instagram Feed → введи <b>@creagym.zt</b> → скопіюй embed-код → встав сюди. Якщо порожньо — показуються 6 фото, які ти заливаєш нижче вручну.</div>
             </div>
             <div id="site-slots" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px"></div>
           </div>
@@ -1913,21 +1905,7 @@ async function loadSiteSettings(){
   try{ const rows=await sb.get('site_settings','?select=key,value')||[]; _siteVals={}; rows.forEach(r=>_siteVals[r.key]=r.value); }
   catch(e){ _siteVals={}; }
   const ig=document.getElementById('site-ig'); if(ig) ig.value=_siteVals.instagram||'';
-  const emb=document.getElementById('site-embed'); if(emb) emb.value=_siteVals.ig_embed||'';
   renderSiteSlots();
-}
-async function siteSaveEmbed(){
-  const code=(document.getElementById('site-embed').value||'').trim();
-  try{
-    const res=await _siteSave('ig_embed',code);
-    if(res&&!Array.isArray(res)&&res.code){alert('❌ Не збережено ('+res.code+'): '+res.message);return;}
-    _siteVals.ig_embed=code;
-    alert(code?'✅ Стрічку збережено. Онови сайт (Ctrl+Shift+R).':'✅ Прибрано. Показуватимуться фото вручну.');
-  }catch(err){alert('❌ Помилка: '+(err.message||err));}
-}
-async function siteClearEmbed(){
-  document.getElementById('site-embed').value='';
-  await siteSaveEmbed();
 }
 async function siteSaveIg(){
   const url=(document.getElementById('site-ig').value||'').trim();
