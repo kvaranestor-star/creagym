@@ -42,11 +42,12 @@ header.scrolled{background:rgba(0,0,0,.82);border-bottom-color:var(--bd)}
 .gmark{width:27px;height:auto;color:var(--y);flex-shrink:0}
 .wordmark{font-family:var(--wm);font-weight:800;font-size:21px;letter-spacing:.05em}
 .wordmark .g{color:var(--y)}
-.nav-links{display:flex;align-items:center;gap:36px}
+.nav-links{display:flex;align-items:center;gap:36px;margin-left:auto}
 .nav-links a.nl{font-size:13px;font-weight:600;color:var(--m3);letter-spacing:.02em;transition:.2s;position:relative}
 .nav-links a.nl::after{content:'';position:absolute;left:0;bottom:-6px;width:0;height:1.5px;background:var(--y);transition:.25s}
 .nav-links a.nl:hover{color:var(--w)}.nav-links a.nl:hover::after{width:100%}
-.nav-cta{display:flex;align-items:center;gap:10px}
+.nav-cta{display:flex;align-items:center;gap:10px;margin-left:32px}
+.m-cta{display:none}
 .btn{font-family:var(--f);font-weight:700;font-size:13px;letter-spacing:.02em;padding:11px 21px;border-radius:10px;cursor:pointer;border:1px solid transparent;transition:.18s;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
 .btn-ghost{background:transparent;border-color:var(--bd2);color:var(--w)}
 .btn-ghost:hover{border-color:var(--bd3);background:#ffffff0a}
@@ -102,17 +103,23 @@ section.blk{padding:110px 0;position:relative}
 .loc-tags{margin-top:18px;display:flex;gap:8px;flex-wrap:wrap}
 .loc-tags .tag{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--m3);border:1px solid var(--bd2);border-radius:20px;padding:6px 13px;background:#00000066;backdrop-filter:blur(6px)}
 
-/* GALLERY */
-.gal-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:260px;gap:14px}
-.gal{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--bd)}
+/* GALLERY: Instagram + фото */
+.gal-split{display:grid;grid-template-columns:.85fr 1.15fr;gap:16px;align-items:stretch}
+.ig-card{position:relative;border-radius:18px;overflow:hidden;border:1px solid var(--bd2);padding:32px 28px;display:flex;flex-direction:column;justify-content:space-between;min-height:452px;background:linear-gradient(155deg,#101013,#0a0a0c);text-decoration:none;transition:border-color .25s,transform .25s}
+.ig-card:hover{border-color:#ffffff33;transform:translateY(-3px)}
+.ig-card::before{content:'';position:absolute;inset:0;background:radial-gradient(120% 80% at 100% 0%,#ffd30012,transparent 55%);pointer-events:none}
+.ig-top{display:flex;align-items:center;gap:15px;position:relative}
+.ig-ava{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);flex-shrink:0}
+.ig-ava svg{width:30px;height:30px}
+.ig-h{font-family:var(--wm);font-weight:800;font-size:22px}
+.ig-sub{font-size:11px;color:var(--m2);font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-top:4px}
+.ig-mid{color:var(--m3);font-size:17px;font-weight:500;position:relative;margin:26px 0;line-height:1.5}
+.ig-btn{align-self:flex-start;font-weight:700;font-size:13px;color:#000;background:var(--y);padding:13px 22px;border-radius:11px;position:relative;transition:filter .2s}
+.ig-card:hover .ig-btn{filter:brightness(1.08)}
+.gal-r{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:14px}
+.gal{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--bd);min-height:218px}
 .gal .gimg{position:absolute;inset:0;background-size:cover;background-position:center;transition:transform .7s cubic-bezier(.22,1,.36,1)}
 .gal:hover .gimg{transform:scale(1.08)}
-.gal:nth-child(1){grid-column:span 2;grid-row:span 2}
-.gal:nth-child(1) .gimg{background-image:var(--img-gal1)}
-.gal:nth-child(2){grid-column:span 2}
-.gal:nth-child(2) .gimg{background-image:var(--img-gal2)}
-.gal:nth-child(3) .gimg{background-image:var(--img-gal3)}
-.gal:nth-child(4) .gimg{background-image:var(--img-gal4)}
 
 .split{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:stretch}
 .split.rev .split-txt{order:2}
@@ -174,8 +181,7 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
   .loc-grid{grid-template-columns:1fr 1fr}.ab-grid{grid-template-columns:1fr 1fr}
   .split{grid-template-columns:1fr}.split.rev .split-txt{order:0}.split-media{min-height:320px}
   .stats{grid-template-columns:1fr 1fr;gap:34px}
-  .gal-grid{grid-template-columns:1fr 1fr;grid-auto-rows:220px}
-  .gal:nth-child(1){grid-column:span 2;grid-row:span 1}
+  .gal-split{grid-template-columns:1fr}.ig-card{min-height:auto}
 }
 @media(max-width:640px){
   .wrap{padding:0 18px}
@@ -185,8 +191,8 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
   .nav-links .m-cta{display:flex;gap:10px;margin-top:16px}.nav-links .m-cta .btn{flex:1;justify-content:center}
   .nav-cta .btn-ghost{display:none}.burger{display:flex;align-items:center;justify-content:center}
   section.blk{padding:72px 0}
-  .loc-grid,.ab-grid,.gal-grid{grid-template-columns:1fr}.loc{height:380px}
-  .gal:nth-child(1){grid-column:span 1}
+  .loc-grid,.ab-grid{grid-template-columns:1fr}.loc{height:380px}
+  .gal-r{grid-template-columns:1fr;grid-template-rows:none}
   .hero-cta .btn{flex:1;justify-content:center}
   .cta-band{padding:60px 22px}
 }
@@ -267,11 +273,21 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
       <div class="sec-title">Зазирни <span class="y">всередину</span></div>
       <div class="sec-sub">Простір, обладнання й атмосфера CREAGYM.</div>
     </div>
-    <div class="gal-grid">
-      <div class="gal rv"><div class="gimg"></div></div>
-      <div class="gal rv"><div class="gimg"></div></div>
-      <div class="gal rv"><div class="gimg"></div></div>
-      <div class="gal rv"><div class="gimg"></div></div>
+    <div class="gal-split">
+      <a class="ig-card rv" id="ig-card" href="https://instagram.com" target="_blank" rel="noopener">
+        <div class="ig-top">
+          <div class="ig-ava"><svg viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="6" stroke="#fff" stroke-width="1.7"/><circle cx="12" cy="12" r="4.2" stroke="#fff" stroke-width="1.7"/><circle cx="17.3" cy="6.7" r="1.2" fill="#fff"/></svg></div>
+          <div><div class="ig-h" id="ig-handle">@creagym</div><div class="ig-sub">Instagram</div></div>
+        </div>
+        <div class="ig-mid">Стеж за життям клубу — тренування, новини й атмосфера CREAGYM.</div>
+        <div class="ig-btn">Відкрити в Instagram →</div>
+      </a>
+      <div class="gal-r">
+        <div class="gal rv"><div class="gimg" style="background-image:var(--img-gal1)"></div></div>
+        <div class="gal rv"><div class="gimg" style="background-image:var(--img-gal2)"></div></div>
+        <div class="gal rv"><div class="gimg" style="background-image:var(--img-gal3)"></div></div>
+        <div class="gal rv"><div class="gimg" style="background-image:var(--img-gal4)"></div></div>
+      </div>
     </div>
   </div>
 </section>
@@ -340,6 +356,11 @@ const SITE_KEYS={hero:'--img-hero',loc1:'--img-1',loc2:'--img-2',loc3:'--img-3',
     const r=await fetch(`${SB_URL}/rest/v1/site_settings?select=key,value`,{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
     if(!r.ok)return; const rows=await r.json(); const root=document.documentElement.style;
     rows.forEach(x=>{const v=SITE_KEYS[x.key]; if(v&&x.value) root.setProperty(v,`url('${x.value}')`);});
+    const ig=rows.find(x=>x.key==='instagram');
+    if(ig&&ig.value){
+      const c=document.getElementById('ig-card');
+      if(c){ c.href=ig.value; const h=ig.value.replace(/\/+$/,'').split('/').pop(); const hh=document.getElementById('ig-handle'); if(h&&hh) hh.textContent='@'+h.replace(/^@/,''); }
+    }
   }catch(e){}
 })();
 
