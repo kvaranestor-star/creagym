@@ -98,8 +98,9 @@ section.blk{padding:110px 0;position:relative}
 .loc-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:10;width:46px;height:46px;border-radius:50%;border:1px solid var(--bd3);background:rgba(0,0,0,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:var(--w);font-size:24px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.2s;padding-bottom:3px}
 .loc-holder{position:relative}
 .loc-nav:hover{background:var(--y);color:#000;border-color:var(--y)}
-.loc-nav-prev{left:-8px}
-.loc-nav-next{right:-8px}
+.loc-nav-prev{left:-56px}
+.loc-nav-next{right:-56px}
+@media(max-width:1180px){.loc-nav-prev{left:-14px}.loc-nav-next{right:-14px}}
 @media(max-width:640px){.loc-nav{display:none}}
 .loc{position:relative;height:440px;border-radius:18px;overflow:hidden;border:1px solid var(--bd);display:flex;flex-direction:column;justify-content:flex-end;isolation:isolate;transition:border-color .3s}
 .loc:hover{border-color:var(--bd3)}
