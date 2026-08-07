@@ -116,6 +116,12 @@ section.blk{padding:110px 0;position:relative}
 .leaflet-popup-content{font-family:var(--f);font-size:13px;font-weight:500}
 .leaflet-popup-content b{font-family:var(--wm);font-weight:800;text-transform:uppercase;font-size:14px}
 .leaflet-popup-tip{background:#141416}
+.cg-popup .leaflet-popup-content{margin:16px 18px}
+.pop-card .pop-name{font-family:var(--wm);font-weight:800;text-transform:uppercase;font-size:16px;color:var(--w);line-height:1.1}
+.pop-card .pop-addr{color:var(--m2);font-size:12px;font-weight:500;margin-top:6px}
+.pop-card .pop-sched{color:var(--m3);font-size:12.5px;font-weight:500;margin-top:12px;padding-top:12px;border-top:1px solid var(--bd);line-height:1.7;white-space:normal}
+.pop-card .pop-btn{display:block;text-align:center;margin-top:14px;background:var(--y);color:#000;font-family:var(--f);font-weight:700;font-size:12.5px;padding:11px;border-radius:9px;text-decoration:none;transition:filter .2s}
+.pop-card .pop-btn:hover{filter:brightness(1.08)}
 .leaflet-container a.leaflet-popup-close-button{color:var(--m2)}
 .leaflet-bar a{background:#141416;color:var(--w);border-color:var(--bd2)}
 .leaflet-bar a:hover{background:#1d1d20}
@@ -478,8 +484,8 @@ async function cacheGeo(key,lat,lng){try{await fetch(SB_URL+'/rest/v1/site_setti
 const PIN_SVG='<svg viewBox="0 0 194 148" fill="none"><path d="M194 0H4.06878C-15.931 74.673 40.3182 148 117.598 148H154.352L178.14 59.2H50.5782L42.6481 88.8H139.271L131.344 118.4H3.7791L27.5633 29.6H186.07L194 0Z" fill="currentColor"/></svg>';
 async function initMap(branches,settings){
   if(typeof L==='undefined'||!document.getElementById('map'))return;
-  const lmap=L.map('map',{scrollWheelZoom:false,zoomControl:true}).setView([50.2665,28.652],13);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap &copy; CARTO',maxZoom:19}).addTo(lmap);
+  const lmap=L.map('map',{scrollWheelZoom:false,zoomControl:true,attributionControl:false}).setView([50.2665,28.652],13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(lmap);
   const icon=L.divIcon({className:'cg-pin-wrap',html:'<div class="cg-pin"><div class="pin-body">'+PIN_SVG+'</div></div>',iconSize:[42,42],iconAnchor:[21,42],popupAnchor:[0,-40]});
   const pts=[];
   for(const b of branches){
@@ -489,7 +495,20 @@ async function initMap(branches,settings){
     if(settings&&settings[key]){const p=String(settings[key]).split(',');c=[parseFloat(p[0]),parseFloat(p[1])];}
     if(!c||isNaN(c[0])) c=fallbackFor(addr);                 // миттєво для наявних залів
     if(!c||isNaN(c[0])){ c=await geocode(addr); if(c) cacheGeo(key,c[0],c[1]); }  // геокод для нових
-    if(c&&!isNaN(c[0])){ L.marker(c,{icon}).addTo(lmap).bindTooltip(escHtml(b.name),{direction:'top',offset:[0,-40],className:'cg-tip'}).bindPopup('<b>'+escHtml(b.name)+'</b>'+(b.address?'<br>'+escHtml(b.address):'')); pts.push(c); }
+    if(c&&!isNaN(c[0])){
+      const sched=(settings&&settings['sched_'+b.id])||'';
+      const maps=(settings&&settings['maps_'+b.id])||'';
+      const dir=maps||('https://www.google.com/maps/dir/?api=1&destination='+c[0]+','+c[1]);
+      const schedHtml=sched?('<div class="pop-sched">'+escHtml(sched).replace(/\n/g,'<br>')+'</div>'):'';
+      const html='<div class="pop-card"><div class="pop-name">'+escHtml(b.name)+'</div>'
+        +(b.address?'<div class="pop-addr">'+escHtml(b.address)+'</div>':'')
+        +schedHtml
+        +'<a class="pop-btn" href="'+dir+'" target="_blank" rel="noopener">Прокласти маршрут →</a></div>';
+      L.marker(c,{icon}).addTo(lmap)
+        .bindTooltip(escHtml(b.name),{direction:'top',offset:[0,-40],className:'cg-tip'})
+        .bindPopup(html,{className:'cg-popup',minWidth:230,maxWidth:280});
+      pts.push(c);
+    }
   }
   if(pts.length===1) lmap.setView(pts[0],15);
   else if(pts.length>1) lmap.fitBounds(pts,{padding:[60,60],maxZoom:14});
@@ -518,7 +537,7 @@ const _hdrs={apikey:SB_KEY,Authorization:'Bearer '+SB_KEY};
   if(map.ig_avatar){ const av=document.querySelector('.ig-ava'); if(av){ av.style.background=`#000 center/cover no-repeat`; av.style.backgroundImage=`url('${map.ig_avatar}')`; av.innerHTML=''; } }
   // Зали з бази → картки + лічильники
   let branches=[];
-  try{ const rb=await fetch(`${SB_URL}/rest/v1/branches?select=name,address&order=created_at.asc`,{headers:_hdrs}); if(rb.ok) branches=(await rb.json()).filter(b=>b&&b.name); }catch(e){}
+  try{ const rb=await fetch(`${SB_URL}/rest/v1/branches?select=id,name,address&order=created_at.asc`,{headers:_hdrs}); if(rb.ok) branches=(await rb.json()).filter(b=>b&&b.name); }catch(e){}
   if(branches.length){ renderLocations(branches,map); applyCounts(branches.length); }
   initMap(branches.length?branches:[
     {name:'Степана Бандери, 3',address:'вул. Степана Бандери, 3'},
