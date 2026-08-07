@@ -91,6 +91,9 @@ section.blk{padding:110px 0;position:relative}
 .sec-sub{color:var(--m3);font-size:16px;margin-top:18px;font-weight:500;max-width:560px}
 
 .loc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.loc-grid.carousel{display:flex;grid-template-columns:none;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-behavior:smooth}
+.loc-grid.carousel::-webkit-scrollbar{display:none}
+.loc-grid.carousel .loc{flex:0 0 calc(33.333% - 11px);scroll-snap-align:start}
 .loc{position:relative;height:440px;border-radius:18px;overflow:hidden;border:1px solid var(--bd);display:flex;flex-direction:column;justify-content:flex-end;isolation:isolate;transition:border-color .3s}
 .loc:hover{border-color:var(--bd3)}
 .loc-img{position:absolute;inset:0;z-index:-2;background-size:cover;background-position:center;transition:transform .7s cubic-bezier(.22,1,.36,1)}
@@ -186,6 +189,7 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
 
 @media(max-width:940px){
   .loc-grid{grid-template-columns:1fr 1fr}.ab-grid{grid-template-columns:1fr 1fr}
+  .loc-grid.carousel .loc{flex:0 0 calc(50% - 8px)}
   .split{grid-template-columns:1fr}.split.rev .split-txt{order:0}.split-media{min-height:320px}
   .stats{grid-template-columns:1fr;gap:30px;text-align:center}
   .posts-grid{grid-template-columns:1fr 1fr}
@@ -199,6 +203,7 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
   .nav-cta .btn-ghost{display:none}.burger{display:flex;align-items:center;justify-content:center}
   section.blk{padding:72px 0}
   .loc-grid,.ab-grid,.posts-grid{grid-template-columns:1fr}.loc{height:380px}
+  .loc-grid.carousel{display:flex}.loc-grid.carousel .loc{flex:0 0 86%}
   .hero-cta .btn{flex:1;justify-content:center}
   .cta-band{padding:60px 22px}
 }
@@ -255,7 +260,7 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
     <div class="sec-head rv">
       <div class="sec-eyebrow">Локації</div>
       <div class="sec-title">Обери свій <span class="y">зал</span></div>
-      <div class="sec-sub">Обери зручний клуб у Житомирі. З мережевим абонементом усі вони відкриті для тебе.</div>
+      <div class="sec-sub">Обери зал, що поруч. Мережевий абонемент відкриває всі клуби, локальний — той, у якому куплений.</div>
     </div>
     <div class="loc-grid" id="loc-grid">
       <div class="loc rv"><div class="loc-img"></div><div class="loc-body">
@@ -342,7 +347,7 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
         <div class="foot-motto">Created to Win</div>
         <p>Мережа фітнес-клубів у Житомирі. Тренажерні зали, персональні тренери.</p>
       </div>
-      <div class="foot-col"><h5>Локації</h5><span>Степана Бандери, 3</span><span>Новосінна, 34</span><span>Клосовського, 10</span></div>
+      <div class="foot-col"><h5>Локації</h5><div id="foot-locs"><span>Степана Бандери, 3</span><span>Новосінна, 34</span><span>Клосовського, 10</span></div></div>
       <div class="foot-col"><h5>Клуб</h5><a href="#abonements">Абонементи</a><a href="#gallery">Галерея</a><a href="client.html">Кабінет</a></div>
       <div class="foot-col"><h5>Акаунт</h5><a href="client.html">Увійти</a><a href="client.html">Реєстрація</a></div>
     </div>
@@ -365,15 +370,46 @@ function applyCounts(n){
   const sw=document.getElementById('stat-gyms-w'); if(sw) sw.textContent=zalWord(n);
 }
 function renderLocations(branches,map){
-  const grid=document.getElementById('loc-grid'); if(!grid||!branches.length)return;
-  grid.innerHTML=branches.map((b,i)=>{
-    const img=map['loc'+(i+1)];
-    const bg=img?`background-image:url('${String(img).replace(/'/g,"%27")}')`:'background:var(--ph)';
-    const addr=b.address?`<div class="addr">${escHtml(b.address)}</div>`:'';
-    return `<div class="loc in"><div class="loc-img" style="${bg}"></div><div class="loc-body">
-      <div class="loc-idx">${String(i+1).padStart(2,'0')}</div><h3>${escHtml(b.name)}</h3>${addr}
-      <div class="loc-tags"><span class="tag">Тренажерний зал</span></div></div></div>`;
-  }).join('');
+  const grid=document.getElementById('loc-grid');
+  if(grid&&branches.length){
+    grid.innerHTML=branches.map((b,i)=>{
+      const img=map['loc'+(i+1)];
+      const bg=img?`background-image:url('${String(img).replace(/'/g,"%27")}')`:'background:var(--ph)';
+      const addr=b.address?`<div class="addr">${escHtml(b.address)}</div>`:'';
+      return `<div class="loc in"><div class="loc-img" style="${bg}"></div><div class="loc-body">
+        <div class="loc-idx">${String(i+1).padStart(2,'0')}</div><h3>${escHtml(b.name)}</h3>${addr}
+        <div class="loc-tags"><span class="tag">Тренажерний зал</span></div></div></div>`;
+    }).join('');
+    // Більше 3 залів → карусель (автогортання 5с + вручну)
+    if(branches.length>3){ grid.classList.add('carousel'); initLocCarousel(grid); }
+    else grid.classList.remove('carousel');
+  }
+  // Футер — адреси залів з бази
+  const fl=document.getElementById('foot-locs');
+  if(fl&&branches.length){ fl.innerHTML=branches.map(b=>`<span>${escHtml(b.address||b.name)}</span>`).join(''); }
+}
+function initLocCarousel(grid){
+  const cards=()=>[...grid.children];
+  let i=0;
+  function go(idx){
+    const c=cards(); if(c.length<2)return; i=(idx+c.length)%c.length;
+    const left=c[i].getBoundingClientRect().left-grid.getBoundingClientRect().left+grid.scrollLeft;
+    grid.scrollTo({left,behavior:'smooth'});
+  }
+  const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  let timer=reduce?null:setInterval(()=>go(i+1),5000);
+  const reset=()=>{ if(timer){clearInterval(timer);timer=setInterval(()=>go(i+1),5000);} };
+  // Синхронізуємо позицію при ручному гортанні + скидаємо таймер
+  let st; grid.addEventListener('scroll',()=>{
+    clearTimeout(st);
+    st=setTimeout(()=>{
+      const c=cards(),base=grid.getBoundingClientRect().left; let best=0,bd=Infinity;
+      c.forEach((el,idx)=>{const d=Math.abs(el.getBoundingClientRect().left-base); if(d<bd){bd=d;best=idx;}});
+      i=best;
+    },140);
+  },{passive:true});
+  grid.addEventListener('pointerdown',reset);
+  grid.addEventListener('touchstart',reset,{passive:true});
 }
 const _hdrs={apikey:SB_KEY,Authorization:'Bearer '+SB_KEY};
 (async function init(){
