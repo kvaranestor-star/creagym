@@ -91,9 +91,15 @@ section.blk{padding:110px 0;position:relative}
 .sec-sub{color:var(--m3);font-size:16px;margin-top:18px;font-weight:500;max-width:560px}
 
 .loc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.loc-grid.carousel{display:flex;grid-template-columns:none;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-behavior:smooth}
+.loc-grid.carousel{display:flex;grid-template-columns:none;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;position:relative;cursor:grab}
+.loc-grid.carousel.drag{cursor:grabbing;scroll-behavior:auto}
 .loc-grid.carousel::-webkit-scrollbar{display:none}
 .loc-grid.carousel .loc{flex:0 0 calc(33.333% - 11px);scroll-snap-align:start}
+.loc-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:10;width:46px;height:46px;border-radius:50%;border:1px solid var(--bd3);background:rgba(0,0,0,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:var(--w);font-size:24px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.2s;padding-bottom:3px}
+.loc-nav:hover{background:var(--y);color:#000;border-color:var(--y)}
+.loc-nav-prev{left:-8px}
+.loc-nav-next{right:-8px}
+@media(max-width:640px){.loc-nav{display:none}}
 .loc{position:relative;height:440px;border-radius:18px;overflow:hidden;border:1px solid var(--bd);display:flex;flex-direction:column;justify-content:flex-end;isolation:isolate;transition:border-color .3s}
 .loc:hover{border-color:var(--bd3)}
 .loc-img{position:absolute;inset:0;z-index:-2;background-size:cover;background-position:center;transition:transform .7s cubic-bezier(.22,1,.36,1)}
@@ -368,6 +374,7 @@ function applyCounts(n){
   const hz=document.getElementById('hero-zal'); if(hz) hz.textContent=zalWord(n);
   const sg=document.getElementById('stat-gyms'); if(sg) sg.setAttribute('data-to',n);
   const sw=document.getElementById('stat-gyms-w'); if(sw) sw.textContent=zalWord(n);
+  if(window.__statsVisible && window.runStats) window.runStats();
 }
 function renderLocations(branches,map){
   const grid=document.getElementById('loc-grid');
@@ -389,27 +396,29 @@ function renderLocations(branches,map){
   if(fl&&branches.length){ fl.innerHTML=branches.map(b=>`<span>${escHtml(b.address||b.name)}</span>`).join(''); }
 }
 function initLocCarousel(grid){
-  const cards=()=>[...grid.children];
+  const cards=()=>[...grid.children].filter(el=>el.classList.contains('loc'));
   let i=0;
-  function go(idx){
-    const c=cards(); if(c.length<2)return; i=(idx+c.length)%c.length;
-    const left=c[i].getBoundingClientRect().left-grid.getBoundingClientRect().left+grid.scrollLeft;
-    grid.scrollTo({left,behavior:'smooth'});
-  }
+  function go(idx){const c=cards();if(c.length<2)return;i=(idx+c.length)%c.length;grid.scrollTo({left:c[i].offsetLeft,behavior:'smooth'});}
   const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
-  let timer=reduce?null:setInterval(()=>go(i+1),5000);
-  const reset=()=>{ if(timer){clearInterval(timer);timer=setInterval(()=>go(i+1),5000);} };
-  // Синхронізуємо позицію при ручному гортанні + скидаємо таймер
-  let st; grid.addEventListener('scroll',()=>{
-    clearTimeout(st);
-    st=setTimeout(()=>{
-      const c=cards(),base=grid.getBoundingClientRect().left; let best=0,bd=Infinity;
-      c.forEach((el,idx)=>{const d=Math.abs(el.getBoundingClientRect().left-base); if(d<bd){bd=d;best=idx;}});
-      i=best;
-    },140);
-  },{passive:true});
-  grid.addEventListener('pointerdown',reset);
-  grid.addEventListener('touchstart',reset,{passive:true});
+  let timer=null;
+  const start=()=>{if(!reduce&&!timer)timer=setInterval(()=>go(i+1),5000);};
+  const stop=()=>{if(timer){clearInterval(timer);timer=null;}};
+  const reset=()=>{stop();start();};
+  start();
+  let st; grid.addEventListener('scroll',()=>{clearTimeout(st);st=setTimeout(()=>{const c=cards(),sl=grid.scrollLeft;let best=0,bd=1/0;c.forEach((el,idx)=>{const d=Math.abs(el.offsetLeft-sl);if(d<bd){bd=d;best=idx;}});i=best;},140);},{passive:true});
+  // Перетягування мишкою
+  let down=false,sx=0,ss=0;
+  grid.addEventListener('pointerdown',e=>{down=true;sx=e.clientX;ss=grid.scrollLeft;try{grid.setPointerCapture(e.pointerId);}catch(_){}grid.classList.add('drag');stop();});
+  grid.addEventListener('pointermove',e=>{if(!down)return;grid.scrollLeft=ss-(e.clientX-sx);});
+  const end=()=>{if(down){down=false;grid.classList.remove('drag');reset();}};
+  grid.addEventListener('pointerup',end);grid.addEventListener('pointercancel',end);grid.addEventListener('pointerleave',end);
+  // Стрілки ‹ ›
+  const wrap=grid.parentElement;
+  if(wrap&&!wrap.querySelector('.loc-nav')){
+    wrap.style.position='relative';
+    const mk=(dir,txt)=>{const b=document.createElement('button');b.type='button';b.className='loc-nav loc-nav-'+dir;b.textContent=txt;b.addEventListener('click',()=>{go(dir==='prev'?i-1:i+1);reset();});return b;};
+    wrap.appendChild(mk('prev','‹')); wrap.appendChild(mk('next','›'));
+  }
 }
 const _hdrs={apikey:SB_KEY,Authorization:'Bearer '+SB_KEY};
 (async function init(){
@@ -448,11 +457,12 @@ const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.tar
 document.querySelectorAll('.rv').forEach((el,i)=>{el.style.transitionDelay=(Math.min(i%3,2)*80)+'ms';io.observe(el)});
 
 // Набір цифр у блоці статистики при прокручуванні до нього
-(function statsCounter(){
+window.__statsVisible=false;
+window.runStats=function(){
   const stats=document.querySelector('.stats'); if(!stats) return;
   const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
   const set=(el,val)=>{const pre=el.getAttribute('data-prefix')||'';const suf=el.getAttribute('data-suffix')||'';el.textContent=pre+val+suf;};
-  const run=()=>stats.querySelectorAll('.sn[data-to]').forEach(el=>{
+  stats.querySelectorAll('.sn[data-to]').forEach(el=>{
     const to=parseInt(el.getAttribute('data-to'),10)||0;
     if(reduce){set(el,to);return;}
     const dur=1300,start=performance.now();
@@ -460,9 +470,12 @@ document.querySelectorAll('.rv').forEach((el,i)=>{el.style.transitionDelay=(Math
       const p=Math.min(1,(now-start)/dur), e=1-Math.pow(1-p,3);
       set(el,Math.round(to*e));
       if(p<1) requestAnimationFrame(tick);
-    })(start);
+    })(performance.now());
   });
-  const io2=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){run();io2.unobserve(stats);}})},{threshold:.4});
+};
+(function statsCounter(){
+  const stats=document.querySelector('.stats'); if(!stats) return;
+  const io2=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){window.__statsVisible=true;window.runStats();io2.unobserve(stats);}})},{threshold:.4});
   io2.observe(stats);
 })();
 </script>
