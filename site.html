@@ -356,6 +356,19 @@ const SITE_KEYS={hero:'--img-hero',loc1:'--img-1',loc2:'--img-2',loc3:'--img-3',
     const map={}; rows.forEach(x=>map[x.key]=x.value);
     rows.forEach(x=>{const v=SITE_KEYS[x.key]; if(v&&x.value) root.setProperty(v,`url('${x.value}')`);});
     const profile=map.instagram||'https://instagram.com';
+    // Справжня стрічка Instagram через embed-код віджета (якщо задано)
+    if(map.ig_embed && map.ig_embed.trim()){
+      const feed=document.getElementById('ig-feed');
+      if(feed){
+        feed.innerHTML=map.ig_embed;
+        feed.querySelectorAll('script').forEach(old=>{
+          const s=document.createElement('script');
+          [...old.attributes].forEach(a=>s.setAttribute(a.name,a.value));
+          s.textContent=old.textContent||'';
+          old.replaceWith(s);
+        });
+      }
+    }
     const btn=document.getElementById('ig-btn'); if(btn) btn.href=profile;
     document.querySelectorAll('.post.ig-link').forEach(a=>{
       const n=a.getAttribute('data-n');
