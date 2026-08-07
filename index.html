@@ -7206,8 +7206,24 @@ function admSearch(v){
 }
 document.addEventListener('click',e=>{if(!document.getElementById('adm-sw')?.contains(e.target))document.getElementById('adm-sdrop')?.classList.remove('sh')});
 
+let _admProfileId=null;
+// Автооновлення відкритого профілю клієнта (щоб значення мінялись самі, без перезаходу)
+setInterval(()=>{
+  if(!_admProfileId) return;
+  const reg=document.getElementById('adm-reg');
+  if(!reg||!reg.classList.contains('on')) return;          // профіль не активний
+  if(document.querySelector('.mo.sh')) return;              // відкрита модалка — не чіпаємо
+  const ae=document.activeElement;
+  if(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return; // користувач щось вводить
+  const c=(typeof admClients!=='undefined')&&admClients.find(x=>x.id===_admProfileId);
+  if(!c) return;
+  const srch=document.getElementById('adm-search');
+  if(srch && srch.value!==(c.last_name+' '+c.first_name)) return; // почав шукати іншого
+  admSelectClient(_admProfileId);
+}, 12000);
 async function admSelectClient(id){
   const c=admClients.find(x=>x.id===id);if(!c)return;
+  _admProfileId=id;
   document.getElementById('adm-sdrop').classList.remove('sh');
   document.getElementById('adm-search').value=c.last_name+' '+c.first_name;
   let subs=[];
