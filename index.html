@@ -1088,7 +1088,7 @@ tr:hover td{background:#ffffff03;cursor:pointer}
               </div>
               <div class="ff">
                 <label>Графік роботи <span style="color:var(--m2);font-weight:400">(показується у картці залу на сайті)</span></label>
-                <textarea class="fi2" id="branch-schedule" rows="3" placeholder="Пн–Пт 8:00–22:00&#10;Сб–Нд 9:00–20:00" style="resize:vertical"></textarea>
+                <div id="branch-sched-days" style="display:grid;gap:7px;margin-top:4px"></div>
               </div>
               <div class="ff">
                 <label>Посилання Google Maps <span style="color:var(--m2);font-weight:400">(для кнопки «Прокласти маршрут»)</span></label>
@@ -4775,13 +4775,37 @@ function renderBranches(){
   }</div>`;
 }
 
+const SCHED_DAYS=['Пн','Вт','Ср','Чт','Пт','Сб','Нд'];
+function parseSched(s){ try{const a=JSON.parse(s); if(Array.isArray(a))return a;}catch(e){} return null; }
+function renderSchedEditor(arr){
+  const box=document.getElementById('branch-sched-days'); if(!box)return;
+  box.innerHTML=SCHED_DAYS.map((d,i)=>{
+    const it=(arr&&arr[i])||{off:false,o:'08:00',c:'22:00'};
+    const dis=it.off?'disabled':'';
+    const inp='padding:6px 8px;border-radius:7px;border:1px solid var(--bd2);background:var(--p2);color:var(--w);font-family:var(--f);font-size:12px';
+    return `<div class="sd-row" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="width:30px;font-weight:700;font-size:12px;color:var(--w)">${d}</span>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--m2);white-space:nowrap"><input type="checkbox" class="sd-off" ${it.off?'checked':''} onchange="this.closest('.sd-row').querySelectorAll('.sd-o,.sd-c').forEach(x=>x.disabled=this.checked)"> вих.</label>
+      <input type="time" class="sd-o" value="${it.o||'08:00'}" ${dis} style="${inp}">
+      <span style="color:var(--m2)">–</span>
+      <input type="time" class="sd-c" value="${it.c||'22:00'}" ${dis} style="${inp}">
+    </div>`;
+  }).join('');
+}
+function readSchedEditor(){
+  const rows=[...document.querySelectorAll('#branch-sched-days .sd-row')];
+  if(!rows.length) return null;
+  const arr=rows.map(r=>({off:r.querySelector('.sd-off').checked,o:r.querySelector('.sd-o').value||'08:00',c:r.querySelector('.sd-c').value||'22:00'}));
+  return JSON.stringify(arr);
+}
 function openBranchModal(){
   _editBranchId=null;
   document.getElementById('mo-branch-title').textContent='Нова філія';
   document.getElementById('branch-save-btn').textContent='Створити';
-  ['branch-name','branch-address','branch-phone','branch-email','branch-notes','branch-schedule','branch-maps'].forEach(id=>{
+  ['branch-name','branch-address','branch-phone','branch-email','branch-notes','branch-maps'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
+  renderSchedEditor(null);
   document.getElementById('mo-branch').classList.add('sh');
 }
 
@@ -4796,7 +4820,7 @@ function editBranch(id){
   document.getElementById('branch-phone').value=b.phone||'';
   document.getElementById('branch-email').value=b.email||'';
   document.getElementById('branch-notes').value=b.notes||'';
-  document.getElementById('branch-schedule').value=b.schedule||'';
+  renderSchedEditor(parseSched(b.schedule));
   document.getElementById('branch-maps').value=b.maps_url||'';
   document.getElementById('mo-branch').classList.add('sh');
 }
@@ -4823,7 +4847,7 @@ async function saveBranch(){
     phone:(document.getElementById('branch-phone')?.value||'').trim()||null,
     email:(document.getElementById('branch-email')?.value||'').trim()||null,
     notes:(document.getElementById('branch-notes')?.value||'').trim()||null,
-    schedule:(document.getElementById('branch-schedule')?.value||'').trim()||null,
+    schedule:readSchedEditor(),
     maps_url:mapsUrl||null
   };
   const btn=document.getElementById('branch-save-btn');
