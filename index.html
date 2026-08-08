@@ -7944,7 +7944,8 @@ async function admConfirmSell(){
       newStreak=1;
     }
 
-    // Розрахунок знижки
+    // Розрахунок знижки (свіжі налаштування, щоб зміни власника діяли одразу)
+    try{ await loadStreakSettings(); }catch(e){}
     discountPct=getStreakDiscount(newStreak, s.id);
     if(discountPct>0){
       finalPrice=Math.round(s.price*(1-discountPct/100)*100)/100;
