@@ -416,6 +416,25 @@ const SB_URL='https://rkknbltiylsvmycbbyde.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJra25ibHRpeWxzdm15Y2JieWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNzkyMTksImV4cCI6MjA5Mjc1NTIxOX0.SrXSluAh8TMcXoCqVZLk_mylTSwzBu8tJDuUSudD-mA';
 
 let curClient=null;
+// Знижка за серію — тягнемо ту саму таблицю, що й у власника (щоб не було розбіжностей)
+let _cStreakEnabled=true, _cStreakDiscounts=[0,3,6,9,12,15,18,21,24,27,30,33], _cStreakSubTypes=[];
+async function loadClientStreak(){
+  try{
+    const rows=await get('settings','?key=in.(streak_enabled,streak_discounts,streak_sub_types)')||[];
+    rows.forEach(r=>{
+      if(r.key==='streak_enabled') _cStreakEnabled=r.value!=='false';
+      if(r.key==='streak_discounts'){ try{const a=JSON.parse(r.value); if(Array.isArray(a))_cStreakDiscounts=a;}catch(e){} }
+      if(r.key==='streak_sub_types'){ try{_cStreakSubTypes=JSON.parse(r.value)||[];}catch(e){} }
+    });
+  }catch(e){}
+}
+function cStreakDiscount(streak, typeId){
+  if(!_cStreakEnabled || !streak || streak<=1) return 0;
+  if(typeId && _cStreakSubTypes && _cStreakSubTypes.length>0 && !_cStreakSubTypes.includes(typeId)) return 0;
+  const idx=streak-1;
+  if(idx<_cStreakDiscounts.length) return _cStreakDiscounts[idx]||0;
+  return _cStreakDiscounts[_cStreakDiscounts.length-1]||0;
+}
 let _subTypes=[];
 let _acqSettings={};
 let _smsCode=null;
@@ -938,6 +957,7 @@ let _allBranches=[];
 async function loadShop(){
   const el=document.getElementById('shop-list');
   el.innerHTML='<div class="spin"></div>';
+  await loadClientStreak();
   const sets=await get('settings','?key=in.(acq_provider,acq_merchant,acq_public_key,acq_mono_token,acq_client_url)')||[];
   sets.forEach(s=>_acqSettings[s.key]=s.value);
   _allBranches=await get('branches','?is_active=eq.true&order=created_at.asc')||[];
@@ -982,7 +1002,7 @@ async function loadShop(){
     <button onclick="_selectedBranchId=null;loadShop()" style="margin-left:auto;padding:4px 10px;border-radius:6px;border:1px solid var(--bd2);background:var(--p2);color:var(--m2);font-family:var(--f);font-size:11px;cursor:pointer">Змінити</button>
   </div>
   ${_subTypes.map(t=>{
-    const disc=streak>=1?Math.min(streak*3,33):0;
+    const disc=cStreakDiscount(streak, t.id);
     const fp=disc?Math.round(t.price*(1-disc/100)):t.price;
     const isNetwork=t.is_network;
     return `<div class="sub-item" onclick="openPay('${t.id}')">
@@ -1076,7 +1096,7 @@ function openPay(id){
   const t=_subTypes.find(x=>x.id===id);if(!t)return;
   _payId=id;
   const streak=curClient?.streak||0;
-  const disc=streak>=1?Math.min(streak*3,33):0;
+  const disc=cStreakDiscount(streak, t.id);
   const fp=disc?Math.round(t.price*(1-disc/100)):t.price;
   document.getElementById('pay-name').textContent=t.name;
   document.getElementById('pay-price').textContent=fp+' ₴';
@@ -1167,6 +1187,8 @@ async function loadVisits(){
 async function loadProfile(){
   if(!curClient)return;
   if(!(await validateSession())) return;
+  await loadClientStreak();
+  const _stkDisc=cStreakDiscount(curClient.streak,null);
   const subs=await get('subscriptions',`?client_id=eq.${curClient.id}&order=created_at.desc&limit=5`)||[];
   const stL={active:'✅ Активний',frozen:'❄️ Заморожений',expired:'❌ Прострочений',pending:'⏳ Очікує',returned:'↩ Повернений'};
   document.getElementById('profile-content').innerHTML=`
@@ -1175,7 +1197,7 @@ async function loadProfile(){
       ${[['Ім\'я',`${curClient.first_name||''} ${curClient.last_name||''}`],
          ['Телефон',curClient.phone||'—'],['Стать',curClient.gender==='М'?'Чоловік':curClient.gender==='Ж'?'Жінка':'—'],
          ['Місто',curClient.city||'—'],
-         curClient.streak>0?['🔥 Серія',`x${curClient.streak} · знижка -${Math.min(curClient.streak*3,33)}%`]:null
+         curClient.streak>0?['🔥 Серія', _stkDisc>0?`x${curClient.streak} · знижка -${_stkDisc}%`:`x${curClient.streak}`]:null
       ].filter(Boolean).map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bd);font-size:13px">
         <span style="color:var(--m2)">${l}</span><span style="font-weight:600">${v}</span>
       </div>`).join('')}
@@ -1266,7 +1288,7 @@ async function activateAfterPayment(){
   }
 
   // Створюємо абонемент
-  const disc=curClient.streak>=1?Math.min(curClient.streak*3,33):0;
+  const disc=cStreakDiscount(curClient.streak, t.id);
   await post('subscriptions',{
     client_id:curClient.id,
     type_id:subId,
