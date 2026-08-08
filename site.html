@@ -309,22 +309,39 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
         <div class="loc-idx">03</div><h3>Клосовського</h3><div class="addr">вул. Клосовського, 10</div>
         <div class="loc-tags"><span class="tag">Тренажерний зал</span></div></div></div>
     </div>
+    <div id="map" class="loc-map rv" style="margin-top:16px"></div>
   </div>
 </section>
 
-<!-- КАРТА -->
-<section class="blk" id="map-sec" style="padding-top:0">
+<!-- СТАТИСТИКА -->
+<section class="blk" style="padding-top:0">
+  <div class="wrap"><div class="stats">
+    <div class="stat rv"><div class="sn" data-to="3" id="stat-gyms">0</div><div class="sl">Активних <span id="stat-gyms-w">залів</span></div></div>
+    <div class="stat rv"><div class="sn" data-to="800" data-suffix="+">0</div><div class="sl">Клієнтів нам довіряють</div></div>
+    <div class="stat rv"><div class="sn" data-to="1" data-prefix="№">№0</div><div class="sl">Мережа в Житомирі</div></div>
+  </div></div>
+</section>
+
+<!-- АБОНЕМЕНТИ (ціни) -->
+<section class="blk" id="abonements" style="padding-top:0">
   <div class="wrap">
     <div class="sec-head rv">
-      <div class="sec-eyebrow">На карті</div>
-      <div class="sec-title">Ми <span class="y">поруч</span></div>
+      <div class="sec-eyebrow">Абонементи</div>
+      <div class="sec-title">Обери <span class="y">формат</span></div>
+      <div class="sec-sub">Мережевий — усі зали. Локальний — один клуб. Оформлення й оплата — у кабінеті за хвилину.</div>
     </div>
-    <div id="map" class="loc-map rv"></div>
+    <div class="ab-grid">
+      <div class="ab feat rv"><div class="ab-badge">Популярний</div><h4>Мережевий</h4><div class="desc">Доступ до всіх трьох залів</div><div class="price">1200<small> ₴/міс</small></div><a class="abtn" href="client.html">Оформити</a></div>
+      <div class="ab rv"><div class="ab-badge"></div><h4>Локальний</h4><div class="desc">Один обраний зал</div><div class="price">900<small> ₴/міс</small></div><a class="abtn" href="client.html">Оформити</a></div>
+      <div class="ab rv"><div class="ab-badge"></div><h4>Ранковий</h4><div class="desc">У першій половині дня</div><div class="price">650<small> ₴/міс</small></div><a class="abtn" href="client.html">Оформити</a></div>
+      <div class="ab rv"><div class="ab-badge"></div><h4>Парний</h4><div class="desc">Один абонемент на двох</div><div class="price">від 1200<small> ₴</small></div><a class="abtn" href="client.html">Оформити</a></div>
+    </div>
+    <div class="ab-note rv">Учбовий, тренерський та інші абонементи — <a href="client.html">дивись у кабінеті</a></div>
   </div>
 </section>
 
-<!-- ГАЛЕРЕЯ (замість розділу «Мережа») -->
-<section class="blk" id="gallery">
+<!-- ГАЛЕРЕЯ / INSTAGRAM -->
+<section class="blk" id="gallery" style="padding-top:0">
   <div class="wrap">
     <div class="ig-bar rv">
       <div class="ig-bar-l">
@@ -349,31 +366,7 @@ footer{border-top:1px solid var(--bd);padding:64px 0 42px;margin-top:20px}
   </div>
 </section>
 
-<section class="blk" id="abonements" style="padding-top:0">
-  <div class="wrap">
-    <div class="sec-head rv">
-      <div class="sec-eyebrow">Абонементи</div>
-      <div class="sec-title">Обери <span class="y">формат</span></div>
-      <div class="sec-sub">Мережевий — усі зали. Локальний — один клуб. Оформлення й оплата — у кабінеті за хвилину.</div>
-    </div>
-    <div class="ab-grid">
-      <div class="ab feat rv"><div class="ab-badge">Популярний</div><h4>Мережевий</h4><div class="desc">Доступ до всіх трьох залів</div><div class="price">1200<small> ₴/міс</small></div><a class="abtn" href="client.html">Оформити</a></div>
-      <div class="ab rv"><div class="ab-badge"></div><h4>Локальний</h4><div class="desc">Один обраний зал</div><div class="price">900<small> ₴/міс</small></div><a class="abtn" href="client.html">Оформити</a></div>
-      <div class="ab rv"><div class="ab-badge"></div><h4>Ранковий</h4><div class="desc">У першій половині дня</div><div class="price">650<small> ₴/міс</small></div><a class="abtn" href="client.html">Оформити</a></div>
-      <div class="ab rv"><div class="ab-badge"></div><h4>Парний</h4><div class="desc">Один абонемент на двох</div><div class="price">від 1200<small> ₴</small></div><a class="abtn" href="client.html">Оформити</a></div>
-    </div>
-    <div class="ab-note rv">Учбовий, тренерський та інші абонементи — <a href="client.html">дивись у кабінеті</a></div>
-  </div>
-</section>
-
-<section class="blk" style="padding-top:0">
-  <div class="wrap"><div class="stats">
-    <div class="stat rv"><div class="sn" data-to="3" id="stat-gyms">0</div><div class="sl">Активних <span id="stat-gyms-w">залів</span></div></div>
-    <div class="stat rv"><div class="sn" data-to="800" data-suffix="+">0</div><div class="sl">Клієнтів нам довіряють</div></div>
-    <div class="stat rv"><div class="sn" data-to="1" data-prefix="№">№0</div><div class="sl">Мережа в Житомирі</div></div>
-  </div></div>
-</section>
-
+<!-- CTA -->
 <section class="blk" style="padding-top:0">
   <div class="wrap"><div class="cta-band rv">
     <div class="cb-img"></div>
