@@ -1004,6 +1004,7 @@ async function loadShop(){
   ${_subTypes.map(t=>{
     const disc=cStreakDiscount(streak, t.id);
     const fp=disc?Math.round(t.price*(1-disc/100)):t.price;
+    const saved=disc?(t.price-fp):0;
     const isNetwork=t.is_network;
     return `<div class="sub-item" onclick="openPay('${t.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
@@ -1016,7 +1017,8 @@ async function loadShop(){
           <div style="font-size:18px;font-weight:800;color:var(--y)">${fp} ₴</div>
         </div>
       </div>
-      <div style="font-size:12px;color:var(--m2);margin-top:4px">${t.days} ${t.duration_unit||'дн.'} · ${t.class_name||'Клубний'}${disc?` · 🔥 -${disc}% серія`:''}</div>
+      ${disc?`<div style="display:inline-flex;align-items:center;gap:6px;background:var(--ym);color:var(--y);font-weight:800;font-size:12px;padding:6px 11px;border-radius:9px;margin-top:6px">🔥 Знижка серії −${disc}% · економія ${saved} ₴</div>`:''}
+      <div style="font-size:12px;color:var(--m2);margin-top:6px">${t.days} ${t.duration_unit||'дн.'} · ${t.class_name||'Клубний'}</div>
       ${t.description?`<div style="font-size:12px;color:var(--m2);margin-top:6px">${t.description}</div>`:''}
       ${!_acqSettings.acq_provider?'<div style="font-size:11px;color:var(--or);margin-top:6px">⚠️ Оплата тільки в залі</div>':''}
     </div>`;
@@ -1100,7 +1102,7 @@ function openPay(id){
   const fp=disc?Math.round(t.price*(1-disc/100)):t.price;
   document.getElementById('pay-name').textContent=t.name;
   document.getElementById('pay-price').textContent=fp+' ₴';
-  document.getElementById('pay-meta').textContent=`${t.days} ${t.duration_unit||'дн.'}${disc?' · 🔥 -'+disc+'% знижка серії':''}`;
+  document.getElementById('pay-meta').textContent=`${t.days} ${t.duration_unit||'дн.'}${disc?' · 🔥 -'+disc+'% · економія '+(t.price-fp)+' ₴':''}`;
   document.getElementById('pay-total').textContent=fp+' ₴';
   const p=_acqSettings.acq_provider;
   document.getElementById('pay-methods').innerHTML=p
